@@ -1,0 +1,18 @@
+name: FO preview build
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build_ios:
+    type: build
+    params:
+      platform: ios
+      profile: preview
+
+  build_android:
+    type: build
+    params:
+      platform: android
+      profile: preview
