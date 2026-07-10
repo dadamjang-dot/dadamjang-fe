@@ -1,14 +1,33 @@
 # dadamjang fo
 
-다담장 구매자 네이티브 앱입니다. 타이틀은 `다담장 - 위시템 저장소`.
+다담장 구매자 네이티브 앱입니다.
+
+앱 타이틀은 `다담장 - 위시템 저장소`입니다.
+
+## 기능
+
+- 개인화 상품 피드
+- 상품 검색
+- 상품 상세
+- 위시리스트
+- 장바구니
+- 주문 생성
+- 주문 내역
+- 이메일 회원가입/로그인
+- 카카오 로그인/가입 callback
+- MY 프로필
 
 ## 기술
 
-- Expo SDK 55 + Expo Router
-- iOS: `@expo/ui/swift-ui`
-- Android: `@expo/ui/jetpack-compose`
-- `@legendapp/list` 무한 상품 피드
-- TanStack Query, `fetch`, SecureStore, NetInfo
+- Expo SDK 55
+- Expo Router
+- `@expo/ui/swift-ui`
+- `@expo/ui/jetpack-compose`
+- `@legendapp/list`
+- TanStack Query
+- SecureStore
+- NetInfo
+- Sentry React Native
 
 ## 실행
 
@@ -18,14 +37,40 @@ pnpm install
 pnpm start
 ```
 
-`EXPO_PUBLIC_API_URL`은 GraphQL 엔드포인트입니다. 민감값을 `EXPO_PUBLIC_`에 넣지 않습니다.
+## 검증
+
+```bash
+pnpm typecheck
+pnpm lint
+npx expo config --type public
+npx expo export --platform ios --output-dir dist/ios-verify
+npx expo export --platform android --output-dir dist/android-verify
+```
+
+## 환경 변수
+
+```txt
+EXPO_PUBLIC_API_URL=http://localhost:3000/graphql
+EXPO_PUBLIC_SENTRY_DSN=
+EXPO_PUBLIC_SENTRY_ENVIRONMENT=development
+EXPO_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.1
+```
 
 ## 네이티브 자산
 
-- iOS 아이콘: `assets/images/icon.png`
+- iOS icon: `assets/images/icon.png`
 - Android adaptive icon: `assets/images/adaptive-icon.png`
-- splash: `assets/images/splash-icon.png`, `#4D45DF`
+- Splash icon: `assets/images/splash-icon.png`
+- Splash background: `#4D45DF`
 
 ## EAS
 
-`development`, `preview`, `production` 프로필이 `eas.json`에 있습니다. 실제 EAS 로그인·빌드·스토어 제출은 수행하지 않습니다.
+`eas.json`에 `development`, `preview`, `production` profile이 있습니다.
+
+Preview workflow:
+
+```txt
+.eas/workflows/preview.yml
+```
+
+Sentry sourcemap 업로드를 사용하려면 EAS secret에 `SENTRY_AUTH_TOKEN`을 등록해야 합니다.
