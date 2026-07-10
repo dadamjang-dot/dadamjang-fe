@@ -1,4 +1,4 @@
-# 다담장 Frontend
+# Dadamjang Frontend
 
 다담장 구매자·파트너·어드민 사용자 경험을 담당하는 프론트엔드 저장소입니다.
 
