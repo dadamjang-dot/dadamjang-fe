@@ -1,0 +1,9 @@
+{
+  "name": "dadamjang-fe",
+  "private": true,
+  "packageManager": "pnpm@10.13.1",
+  "scripts": {
+    "fo:typecheck": "pnpm --dir apps/dadamjang-fo typecheck",
+    "fo:lint": "pnpm --dir apps/dadamjang-fo lint"
+  }
+}

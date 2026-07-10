@@ -6,7 +6,7 @@ module.exports = defineConfig([
   {
     ignores: ['.expo/**', 'dist/**', 'node_modules/**'],
     rules: {
-      'import/no-unresolved': ['error', { ignore: ['^@/.*'] }],
+      'import/no-unresolved': ['error', { ignore: ['^@/.*', '^@dadamjang/.*'] }],
     },
   },
 ]);

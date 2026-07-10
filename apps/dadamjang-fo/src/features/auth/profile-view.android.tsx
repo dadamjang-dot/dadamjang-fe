@@ -1,7 +1,7 @@
 import { Button, Card, Column, Host, Text } from '@expo/ui/jetpack-compose';
 import { fillMaxWidth, paddingAll } from '@expo/ui/jetpack-compose/modifiers';
 
-import { colors } from '@/theme/tokens';
+import { colors } from '@dadamjang/design-tokens';
 
 import type { Viewer } from './types';
 

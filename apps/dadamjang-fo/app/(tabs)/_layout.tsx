@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 
-import { colors } from '@/theme/tokens';
+import { colors } from '@dadamjang/design-tokens';
 
 const TabLayout = () => (
   <Tabs screenOptions={{ headerShown: false, tabBarActiveTintColor: colors.primary }}>

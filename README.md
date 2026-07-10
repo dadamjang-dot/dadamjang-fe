@@ -10,6 +10,12 @@
 
 현재 구현된 앱은 `apps/dadamjang-fo`입니다.
 
+## 패키지 구성
+
+- `packages/graphql-client`: GraphQL 요청, 인증 토큰, 디바이스 식별자 처리
+- `packages/design-tokens`: 색상, spacing 등 앱 공통 디자인 토큰
+- `packages/shared-utils`: 금액 포맷, 권한 판별 등 플랫폼 비의존 유틸리티
+
 ## FO 앱
 
 - Expo SDK 55 + Expo Router
@@ -23,21 +29,19 @@
 ## 실행
 
 ```bash
-cd apps/dadamjang-fo
-cp .env.example .env
+cp apps/dadamjang-fo/.env.example apps/dadamjang-fo/.env
 pnpm install
-pnpm start
+pnpm --dir apps/dadamjang-fo start
 ```
 
 ## 검증
 
 ```bash
-cd apps/dadamjang-fo
-pnpm typecheck
-pnpm lint
-npx expo config --type public
-npx expo export --platform ios --output-dir dist/ios-verify
-npx expo export --platform android --output-dir dist/android-verify
+pnpm fo:typecheck
+pnpm fo:lint
+pnpm --dir apps/dadamjang-fo exec expo config --type public
+pnpm --dir apps/dadamjang-fo exec expo export --platform ios --output-dir dist/ios-verify
+pnpm --dir apps/dadamjang-fo exec expo export --platform android --output-dir dist/android-verify
 ```
 
 ## 환경 변수
