@@ -1,7 +1,6 @@
 import * as Linking from 'expo-linking';
 
-import { graphqlRequest, setAuthTokens } from '@/shared/api/graphql-client';
-import { getDeviceId } from '@/shared/auth/device-id';
+import { getDeviceId, graphqlRequest, setAuthTokens } from '@dadamjang/graphql-client';
 
 import type { TokenPayload, Viewer } from './types';
 

@@ -1,7 +1,7 @@
 import { Host, Text, VStack } from '@expo/ui/swift-ui';
 import { font, foregroundStyle, padding } from '@expo/ui/swift-ui/modifiers';
 
-import { colors } from '@/theme/tokens';
+import { colors } from '@dadamjang/design-tokens';
 
 export const ScreenTitle = ({ title, subtitle }: { title: string; subtitle?: string }) => (
   <Host matchContents>

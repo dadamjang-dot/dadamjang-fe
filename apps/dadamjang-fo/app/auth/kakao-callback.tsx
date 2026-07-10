@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 
 import { KakaoSignupForm } from '@/features/auth/kakao-signup-form';
 import { useCompleteKakaoSignup } from '@/features/auth';
-import { setAuthTokens } from '@/shared/api/graphql-client';
+import { setAuthTokens } from '@dadamjang/graphql-client';
 import { NativeMessage } from '@/shared/components';
 
 const getParam = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);

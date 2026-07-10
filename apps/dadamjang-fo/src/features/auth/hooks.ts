@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { clearAccessToken } from '@/shared/api/graphql-client';
+import { clearAccessToken } from '@dadamjang/graphql-client';
 
 import {
   completeKakaoSignup,

@@ -4,7 +4,7 @@ import { ScrollView } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 
 import { NativeMessage } from '@/shared/components';
-import { colors } from '@/theme/tokens';
+import { colors } from '@dadamjang/design-tokens';
 
 import type { Order } from './api';
 

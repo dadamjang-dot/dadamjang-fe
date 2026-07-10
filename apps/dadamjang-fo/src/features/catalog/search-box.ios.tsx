@@ -1,7 +1,7 @@
 import { Button, Host, HStack, TextField } from '@expo/ui/swift-ui';
 import { background, cornerRadius, padding } from '@expo/ui/swift-ui/modifiers';
 
-import { colors } from '@/theme/tokens';
+import { colors } from '@dadamjang/design-tokens';
 
 type SearchBoxProps = {
   value: string;

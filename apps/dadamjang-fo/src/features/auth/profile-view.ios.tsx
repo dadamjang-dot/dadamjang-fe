@@ -1,7 +1,7 @@
 import { Button, Host, Text, VStack } from '@expo/ui/swift-ui';
 import { background, cornerRadius, font, foregroundStyle, padding } from '@expo/ui/swift-ui/modifiers';
 
-import { colors } from '@/theme/tokens';
+import { colors } from '@dadamjang/design-tokens';
 
 import type { Viewer } from './types';
 

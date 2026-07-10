@@ -3,7 +3,7 @@ import { Host, RNHostView, Text, VStack } from '@expo/ui/swift-ui';
 import { background, cornerRadius, font, foregroundStyle, lineLimit, onTapGesture, padding } from '@expo/ui/swift-ui/modifiers';
 import { StyleSheet } from 'react-native-unistyles';
 
-import { colors } from '@/theme/tokens';
+import { colors } from '@dadamjang/design-tokens';
 
 import type { Product } from './types';
 

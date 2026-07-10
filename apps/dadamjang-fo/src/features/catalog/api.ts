@@ -1,4 +1,4 @@
-import { graphqlRequest } from '@/shared/api/graphql-client';
+import { graphqlRequest } from '@dadamjang/graphql-client';
 
 import type { ProductConnection, ProductFilter } from './types';
 

@@ -1,7 +1,7 @@
 import { Button, CircularProgressIndicator, Column, Host, Text } from '@expo/ui/jetpack-compose';
 import { paddingAll } from '@expo/ui/jetpack-compose/modifiers';
 
-import { colors } from '@/theme/tokens';
+import { colors } from '@dadamjang/design-tokens';
 
 type NativeMessageProps = {
   title: string;

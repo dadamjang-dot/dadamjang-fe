@@ -1,7 +1,7 @@
 import { Button, Host, OutlinedTextField, Row, Text } from '@expo/ui/jetpack-compose';
 import { fillMaxWidth, paddingAll } from '@expo/ui/jetpack-compose/modifiers';
 
-import { colors } from '@/theme/tokens';
+import { colors } from '@dadamjang/design-tokens';
 
 type SearchBoxProps = {
   value: string;

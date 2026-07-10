@@ -3,7 +3,7 @@ import { Card, Column, Host, RNHostView, Text } from '@expo/ui/jetpack-compose';
 import { clickable, fillMaxWidth, paddingAll } from '@expo/ui/jetpack-compose/modifiers';
 import { StyleSheet } from 'react-native-unistyles';
 
-import { colors } from '@/theme/tokens';
+import { colors } from '@dadamjang/design-tokens';
 
 import type { Product } from './types';
 

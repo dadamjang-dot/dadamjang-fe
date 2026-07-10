@@ -28,12 +28,17 @@
 - SecureStore
 - NetInfo
 - Sentry React Native
+- `@dadamjang/graphql-client`
+- `@dadamjang/design-tokens`
+- `@dadamjang/shared-utils`
 
 ## 실행
 
 ```bash
 cp .env.example .env
+cd ../..
 pnpm install
+cd apps/dadamjang-fo
 pnpm start
 ```
 

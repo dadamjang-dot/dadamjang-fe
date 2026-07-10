@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { ActivityIndicator, RefreshControl } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 
-import { colors } from '@/theme/tokens';
+import { colors } from '@dadamjang/design-tokens';
 
 import { usePersonalizedFeed } from './hooks';
 import { ProductCard } from './product-card';

@@ -5,7 +5,10 @@
     "moduleResolution": "bundler",
     "moduleSuffixes": [".ios", ".android", ".native", ""],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@dadamjang/design-tokens": ["../../packages/design-tokens/src/index.ts"],
+      "@dadamjang/graphql-client": ["../../packages/graphql-client/src/index.ts"],
+      "@dadamjang/shared-utils": ["../../packages/shared-utils/src/index.ts"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
