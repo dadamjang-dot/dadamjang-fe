@@ -42,6 +42,15 @@
 - 가격 근거 펼침률
 - checkout CTA 클릭률
 
+현재 실측:
+
+- 목록/비교 첫 query scalar field 수: 7
+- 분리 전 단일 query 예상 scalar field 수: 14
+- 첫 목록 query field 감소율: 50%
+- `ProductPriceSummaries` query 크기: 168 bytes
+- `ProductPriceEvidence` query 크기: 187 bytes
+- 추적 이벤트: `PRICE_EVIDENCE_EXPANDED`
+
 ## Checkout 정합성 계약
 
 - FO checkout은 실행마다 `expo-crypto`의 `randomUUID()`로 `idempotencyKey`를 생성해 GraphQL mutation에 전달합니다.
@@ -57,6 +66,17 @@
 - idempotency 재사용 처리 수
 - checkout 실패 후 cart cache 복구 여부
 - 주문 생성 후 cart/orders cache 불일치 수
+
+현재 실측:
+
+- checkout pending guard 위치: 3
+- iOS/Android CTA pending 처리 참조: 12
+- mutation 단위 `idempotencyKey` 생성: true
+- 성공 후 `cart/orders` invalidate: true
+- 실패 후 `cart` refetch: true
+- 추적 이벤트: `CHECKOUT_CLICKED`, `CHECKOUT_FAILURE_TEST_CLICKED`
+
+상세 기록: `docs/measurements/fo-problems.md`
 
 ## 실행
 
