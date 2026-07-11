@@ -1,12 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { checkoutCart, getCart, removeCartItem, upsertCartItem } from './api';
+import { orderQueryKeys } from '@/features/order';
 
-export const useCart = () => useQuery({ queryKey: ['cart'], queryFn: getCart });
+import { checkoutCart, getCart, removeCartItem, upsertCartItem } from './api';
+import { cartQueryKeys } from './query-keys';
+
+export const useCart = () => useQuery({ queryKey: cartQueryKeys.detail(), queryFn: getCart });
 
 export const useCartActions = () => {
   const queryClient = useQueryClient();
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['cart'] });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: cartQueryKeys.detail() });
+  const invalidateCheckout = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: cartQueryKeys.detail() }),
+      queryClient.invalidateQueries({ queryKey: orderQueryKeys.list() }),
+    ]);
 
   return {
     upsert: useMutation({
@@ -15,6 +23,6 @@ export const useCartActions = () => {
       onSuccess: invalidate,
     }),
     remove: useMutation({ mutationFn: removeCartItem, onSuccess: invalidate }),
-    checkout: useMutation({ mutationFn: checkoutCart, onSuccess: invalidate }),
+    checkout: useMutation({ mutationFn: checkoutCart, onSuccess: invalidateCheckout }),
   };
 };

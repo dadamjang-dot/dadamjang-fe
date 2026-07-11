@@ -12,20 +12,28 @@ import type { Product } from './types';
 type ProductDetailViewProps = {
   product?: Product;
   loading: boolean;
+  selectedSkuId?: string;
+  onSelectSku: (skuId: string) => void;
   onAddWishlist: () => void;
+  onAddComparison: () => void;
   onAddCart: () => void;
 };
 
-const getPrice = (product: Product) => product.skus[0]?.price ?? 0;
+const getSelectedSku = (product: Product, selectedSkuId?: string) =>
+  product.skus.find((sku) => sku.skuId === selectedSkuId) ?? product.skus[0];
 
 export const ProductDetailView = ({
   product,
   loading,
+  selectedSkuId,
+  onSelectSku,
   onAddWishlist,
+  onAddComparison,
   onAddCart,
 }: ProductDetailViewProps) => {
   if (loading) return <NativeMessage title="상품을 불러오는 중" loading />;
   if (!product) return <NativeMessage title="상품을 찾을 수 없어요" />;
+  const selectedSku = getSelectedSku(product, selectedSkuId);
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -36,17 +44,27 @@ export const ProductDetailView = ({
           </RNHostView>
           <Text style={{ typography: 'headlineMedium', fontWeight: 'bold' }}>{product.title}</Text>
           <Text color={colors.primary} style={{ typography: 'headlineSmall', fontWeight: 'bold' }}>
-            {getPrice(product).toLocaleString()}원
+            {(selectedSku?.price ?? 0).toLocaleString()}원
           </Text>
           <Text color={colors.muted}>{product.description}</Text>
           <Card colors={{ containerColor: colors.primarySoft }}>
             <Column verticalArrangement={{ spacedBy: 8 }} modifiers={[paddingAll(14)]}>
               <Text style={{ typography: 'titleSmall', fontWeight: 'bold' }}>옵션</Text>
-              <Text color={colors.muted}>{product.skus[0]?.optionName ?? '기본 옵션'}</Text>
+              {product.skus.map((sku) => (
+                <Button key={sku.skuId} onClick={() => onSelectSku(sku.skuId)}>
+                  <Text>
+                    {selectedSku?.skuId === sku.skuId ? '✓ ' : ''}
+                    {sku.optionName} · {sku.price.toLocaleString()}원 · 재고 {sku.stock}
+                  </Text>
+                </Button>
+              ))}
             </Column>
           </Card>
           <Button onClick={onAddWishlist} colors={{ containerColor: colors.primary }}>
             <Text>위시템 저장</Text>
+          </Button>
+          <Button onClick={onAddComparison} colors={{ containerColor: colors.primary }}>
+            <Text>비교함 담기</Text>
           </Button>
           <Button onClick={onAddCart} colors={{ containerColor: colors.primary }}>
             <Text>장바구니 담기</Text>

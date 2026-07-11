@@ -26,6 +26,22 @@
 - 인증 토큰: SecureStore
 - 관측: `@sentry/react-native`
 
+## 가격 근거 표시 계약
+
+- 상품 목록/검색/비교 첫 query는 `productPriceSummaries` 또는 `comparisonPriceSummaries`만 사용합니다.
+- 첫 query payload에는 `productId`, `name`, `thumbnail`, `basePrice`, `finalPrice`, `priceRevision`, `lowestPriceEvidenceSummary`만 포함합니다.
+- 가격 이력, 쿠폰 조건, 배송 정책, offer 출처는 `productPriceEvidence(productId, priceRevision)` lazy query로만 조회합니다.
+- 가격 근거 펼침 이벤트는 `PRICE_EVIDENCE_EXPANDED`로 기록합니다.
+- React Query key는 `products`, `product-price-summary`, `product-price-evidence`, `offers`로 분리합니다.
+
+측정 기준:
+
+- 비교 목록 payload size
+- 목록 첫 렌더 시간
+- 가격 근거 query p95
+- 가격 근거 펼침률
+- checkout CTA 클릭률
+
 ## 실행
 
 ```bash

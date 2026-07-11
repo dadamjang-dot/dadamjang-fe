@@ -12,20 +12,28 @@ import type { Product } from './types';
 type ProductDetailViewProps = {
   product?: Product;
   loading: boolean;
+  selectedSkuId?: string;
+  onSelectSku: (skuId: string) => void;
   onAddWishlist: () => void;
+  onAddComparison: () => void;
   onAddCart: () => void;
 };
 
-const getPrice = (product: Product) => product.skus[0]?.price ?? 0;
+const getSelectedSku = (product: Product, selectedSkuId?: string) =>
+  product.skus.find((sku) => sku.skuId === selectedSkuId) ?? product.skus[0];
 
 export const ProductDetailView = ({
   product,
   loading,
+  selectedSkuId,
+  onSelectSku,
   onAddWishlist,
+  onAddComparison,
   onAddCart,
 }: ProductDetailViewProps) => {
   if (loading) return <NativeMessage title="상품을 불러오는 중" loading />;
   if (!product) return <NativeMessage title="상품을 찾을 수 없어요" />;
+  const selectedSku = getSelectedSku(product, selectedSkuId);
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -36,16 +44,21 @@ export const ProductDetailView = ({
           </RNHostView>
           <Text modifiers={[font({ size: 28, weight: 'bold' })]}>{product.title}</Text>
           <Text modifiers={[font({ size: 22, weight: 'bold' }), foregroundStyle(colors.primary)]}>
-            {getPrice(product).toLocaleString()}원
+            {(selectedSku?.price ?? 0).toLocaleString()}원
           </Text>
           <Text modifiers={[font({ size: 15 }), foregroundStyle(colors.muted)]}>{product.description}</Text>
           <VStack spacing={8} modifiers={[background(colors.primarySoft), cornerRadius(16), padding({ all: 14 })]}>
             <Text modifiers={[font({ size: 14, weight: 'semibold' })]}>옵션</Text>
-            <Text modifiers={[font({ size: 14 }), foregroundStyle(colors.muted)]}>
-              {product.skus[0]?.optionName ?? '기본 옵션'}
-            </Text>
+            {product.skus.map((sku) => (
+              <Button
+                key={sku.skuId}
+                label={`${selectedSku?.skuId === sku.skuId ? '✓ ' : ''}${sku.optionName} · ${sku.price.toLocaleString()}원 · 재고 ${sku.stock}`}
+                onPress={() => onSelectSku(sku.skuId)}
+              />
+            ))}
           </VStack>
           <Button label="위시템 저장" onPress={onAddWishlist} />
+          <Button label="비교함 담기" onPress={onAddComparison} />
           <Button label="장바구니 담기" onPress={onAddCart} />
         </VStack>
       </Host>

@@ -1,4 +1,4 @@
-import { Card, Column, Host, Text } from '@expo/ui/jetpack-compose';
+import { Button, Card, Column, Host, Text } from '@expo/ui/jetpack-compose';
 import { fillMaxWidth, paddingAll } from '@expo/ui/jetpack-compose/modifiers';
 import { ScrollView } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
@@ -11,9 +11,10 @@ import type { Order } from './api';
 type OrderListViewProps = {
   orders?: Order[];
   loading: boolean;
+  onPressOrder: (orderId: string) => void;
 };
 
-export const OrderListView = ({ orders, loading }: OrderListViewProps) => {
+export const OrderListView = ({ orders, loading, onPressOrder }: OrderListViewProps) => {
   if (loading) return <NativeMessage title="주문을 불러오는 중" loading />;
   if (!orders?.length) return <NativeMessage title="아직 주문이 없어요" />;
 
@@ -31,6 +32,9 @@ export const OrderListView = ({ orders, loading }: OrderListViewProps) => {
                 <Text color={colors.primary} style={{ typography: 'titleLarge', fontWeight: 'bold' }}>
                   {order.totalAmount.toLocaleString()}원
                 </Text>
+                <Button onClick={() => onPressOrder(order.orderId)}>
+                  <Text>상세 보기</Text>
+                </Button>
               </Column>
             </Card>
           ))}

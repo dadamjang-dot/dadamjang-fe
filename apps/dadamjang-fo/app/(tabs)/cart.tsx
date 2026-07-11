@@ -1,9 +1,22 @@
 import { CartView, useCart, useCartActions } from '@/features/cart';
+import { trackCommerceEvent } from '@/features/analytics';
 import { ScreenTitle } from '@/shared/components';
 
 const CartScreen = () => {
   const cart = useCart();
   const actions = useCartActions();
+  const checkout = () => {
+    if (cart.data?.cartId) {
+      trackCommerceEvent({ eventType: 'CHECKOUT_CLICKED', subjectType: 'CART', subjectId: cart.data.cartId });
+    }
+    actions.checkout.mutate(undefined);
+  };
+  const checkoutFailure = () => {
+    if (cart.data?.cartId) {
+      trackCommerceEvent({ eventType: 'CHECKOUT_FAILURE_TEST_CLICKED', subjectType: 'CART', subjectId: cart.data.cartId });
+    }
+    actions.checkout.mutate({ forcePaymentFailure: true });
+  };
 
   return (
     <>
@@ -12,7 +25,9 @@ const CartScreen = () => {
         cart={cart.data}
         loading={cart.isPending}
         onRemove={(skuId) => actions.remove.mutate(skuId)}
-        onCheckout={() => actions.checkout.mutate()}
+        onChangeQuantity={(skuId, quantity) => actions.upsert.mutate({ skuId, quantity })}
+        onCheckout={checkout}
+        onCheckoutFailure={checkoutFailure}
       />
     </>
   );

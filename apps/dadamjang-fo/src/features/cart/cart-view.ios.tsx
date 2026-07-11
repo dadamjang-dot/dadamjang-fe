@@ -13,10 +13,19 @@ type CartViewProps = {
   cart?: Cart;
   loading: boolean;
   onRemove: (skuId: string) => void;
+  onChangeQuantity: (skuId: string, quantity: number) => void;
   onCheckout: () => void;
+  onCheckoutFailure: () => void;
 };
 
-export const CartView = ({ cart, loading, onRemove, onCheckout }: CartViewProps) => {
+export const CartView = ({
+  cart,
+  loading,
+  onRemove,
+  onChangeQuantity,
+  onCheckout,
+  onCheckoutFailure,
+}: CartViewProps) => {
   if (loading) return <NativeMessage title="장바구니를 불러오는 중" loading />;
   if (!cart?.items.length) return <NativeMessage title="장바구니가 비어 있어요" />;
 
@@ -37,6 +46,11 @@ export const CartView = ({ cart, loading, onRemove, onCheckout }: CartViewProps)
               <Text modifiers={[font({ size: 14 }), foregroundStyle(colors.muted)]}>
                 {item.sku.optionName} / {item.quantity}개
               </Text>
+              <Button label="수량 +" onPress={() => onChangeQuantity(item.sku.skuId, item.quantity + 1)} />
+              <Button
+                label="수량 -"
+                onPress={() => onChangeQuantity(item.sku.skuId, Math.max(item.quantity - 1, 1))}
+              />
               <Text modifiers={[font({ size: 18, weight: 'bold' }), foregroundStyle(colors.primary)]}>
                 {(item.sku.price * item.quantity).toLocaleString()}원
               </Text>
@@ -47,6 +61,7 @@ export const CartView = ({ cart, loading, onRemove, onCheckout }: CartViewProps)
             총 {cart.totalAmount.toLocaleString()}원
           </Text>
           <Button label="주문하기" onPress={onCheckout} />
+          <Button label="mock 결제 실패 테스트" role="destructive" onPress={onCheckoutFailure} />
         </VStack>
       </Host>
     </ScrollView>

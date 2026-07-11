@@ -11,6 +11,10 @@ export type Cart = {
   }[];
 };
 
+export type CheckoutCartInput = {
+  forcePaymentFailure?: boolean;
+};
+
 export const getCart = async () => {
   const data = await graphqlRequest<{ cart: Cart }>(
     `query Cart {
@@ -44,7 +48,7 @@ export const removeCartItem = async (skuId: string) =>
     { skuId },
   );
 
-export const checkoutCart = async () => {
+export const checkoutCart = async (input?: CheckoutCartInput) => {
   const data = await graphqlRequest<{
     checkoutCart: {
       orderId: string;
@@ -54,8 +58,8 @@ export const checkoutCart = async () => {
       totalAmount: number;
     };
   }>(
-    `mutation CheckoutCart {
-      checkoutCart {
+    `mutation CheckoutCart($input: CheckoutCartInput) {
+      checkoutCart(input: $input) {
         orderId
         orderNumber
         status
@@ -63,6 +67,7 @@ export const checkoutCart = async () => {
         totalAmount
       }
     }`,
+    { input },
   );
 
   return data.checkoutCart;

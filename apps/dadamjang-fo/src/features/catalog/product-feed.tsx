@@ -3,20 +3,19 @@ import { router } from 'expo-router';
 import { ActivityIndicator, RefreshControl } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 
+import { PriceSummaryCard, useProductPriceSummaries } from '@/features/price-evidence';
 import { colors } from '@dadamjang/design-tokens';
 
-import { usePersonalizedFeed } from './hooks';
-import { ProductCard } from './product-card';
-import type { Product } from './types';
+import type { ProductPriceSummary } from '@/features/price-evidence';
 
-const getProductKey = (product: Product) => product.productId;
+const getProductKey = (product: ProductPriceSummary) => product.productId;
 
-const renderProduct = ({ item }: { item: Product }) => (
-  <ProductCard product={item} onPress={() => router.push(`/product/${item.productId}`)} />
+const renderProduct = ({ item }: { item: ProductPriceSummary }) => (
+  <PriceSummaryCard summary={item} onPress={() => router.push(`/product/${item.productId}`)} />
 );
 
 export const ProductFeed = () => {
-  const feed = usePersonalizedFeed();
+  const feed = useProductPriceSummaries({ first: 20, sort: 'POPULAR' });
   const products = feed.data?.pages.flatMap((page) => page.nodes) ?? [];
 
   if (feed.isPending) return <ActivityIndicator color={colors.primary} style={styles.loader} />;

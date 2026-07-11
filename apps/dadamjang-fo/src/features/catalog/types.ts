@@ -24,9 +24,20 @@ export type ProductConnection = {
   hasNextPage: boolean;
 };
 
+export type Category = {
+  categoryId: string;
+  name: string;
+  slug: string;
+  parentId: string | null;
+  sortOrder: number;
+};
+
+export type ProductSort = 'LATEST' | 'LOW_PRICE' | 'POPULAR';
+
 export type ProductFilter = {
   categoryId?: string;
   query?: string;
+  sort?: ProductSort;
   after?: string;
   first?: number;
 };

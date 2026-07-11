@@ -1,6 +1,6 @@
 import { graphqlRequest } from '@dadamjang/graphql-client';
 
-import type { ProductConnection, ProductFilter } from './types';
+import type { Category, ProductConnection, ProductFilter } from './types';
 
 export const productFields = `
   productId partnerId categoryId title description imageUrls status createdAt
@@ -20,6 +20,16 @@ export const getProducts = async (filter: ProductFilter): Promise<ProductConnect
   );
 
   return data.products;
+};
+
+export const getCategories = async () => {
+  const data = await graphqlRequest<{ categories: Category[] }>(
+    `query Categories {
+      categories { categoryId name slug parentId sortOrder }
+    }`,
+  );
+
+  return data.categories;
 };
 
 export const getPersonalizedFeed = async (filter: Pick<ProductFilter, 'after' | 'first'>): Promise<ProductConnection> => {
