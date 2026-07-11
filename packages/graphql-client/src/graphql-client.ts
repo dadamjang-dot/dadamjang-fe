@@ -1,8 +1,10 @@
+import { ClientError, GraphQLClient } from 'graphql-request';
 import * as SecureStore from 'expo-secure-store';
 
 const accessTokenKey = 'dadamjang.access-token';
 const refreshTokenKey = 'dadamjang.refresh-token';
 const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000/graphql';
+const refreshMutation = 'mutation Refresh { refresh { accessToken refreshToken } }';
 
 export class GraphqlError extends Error {
   readonly status: number;
@@ -14,9 +16,13 @@ export class GraphqlError extends Error {
   }
 }
 
-type GraphqlResponse<T> = {
-  data?: T;
-  errors?: { message: string }[];
+type AuthTokens = {
+  accessToken: string;
+  refreshToken: string;
+};
+
+type RefreshPayload = {
+  refresh: AuthTokens;
 };
 
 export const getAccessToken = () => SecureStore.getItemAsync(accessTokenKey);
@@ -27,7 +33,7 @@ export const setAccessToken = (token: string) => SecureStore.setItemAsync(access
 
 export const setRefreshToken = (token: string) => SecureStore.setItemAsync(refreshTokenKey, token);
 
-export const setAuthTokens = async (tokens: { accessToken: string; refreshToken: string }) => {
+export const setAuthTokens = async (tokens: AuthTokens) => {
   await setAccessToken(tokens.accessToken);
   await setRefreshToken(tokens.refreshToken);
 };
@@ -37,29 +43,28 @@ export const clearAccessToken = async () => {
   await SecureStore.deleteItemAsync(refreshTokenKey);
 };
 
+const getErrorMessage = (error: ClientError) => error.response.errors?.[0]?.message ?? 'GraphQL 요청에 실패했어요.';
+
+const createGraphqlClient = (headers?: HeadersInit) =>
+  new GraphQLClient(apiUrl, {
+    headers,
+  });
+
 const refreshAccessToken = async () => {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) return null;
 
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  try {
+    const client = createGraphqlClient({
       Authorization: `Bearer ${refreshToken}`,
-    },
-    body: JSON.stringify({
-      query: 'mutation Refresh { refresh { accessToken refreshToken role } }',
-    }),
-  });
+    });
+    const data = await client.request<RefreshPayload>(refreshMutation);
 
-  const payload = (await response.json().catch(() => undefined)) as
-    | GraphqlResponse<{ refresh: { accessToken: string; refreshToken: string } }>
-    | undefined;
-
-  if (!response.ok || payload?.errors?.length || !payload?.data) return null;
-
-  await setAuthTokens(payload.data.refresh);
-  return payload.data.refresh.accessToken;
+    await setAuthTokens(data.refresh);
+    return data.refresh.accessToken;
+  } catch {
+    return null;
+  }
 };
 
 export const graphqlRequest = async <T>(
@@ -69,23 +74,19 @@ export const graphqlRequest = async <T>(
   retryOnUnauthorized = true,
 ): Promise<T> => {
   const token = await getAccessToken();
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+
+  try {
+    const client = createGraphqlClient({
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...requestHeaders,
-    },
-    body: JSON.stringify({ query, variables }),
-  });
+    });
 
-  const payload = (await response.json().catch(() => undefined)) as GraphqlResponse<T> | undefined;
+    return await client.request<T>(query, variables);
+  } catch (error) {
+    if (!(error instanceof ClientError)) {
+      throw error;
+    }
 
-  if (!response.ok) {
-    throw new GraphqlError(payload?.errors?.[0]?.message ?? `요청에 실패했어요. (${response.status})`, response.status);
-  }
-
-  if (payload?.errors?.length) {
     if (retryOnUnauthorized && token) {
       const refreshedToken = await refreshAccessToken();
 
@@ -99,12 +100,6 @@ export const graphqlRequest = async <T>(
       }
     }
 
-    throw new GraphqlError(payload.errors[0].message, response.status);
+    throw new GraphqlError(getErrorMessage(error), error.response.status);
   }
-
-  if (!payload?.data) {
-    throw new GraphqlError('서버 응답을 확인할 수 없어요.', response.status);
-  }
-
-  return payload.data;
 };

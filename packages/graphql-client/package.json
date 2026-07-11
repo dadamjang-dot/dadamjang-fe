@@ -11,5 +11,8 @@
   "peerDependencies": {
     "expo-crypto": "~55.0.16",
     "expo-secure-store": "~55.0.15"
+  },
+  "dependencies": {
+    "graphql-request": "^7.4.0"
   }
 }
