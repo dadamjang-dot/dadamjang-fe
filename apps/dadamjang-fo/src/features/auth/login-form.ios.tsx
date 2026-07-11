@@ -1,5 +1,14 @@
 import { Button, Host, SecureField, Text, TextField, VStack } from '@expo/ui/swift-ui';
-import { buttonStyle, font, padding, tint } from '@expo/ui/swift-ui/modifiers';
+import {
+  autocorrectionDisabled,
+  buttonStyle,
+  font,
+  keyboardType,
+  padding,
+  textContentType,
+  textInputAutocapitalization,
+  tint,
+} from '@expo/ui/swift-ui/modifiers';
 
 type LoginFormProps = {
   onUseridChange: (value: string) => void;
@@ -25,8 +34,25 @@ export const LoginForm = ({
   <Host style={{ flex: 1 }} useViewportSizeMeasurement>
     <VStack alignment="leading" spacing={16} modifiers={[padding({ all: 24 })]}>
       <Text modifiers={[font({ size: 30, weight: 'bold' })]}>다담장 로그인</Text>
-      <TextField placeholder="아이디" onValueChange={onUseridChange} />
-      <SecureField placeholder="비밀번호" onValueChange={onPasswordChange} />
+      <TextField
+        placeholder="아이디"
+        onValueChange={onUseridChange}
+        modifiers={[
+          textInputAutocapitalization('never'),
+          autocorrectionDisabled(),
+          textContentType('username'),
+          keyboardType('ascii-capable'),
+        ]}
+      />
+      <SecureField
+        placeholder="비밀번호"
+        onValueChange={onPasswordChange}
+        modifiers={[
+          textInputAutocapitalization('never'),
+          autocorrectionDisabled(),
+          textContentType('password'),
+        ]}
+      />
       {error ? <Text>{error}</Text> : null}
       <Button
         label={pending ? '로그인 중...' : '로그인'}

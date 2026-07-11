@@ -37,11 +37,8 @@ const createPodDeploymentTargetPatch = (deploymentTarget: string) =>
     '    end',
   ].join('\n');
 
-const removeDuplicatedLibcxxFlag = (value: unknown) => {
-  if (!Array.isArray(value)) return value;
-
-  return value.filter((flag) => flag !== DUPLICATED_LIBCXX_FLAG);
-};
+const removeDuplicatedLibcxxFlag = (value: unknown) =>
+  Array.isArray(value) ? value.filter((flag) => flag !== DUPLICATED_LIBCXX_FLAG) : value;
 
 const withPodDeploymentTarget: ConfigPlugin<Required<IosBuildSettingsPluginOptions>> = (
   config,
@@ -86,11 +83,13 @@ const withXcodeBuildSettings: ConfigPlugin = (config) =>
     for (const buildConfiguration of Object.values(buildConfigurations)) {
       if (typeof buildConfiguration === 'string') continue;
 
+      const otherLdFlags = buildConfiguration.buildSettings?.OTHER_LDFLAGS;
+
+      if (!Array.isArray(otherLdFlags)) continue;
+
       buildConfiguration.buildSettings = {
         ...buildConfiguration.buildSettings,
-        OTHER_LDFLAGS: removeDuplicatedLibcxxFlag(
-          buildConfiguration.buildSettings?.OTHER_LDFLAGS,
-        ),
+        OTHER_LDFLAGS: removeDuplicatedLibcxxFlag(otherLdFlags),
       };
     }
 
