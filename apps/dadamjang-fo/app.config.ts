@@ -32,7 +32,12 @@ const appConfig = ({ config }: { config: Record<string, unknown> }) => ({
     predictiveBackGestureEnabled: false,
   },
   plugins: [
-    'expo-router',
+    [
+      'expo-router',
+      {
+        root: './src/app',
+      },
+    ],
     'expo-secure-store',
     'expo-image',
     [
