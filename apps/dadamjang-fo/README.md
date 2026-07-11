@@ -30,7 +30,7 @@
 - Sentry React Native
 - `@dadamjang/graphql-client`
 - `@dadamjang/design-tokens`
-- `@dadamjang/shared-utils`
+- `@dadamjang/domain`
 
 ## 실행
 

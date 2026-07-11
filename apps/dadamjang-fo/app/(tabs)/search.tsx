@@ -76,6 +76,7 @@ const SearchScreen = () => {
         renderItem={renderProduct}
         keyExtractor={getProductKey}
         estimatedItemSize={288}
+        recycleItems
         contentContainerStyle={styles.content}
         onEndReached={() => {
           if (products.hasNextPage && !products.isFetchingNextPage) void products.fetchNextPage();

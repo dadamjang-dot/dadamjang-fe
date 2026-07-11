@@ -28,6 +28,7 @@ const WishlistScreen = () => {
         renderItem={renderWishlist}
         keyExtractor={getWishlistKey}
         estimatedItemSize={288}
+        recycleItems
         contentContainerStyle={styles.content}
       />
     </>

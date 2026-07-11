@@ -5,6 +5,10 @@
   "scripts": {
     "fo:typecheck": "pnpm --dir apps/dadamjang-fo typecheck",
     "fo:lint": "pnpm --dir apps/dadamjang-fo lint",
+    "fo:ios": "pnpm --dir apps/dadamjang-fo ios",
+    "fo:build:development": "pnpm --dir apps/dadamjang-fo build:development",
+    "fo:build:preview": "pnpm --dir apps/dadamjang-fo build:preview",
+    "fo:build:production": "pnpm --dir apps/dadamjang-fo build:production",
     "measure:fo-problems": "node scripts/measure-fo-problems.mjs"
   }
 }

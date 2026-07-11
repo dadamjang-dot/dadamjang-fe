@@ -26,6 +26,7 @@ export const ProductFeed = () => {
       renderItem={renderProduct}
       keyExtractor={getProductKey}
       estimatedItemSize={288}
+      recycleItems
       contentContainerStyle={styles.content}
       onEndReached={() => {
         if (feed.hasNextPage && !feed.isFetchingNextPage) void feed.fetchNextPage();

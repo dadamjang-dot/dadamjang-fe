@@ -14,7 +14,7 @@
 
 - `packages/graphql-client`: GraphQL 요청, 인증 토큰, 디바이스 식별자 처리
 - `packages/design-tokens`: 색상, spacing 등 앱 공통 디자인 토큰
-- `packages/shared-utils`: 금액 포맷, 권한 판별 등 플랫폼 비의존 유틸리티
+- `packages/domain`: 가격, 권한 등 다담장 도메인의 플랫폼 비의존 순수 함수와 타입
 
 ## FO 앱
 

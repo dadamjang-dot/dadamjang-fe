@@ -1,3 +1,8 @@
 packages:
-  - "apps/*"
-  - "packages/*"
+  - apps/*
+  - packages/*
+
+packageExtensions:
+  '@sentry/react-native@*':
+    dependencies:
+      '@expo/config-plugins': '^55.0.10'
