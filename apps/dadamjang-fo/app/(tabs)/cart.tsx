@@ -6,12 +6,14 @@ const CartScreen = () => {
   const cart = useCart();
   const actions = useCartActions();
   const checkout = () => {
+    if (actions.checkout.isPending) return;
     if (cart.data?.cartId) {
       trackCommerceEvent({ eventType: 'CHECKOUT_CLICKED', subjectType: 'CART', subjectId: cart.data.cartId });
     }
     actions.checkout.mutate(undefined);
   };
   const checkoutFailure = () => {
+    if (actions.checkout.isPending) return;
     if (cart.data?.cartId) {
       trackCommerceEvent({ eventType: 'CHECKOUT_FAILURE_TEST_CLICKED', subjectType: 'CART', subjectId: cart.data.cartId });
     }
@@ -28,6 +30,7 @@ const CartScreen = () => {
         onChangeQuantity={(skuId, quantity) => actions.upsert.mutate({ skuId, quantity })}
         onCheckout={checkout}
         onCheckoutFailure={checkoutFailure}
+        checkoutPending={actions.checkout.isPending}
       />
     </>
   );

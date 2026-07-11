@@ -7,7 +7,7 @@ import { StyleSheet } from 'react-native-unistyles';
 import { NativeMessage } from '@/shared/components';
 import { colors } from '@dadamjang/design-tokens';
 
-import type { Cart } from './api';
+import type { Cart } from './types';
 
 type CartViewProps = {
   cart?: Cart;
@@ -16,6 +16,7 @@ type CartViewProps = {
   onChangeQuantity: (skuId: string, quantity: number) => void;
   onCheckout: () => void;
   onCheckoutFailure: () => void;
+  checkoutPending: boolean;
 };
 
 export const CartView = ({
@@ -25,6 +26,7 @@ export const CartView = ({
   onChangeQuantity,
   onCheckout,
   onCheckoutFailure,
+  checkoutPending,
 }: CartViewProps) => {
   if (loading) return <NativeMessage title="장바구니를 불러오는 중" loading />;
   if (!cart?.items.length) return <NativeMessage title="장바구니가 비어 있어요" />;
@@ -61,11 +63,11 @@ export const CartView = ({
           <Text style={{ typography: 'headlineSmall', fontWeight: 'bold' }}>
             총 {cart.totalAmount.toLocaleString()}원
           </Text>
-          <Button onClick={onCheckout} colors={{ containerColor: colors.primary }}>
-            <Text>주문하기</Text>
+          <Button onClick={checkoutPending ? () => undefined : onCheckout} colors={{ containerColor: colors.primary }}>
+            <Text>{checkoutPending ? '주문 처리 중' : '주문하기'}</Text>
           </Button>
-          <Button onClick={onCheckoutFailure}>
-            <Text>mock 결제 실패 테스트</Text>
+          <Button onClick={checkoutPending ? () => undefined : onCheckoutFailure}>
+            <Text>{checkoutPending ? '결제 처리 중' : 'mock 결제 실패 테스트'}</Text>
           </Button>
         </Column>
       </Host>

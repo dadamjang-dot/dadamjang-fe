@@ -42,6 +42,22 @@
 - 가격 근거 펼침률
 - checkout CTA 클릭률
 
+## Checkout 정합성 계약
+
+- FO checkout은 실행마다 `expo-crypto`의 `randomUUID()`로 `idempotencyKey`를 생성해 GraphQL mutation에 전달합니다.
+- checkout mutation pending 동안 주문 CTA와 mock 실패 CTA는 재클릭되지 않게 막습니다.
+- 성공 시 `cart`, `orders` query를 invalidate합니다.
+- 실패 시 `cart` query를 refetch해 서버 상태로 복구합니다.
+- 직접 `fetch`/`ky`를 쓰지 않고 `GraphQLClient.request()` 기반 `graphqlRequest`만 사용합니다.
+
+측정 기준:
+
+- checkout 클릭 수
+- 중복 checkout 요청 수
+- idempotency 재사용 처리 수
+- checkout 실패 후 cart cache 복구 여부
+- 주문 생성 후 cart/orders cache 불일치 수
+
 ## 실행
 
 ```bash
