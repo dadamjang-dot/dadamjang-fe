@@ -1,5 +1,5 @@
 import { Host, Text, VStack } from '@expo/ui/swift-ui';
-import { background, cornerRadius, font, foregroundStyle, padding } from '@expo/ui/swift-ui/modifiers';
+import { background, border, cornerRadius, font, foregroundStyle, padding } from '@expo/ui/swift-ui/modifiers';
 import { ScrollView } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 
@@ -21,15 +21,25 @@ export const OrderDetailView = ({ order, loading }: OrderDetailViewProps) => {
     <ScrollView contentContainerStyle={styles.content}>
       <Host matchContents>
         <VStack alignment="leading" spacing={12} modifiers={[padding({ horizontal: 16, vertical: 8 })]}>
-          <VStack alignment="leading" spacing={8} modifiers={[background(colors.surface), cornerRadius(18), padding({ all: 14 })]}>
-            <Text modifiers={[font({ size: 20, weight: 'bold' })]}>{order.orderNumber}</Text>
+          <VStack
+            alignment="leading"
+            spacing={8}
+            modifiers={[
+              background(colors.surface),
+              border({ color: colors.line, width: 1 }),
+              cornerRadius(18),
+              padding({ all: 14 }),
+            ]}>
+            <Text modifiers={[font({ size: 20, weight: 'black' }), foregroundStyle(colors.ink)]}>
+              {order.orderNumber}
+            </Text>
             <Text modifiers={[font({ size: 14 }), foregroundStyle(colors.muted)]}>
               {order.status} / {order.paymentStatus}
             </Text>
             {order.paymentFailureReason ? (
               <Text modifiers={[font({ size: 14 }), foregroundStyle(colors.danger)]}>{order.paymentFailureReason}</Text>
             ) : null}
-            <Text modifiers={[font({ size: 22, weight: 'bold' }), foregroundStyle(colors.primary)]}>
+            <Text modifiers={[font({ size: 22, weight: 'black' }), foregroundStyle(colors.ink)]}>
               총 {order.totalAmount.toLocaleString()}원
             </Text>
           </VStack>
@@ -38,12 +48,19 @@ export const OrderDetailView = ({ order, loading }: OrderDetailViewProps) => {
               key={item.orderItemId}
               alignment="leading"
               spacing={6}
-              modifiers={[background(colors.surface), cornerRadius(18), padding({ all: 14 })]}>
-              <Text modifiers={[font({ size: 16, weight: 'semibold' })]}>{item.productTitle}</Text>
+              modifiers={[
+                background(colors.surface),
+                border({ color: colors.line, width: 1 }),
+                cornerRadius(18),
+                padding({ all: 14 }),
+              ]}>
+              <Text modifiers={[font({ size: 16, weight: 'black' }), foregroundStyle(colors.ink)]}>
+                {item.productTitle}
+              </Text>
               <Text modifiers={[font({ size: 14 }), foregroundStyle(colors.muted)]}>
                 {item.skuOptionName} · {item.quantity}개
               </Text>
-              <Text modifiers={[font({ size: 17, weight: 'bold' })]}>
+              <Text modifiers={[font({ size: 17, weight: 'black' }), foregroundStyle(colors.ink)]}>
                 {(item.unitPrice * item.quantity).toLocaleString()}원
               </Text>
             </VStack>

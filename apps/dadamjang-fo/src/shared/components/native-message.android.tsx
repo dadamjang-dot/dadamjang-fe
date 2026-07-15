@@ -23,11 +23,11 @@ export const NativeMessage = ({
       horizontalAlignment="center"
       verticalArrangement={{ spacedBy: 10 }}
       modifiers={[paddingAll(24)]}>
-      {loading ? <CircularProgressIndicator color={colors.primary} /> : null}
-      <Text style={{ typography: 'titleMedium', fontWeight: 'bold' }}>{title}</Text>
+      {loading ? <CircularProgressIndicator color={colors.ink} /> : null}
+      <Text style={{ typography: 'titleMedium', fontWeight: 'bold' }} color={colors.ink}>{title}</Text>
       {subtitle ? <Text color={colors.muted}>{subtitle}</Text> : null}
       {actionLabel ? (
-        <Button onClick={onAction}>
+        <Button onClick={onAction} colors={{ containerColor: colors.primary }}>
           <Text>{actionLabel}</Text>
         </Button>
       ) : null}

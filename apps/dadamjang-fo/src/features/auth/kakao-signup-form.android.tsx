@@ -1,6 +1,8 @@
 import { Button, Column, Host, OutlinedTextField, Text, TextField } from '@expo/ui/jetpack-compose';
 import { fillMaxWidth, paddingAll } from '@expo/ui/jetpack-compose/modifiers';
 
+import { colors } from '@dadamjang/design-tokens';
+
 type KakaoSignupFormProps = {
   onUseridChange: (value: string) => void;
   onSubmit: () => void;
@@ -21,7 +23,7 @@ export const KakaoSignupForm = ({
         <TextField.Label>사용할 아이디</TextField.Label>
       </OutlinedTextField>
       {error ? <Text>{error}</Text> : null}
-      <Button onClick={onSubmit} enabled={!pending} colors={{ containerColor: '#4D45DF' }}>
+      <Button onClick={onSubmit} enabled={!pending} colors={{ containerColor: colors.primary }}>
         <Text>{pending ? '가입 중...' : '가입 완료'}</Text>
       </Button>
     </Column>

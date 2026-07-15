@@ -25,14 +25,14 @@ export const OrderListView = ({ orders, loading, onPressOrder }: OrderListViewPr
           {orders.map((order) => (
             <Card key={order.orderId} colors={{ containerColor: colors.surface }}>
               <Column verticalArrangement={{ spacedBy: 8 }} modifiers={[paddingAll(14)]}>
-                <Text style={{ typography: 'titleMedium', fontWeight: 'bold' }}>{order.orderNumber}</Text>
+                <Text style={{ typography: 'titleMedium', fontWeight: 'bold' }} color={colors.ink}>{order.orderNumber}</Text>
                 <Text color={colors.muted}>
                   {order.status} / {order.paymentStatus}
                 </Text>
-                <Text color={colors.primary} style={{ typography: 'titleLarge', fontWeight: 'bold' }}>
+                <Text color={colors.ink} style={{ typography: 'titleLarge', fontWeight: 'bold' }}>
                   {order.totalAmount.toLocaleString()}원
                 </Text>
-                <Button onClick={() => onPressOrder(order.orderId)}>
+                <Button onClick={() => onPressOrder(order.orderId)} colors={{ containerColor: colors.primary }}>
                   <Text>상세 보기</Text>
                 </Button>
               </Column>

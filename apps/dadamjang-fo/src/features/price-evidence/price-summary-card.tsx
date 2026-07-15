@@ -35,7 +35,12 @@ export const PriceSummaryCard = ({ summary, onPress, onRemove }: PriceSummaryCar
   return (
     <View style={styles.card}>
       <Pressable onPress={onPress}>
-        {summary.thumbnail ? <Image source={summary.thumbnail} style={styles.image} contentFit="cover" transition={160} /> : null}
+        <View style={styles.imageFrame}>
+          {summary.thumbnail ? (
+            <Image source={summary.thumbnail} style={styles.image} contentFit="cover" transition={160} />
+          ) : null}
+        </View>
+        <Text style={styles.badge}>PRICE TRUST</Text>
         <Text style={styles.title} numberOfLines={2}>
           {summary.name}
         </Text>
@@ -85,20 +90,54 @@ export const PriceSummaryCard = ({ summary, onPress, onRemove }: PriceSummaryCar
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 20,
-    marginBottom: 12,
+    borderColor: colors.line,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginBottom: 14,
+    padding: 10,
+  },
+  imageFrame: {
+    backgroundColor: colors.canvas,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  image: { width: '100%', height: 248 },
+  badge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.ink,
+    borderRadius: 999,
+    color: colors.surface,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    marginTop: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  title: { color: colors.ink, fontSize: 15, fontWeight: '800', lineHeight: 20, marginTop: 8 },
+  price: { color: colors.ink, fontSize: 19, fontWeight: '900', marginTop: 8 },
+  basePrice: { color: colors.muted, fontSize: 13, marginTop: 2, textDecorationLine: 'line-through' },
+  summary: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 6 },
+  evidenceButton: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.line,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginTop: 12,
+    padding: 10,
+  },
+  evidenceButtonText: { color: colors.ink, fontSize: 13, fontWeight: '900', textAlign: 'center' },
+  evidenceBox: {
+    backgroundColor: colors.canvas,
+    borderColor: colors.line,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 4,
+    marginTop: 10,
     padding: 12,
   },
-  image: { width: '100%', height: 210, borderRadius: 14, backgroundColor: colors.canvas },
-  title: { color: colors.ink, fontSize: 15, fontWeight: '700', marginTop: 8 },
-  price: { color: colors.primary, fontSize: 18, fontWeight: '800', marginTop: 6 },
-  basePrice: { color: colors.muted, fontSize: 13, marginTop: 2, textDecorationLine: 'line-through' },
-  summary: { color: colors.muted, fontSize: 13, marginTop: 6 },
-  evidenceButton: { backgroundColor: colors.primarySoft, borderRadius: 999, marginTop: 10, padding: 10 },
-  evidenceButtonText: { color: colors.primary, fontSize: 13, fontWeight: '800', textAlign: 'center' },
-  evidenceBox: { backgroundColor: colors.canvas, borderRadius: 14, gap: 4, marginTop: 10, padding: 12 },
   evidenceTitle: { color: colors.ink, fontSize: 13, fontWeight: '800', marginTop: 6 },
   evidenceText: { color: colors.muted, fontSize: 12 },
-  removeButton: { backgroundColor: colors.danger, borderRadius: 999, marginTop: 10, padding: 10 },
+  removeButton: { backgroundColor: colors.ink, borderRadius: 999, marginTop: 10, padding: 10 },
   removeButtonText: { color: colors.surface, fontSize: 13, fontWeight: '800', textAlign: 'center' },
 });

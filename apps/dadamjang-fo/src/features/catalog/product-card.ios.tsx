@@ -1,6 +1,15 @@
 import { Image } from 'expo-image';
 import { Host, RNHostView, Text, VStack } from '@expo/ui/swift-ui';
-import { background, cornerRadius, font, foregroundStyle, lineLimit, onTapGesture, padding } from '@expo/ui/swift-ui/modifiers';
+import {
+  background,
+  border,
+  cornerRadius,
+  font,
+  foregroundStyle,
+  lineLimit,
+  onTapGesture,
+  padding,
+} from '@expo/ui/swift-ui/modifiers';
 import { StyleSheet } from 'react-native-unistyles';
 
 import { colors } from '@dadamjang/design-tokens';
@@ -22,14 +31,18 @@ export const ProductCard = ({ product, onPress }: ProductCardProps) => (
       modifiers={[
         padding({ all: 12 }),
         background(colors.surface),
-        cornerRadius(20),
+        border({ color: colors.line, width: 1 }),
+        cornerRadius(18),
         onTapGesture(onPress),
       ]}>
       <RNHostView matchContents>
         <Image source={product.imageUrls[0]} style={styles.image} contentFit="cover" transition={160} />
       </RNHostView>
-      <Text modifiers={[font({ size: 15, weight: 'semibold' }), lineLimit(2)]}>{product.title}</Text>
-      <Text modifiers={[font({ size: 17, weight: 'bold' }), foregroundStyle(colors.primary)]}>
+      <Text modifiers={[font({ size: 11, weight: 'black' }), foregroundStyle(colors.muted)]}>WISH ITEM</Text>
+      <Text modifiers={[font({ size: 15, weight: 'black' }), foregroundStyle(colors.ink), lineLimit(2)]}>
+        {product.title}
+      </Text>
+      <Text modifiers={[font({ size: 18, weight: 'black' }), foregroundStyle(colors.ink)]}>
         {getPrice(product).toLocaleString()}원
       </Text>
     </VStack>
@@ -38,5 +51,5 @@ export const ProductCard = ({ product, onPress }: ProductCardProps) => (
 
 const styles = StyleSheet.create({
   host: { marginBottom: 12 },
-  image: { width: '100%', height: 210, borderRadius: 14, backgroundColor: colors.canvas },
+  image: { width: '100%', height: 248, borderRadius: 14, backgroundColor: colors.canvas },
 });

@@ -1,5 +1,5 @@
 import { Button, Host, Text, VStack } from '@expo/ui/swift-ui';
-import { background, cornerRadius, font, foregroundStyle, padding } from '@expo/ui/swift-ui/modifiers';
+import { background, border, cornerRadius, font, foregroundStyle, padding, tint } from '@expo/ui/swift-ui/modifiers';
 import { ScrollView } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 
@@ -27,15 +27,22 @@ export const OrderListView = ({ orders, loading, onPressOrder }: OrderListViewPr
               key={order.orderId}
               alignment="leading"
               spacing={8}
-              modifiers={[background(colors.surface), cornerRadius(18), padding({ all: 14 })]}>
-              <Text modifiers={[font({ size: 17, weight: 'semibold' })]}>{order.orderNumber}</Text>
+              modifiers={[
+                background(colors.surface),
+                border({ color: colors.line, width: 1 }),
+                cornerRadius(18),
+                padding({ all: 14 }),
+              ]}>
+              <Text modifiers={[font({ size: 17, weight: 'black' }), foregroundStyle(colors.ink)]}>
+                {order.orderNumber}
+              </Text>
               <Text modifiers={[font({ size: 14 }), foregroundStyle(colors.muted)]}>
                 {order.status} / {order.paymentStatus}
               </Text>
-              <Text modifiers={[font({ size: 18, weight: 'bold' }), foregroundStyle(colors.primary)]}>
+              <Text modifiers={[font({ size: 18, weight: 'black' }), foregroundStyle(colors.ink)]}>
                 {order.totalAmount.toLocaleString()}원
               </Text>
-              <Button label="상세 보기" onPress={() => onPressOrder(order.orderId)} />
+              <Button label="상세 보기" onPress={() => onPressOrder(order.orderId)} modifiers={[tint(colors.ink)]} />
             </VStack>
           ))}
         </VStack>

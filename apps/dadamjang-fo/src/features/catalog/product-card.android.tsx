@@ -18,13 +18,14 @@ export const ProductCard = ({ product, onPress }: ProductCardProps) => (
   <Host matchContents style={styles.host}>
     <Card colors={{ containerColor: colors.surface }} modifiers={[fillMaxWidth(), clickable(onPress)]}>
       <Column verticalArrangement={{ spacedBy: 8 }} modifiers={[paddingAll(12)]}>
-        <RNHostView matchContents>
-          <Image source={product.imageUrls[0]} style={styles.image} contentFit="cover" transition={160} />
-        </RNHostView>
-        <Text maxLines={2} style={{ typography: 'titleSmall' }}>
+       <RNHostView matchContents>
+         <Image source={product.imageUrls[0]} style={styles.image} contentFit="cover" transition={160} />
+       </RNHostView>
+        <Text color={colors.muted} style={{ typography: 'labelSmall', fontWeight: 'bold' }}>WISH ITEM</Text>
+        <Text maxLines={2} style={{ typography: 'titleSmall', fontWeight: 'bold' }} color={colors.ink}>
           {product.title}
         </Text>
-        <Text color={colors.primary} style={{ typography: 'titleMedium', fontWeight: 'bold' }}>
+        <Text color={colors.ink} style={{ typography: 'titleMedium', fontWeight: 'bold' }}>
           {getPrice(product).toLocaleString()}원
         </Text>
       </Column>
@@ -34,5 +35,5 @@ export const ProductCard = ({ product, onPress }: ProductCardProps) => (
 
 const styles = StyleSheet.create({
   host: { marginBottom: 12 },
-  image: { width: '100%', height: 210, borderRadius: 14, backgroundColor: colors.canvas },
+  image: { width: '100%', height: 248, borderRadius: 14, backgroundColor: colors.canvas },
 });

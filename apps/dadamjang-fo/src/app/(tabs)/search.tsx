@@ -1,7 +1,7 @@
 import { LegendList } from '@legendapp/list/react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 
 import { SearchBox, useCategories } from '@/features/catalog';
@@ -41,7 +41,7 @@ const SearchScreen = () => {
 
   return (
     <>
-      <ScreenTitle title="찾고 싶은 위시템" subtitle="취향저격 상품을 바로 찾아요." />
+      <ScreenTitle title="Search" subtitle="원하는 위시템을 빠르게 찾아요." />
       <SearchBox value={keyword} onChange={setKeyword} onSubmit={submitSearch} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
         <Pressable style={styles.filterChip(!selectedCategoryId)} onPress={() => setSelectedCategoryId(undefined)}>
@@ -66,7 +66,13 @@ const SearchScreen = () => {
           </Pressable>
         ))}
       </ScrollView>
-      {!submittedKeyword && !selectedCategoryId ? <NativeMessage title="검색어를 입력하거나 카테고리를 선택해 주세요" /> : null}
+      {!submittedKeyword && !selectedCategoryId ? (
+        <View style={styles.emptySearchCard}>
+          <Text style={styles.emptySearchKicker}>SEARCH GUIDE</Text>
+          <Text style={styles.emptySearchTitle}>브랜드나 상품명을 검색해요</Text>
+          <Text style={styles.emptySearchCopy}>카테고리, 가격순, 인기순으로 위시템을 빠르게 좁힐 수 있어요.</Text>
+        </View>
+      ) : null}
       {(submittedKeyword || selectedCategoryId) && products.isPending ? <NativeMessage title="검색 중" loading /> : null}
       {(submittedKeyword || selectedCategoryId) && !products.isPending && items.length === 0 ? (
         <NativeMessage title="검색 결과가 없어요" />
@@ -88,17 +94,49 @@ const SearchScreen = () => {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingBottom: 120 },
-  filterRow: { gap: 8, paddingHorizontal: 16, paddingVertical: 8 },
+  filterRow: { gap: 8, paddingHorizontal: 16, paddingVertical: 7 },
   filterChip: (selected: boolean) => ({
+    borderColor: selected ? colors.ink : colors.line,
     borderRadius: 999,
-    backgroundColor: selected ? colors.primary : colors.surface,
+    borderWidth: 1,
+    backgroundColor: selected ? colors.ink : colors.surface,
     paddingHorizontal: 14,
     paddingVertical: 8,
   }),
   filterText: (selected: boolean) => ({
     color: selected ? colors.surface : colors.ink,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
   }),
+  emptySearchCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.line,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginHorizontal: 16,
+    marginTop: 10,
+    padding: 18,
+  },
+  emptySearchKicker: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  emptySearchTitle: {
+    color: colors.ink,
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+    marginTop: 8,
+  },
+  emptySearchCopy: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19,
+    marginTop: 6,
+  },
 });
 
 export default SearchScreen;

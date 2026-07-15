@@ -21,14 +21,14 @@ export const OrderDetailView = ({ order, loading }: OrderDetailViewProps) => {
     <ScrollView contentContainerStyle={styles.content}>
       <Host matchContents>
         <Column verticalArrangement={{ spacedBy: 12 }} modifiers={[paddingAll(16), fillMaxWidth()]}>
-          <Card colors={{ containerColor: colors.surface }}>
-            <Column verticalArrangement={{ spacedBy: 8 }} modifiers={[paddingAll(14)]}>
-              <Text style={{ typography: 'titleLarge', fontWeight: 'bold' }}>{order.orderNumber}</Text>
+         <Card colors={{ containerColor: colors.surface }}>
+           <Column verticalArrangement={{ spacedBy: 8 }} modifiers={[paddingAll(14)]}>
+              <Text style={{ typography: 'titleLarge', fontWeight: 'bold' }} color={colors.ink}>{order.orderNumber}</Text>
               <Text color={colors.muted}>
                 {order.status} / {order.paymentStatus}
               </Text>
               {order.paymentFailureReason ? <Text color={colors.danger}>{order.paymentFailureReason}</Text> : null}
-              <Text color={colors.primary} style={{ typography: 'headlineSmall', fontWeight: 'bold' }}>
+              <Text color={colors.ink} style={{ typography: 'headlineSmall', fontWeight: 'bold' }}>
                 총 {order.totalAmount.toLocaleString()}원
               </Text>
             </Column>
@@ -36,11 +36,11 @@ export const OrderDetailView = ({ order, loading }: OrderDetailViewProps) => {
           {order.items.map((item) => (
             <Card key={item.orderItemId} colors={{ containerColor: colors.surface }}>
               <Column verticalArrangement={{ spacedBy: 6 }} modifiers={[paddingAll(14)]}>
-                <Text style={{ typography: 'titleMedium', fontWeight: 'bold' }}>{item.productTitle}</Text>
+                <Text style={{ typography: 'titleMedium', fontWeight: 'bold' }} color={colors.ink}>{item.productTitle}</Text>
                 <Text color={colors.muted}>
                   {item.skuOptionName} · {item.quantity}개
                 </Text>
-                <Text style={{ typography: 'titleMedium', fontWeight: 'bold' }}>
+                <Text style={{ typography: 'titleMedium', fontWeight: 'bold' }} color={colors.ink}>
                   {(item.unitPrice * item.quantity).toLocaleString()}원
                 </Text>
               </Column>

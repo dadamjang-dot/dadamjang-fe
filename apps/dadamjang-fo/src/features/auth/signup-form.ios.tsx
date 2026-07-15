@@ -1,14 +1,20 @@
 import { Button, Host, SecureField, Text, TextField, VStack } from '@expo/ui/swift-ui';
 import {
   autocorrectionDisabled,
+  background,
+  border,
   buttonStyle,
+  cornerRadius,
   font,
+  foregroundStyle,
   keyboardType,
   padding,
   textContentType,
   textInputAutocapitalization,
   tint,
 } from '@expo/ui/swift-ui/modifiers';
+
+import { colors } from '@dadamjang/design-tokens';
 
 type SignupFormProps = {
   onUseridChange: (value: string) => void;
@@ -41,7 +47,10 @@ export const SignupForm = ({
 }: SignupFormProps) => (
   <Host style={{ flex: 1 }} useViewportSizeMeasurement>
     <VStack alignment="leading" spacing={16} modifiers={[padding({ all: 24 })]}>
-      <Text modifiers={[font({ size: 30, weight: 'bold' })]}>다담장 회원가입</Text>
+      <Text modifiers={[font({ size: 32, weight: 'black' }), foregroundStyle(colors.ink)]}>Join DADAMJANG</Text>
+      <Text modifiers={[font({ size: 14, weight: 'medium' }), foregroundStyle(colors.muted)]}>
+        좋아하는 걸 담을 계정을 만들어요
+      </Text>
       <TextField
         placeholder="아이디"
         onValueChange={onUseridChange}
@@ -50,6 +59,10 @@ export const SignupForm = ({
           autocorrectionDisabled(),
           textContentType('username'),
           keyboardType('ascii-capable'),
+          padding({ horizontal: 14, vertical: 12 }),
+          background(colors.surface),
+          border({ color: colors.line, width: 1 }),
+          cornerRadius(12),
         ]}
       />
       <TextField
@@ -60,6 +73,10 @@ export const SignupForm = ({
           autocorrectionDisabled(),
           textContentType('emailAddress'),
           keyboardType('email-address'),
+          padding({ horizontal: 14, vertical: 12 }),
+          background(colors.surface),
+          border({ color: colors.line, width: 1 }),
+          cornerRadius(12),
         ]}
       />
       <Button label={requestPending ? '코드 요청 중...' : '이메일 코드 받기'} onPress={onRequestCode} />
@@ -70,6 +87,10 @@ export const SignupForm = ({
           textInputAutocapitalization('never'),
           autocorrectionDisabled(),
           textContentType('newPassword'),
+          padding({ horizontal: 14, vertical: 12 }),
+          background(colors.surface),
+          border({ color: colors.line, width: 1 }),
+          cornerRadius(12),
         ]}
       />
       <TextField
@@ -80,6 +101,10 @@ export const SignupForm = ({
           autocorrectionDisabled(),
           textContentType('oneTimeCode'),
           keyboardType('ascii-capable'),
+          padding({ horizontal: 14, vertical: 12 }),
+          background(colors.surface),
+          border({ color: colors.line, width: 1 }),
+          cornerRadius(12),
         ]}
       />
       <Button label={verifyPending ? '검증 중...' : '코드 검증'} onPress={onVerifyCode} />
@@ -88,7 +113,7 @@ export const SignupForm = ({
       <Button
         label={pending ? '가입 중...' : '가입하기'}
         onPress={onSubmit}
-        modifiers={[buttonStyle('borderedProminent'), tint('#4D45DF')]}
+        modifiers={[buttonStyle('borderedProminent'), tint(colors.ink)]}
       />
     </VStack>
   </Host>

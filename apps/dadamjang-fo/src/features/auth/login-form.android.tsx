@@ -1,6 +1,8 @@
 import { Button, Column, Host, OutlinedTextField, Text, TextButton, TextField } from '@expo/ui/jetpack-compose';
 import { fillMaxWidth, paddingAll } from '@expo/ui/jetpack-compose/modifiers';
 
+import { colors } from '@dadamjang/design-tokens';
+
 type LoginFormProps = {
   onUseridChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
@@ -32,7 +34,7 @@ export const LoginForm = ({
         <TextField.Label>비밀번호</TextField.Label>
       </OutlinedTextField>
       {error ? <Text>{error}</Text> : null}
-      <Button onClick={onSubmit} enabled={!pending} colors={{ containerColor: '#4D45DF' }}>
+      <Button onClick={onSubmit} enabled={!pending} colors={{ containerColor: colors.primary }}>
         <Text>{pending ? '로그인 중...' : '로그인'}</Text>
       </Button>
       <Button onClick={onKakao} enabled={!kakaoPending} colors={{ containerColor: '#FEE500' }}>

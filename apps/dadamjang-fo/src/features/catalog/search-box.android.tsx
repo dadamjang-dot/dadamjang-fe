@@ -21,12 +21,12 @@ export const SearchBox = ({ value, onChange, onSubmit }: SearchBoxProps) => (
         singleLine
         keyboardOptions={{ imeAction: 'search' }}
         keyboardActions={{ onSearch: onSubmit }}
-        colors={{ focusedIndicatorColor: colors.primary }}>
+        colors={{ focusedIndicatorColor: colors.ink }}>
         <OutlinedTextField.Placeholder>
-          <Text>위시템 검색</Text>
+          <Text>브랜드, 상품명 검색</Text>
         </OutlinedTextField.Placeholder>
       </OutlinedTextField>
-      <Button onClick={onSubmit} colors={{ containerColor: colors.primary }}>
+      <Button onClick={onSubmit} colors={{ containerColor: colors.ink }}>
         <Text>검색</Text>
       </Button>
     </Row>

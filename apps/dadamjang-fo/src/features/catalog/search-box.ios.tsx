@@ -1,5 +1,14 @@
 import { Button, Host, HStack, TextField } from '@expo/ui/swift-ui';
-import { background, cornerRadius, padding } from '@expo/ui/swift-ui/modifiers';
+import {
+  autocorrectionDisabled,
+  background,
+  border,
+  cornerRadius,
+  font,
+  padding,
+  textInputAutocapitalization,
+  tint,
+} from '@expo/ui/swift-ui/modifiers';
 
 import { colors } from '@dadamjang/design-tokens';
 
@@ -14,15 +23,20 @@ export const SearchBox = ({ value, onChange, onSubmit }: SearchBoxProps) => (
     <HStack spacing={8} modifiers={[padding({ horizontal: 16, vertical: 8 })]}>
       <TextField
         defaultValue={value}
-        placeholder="위시템 검색"
+        placeholder="브랜드, 상품명 검색"
         onValueChange={onChange}
         modifiers={[
-          padding({ horizontal: 12, vertical: 10 }),
-          background(colors.primarySoft),
-          cornerRadius(14),
+          textInputAutocapitalization('never'),
+          autocorrectionDisabled(),
+          font({ size: 15, weight: 'medium' }),
+          padding({ horizontal: 14, vertical: 12 }),
+          background(colors.surface),
+          border({ color: colors.line, width: 1 }),
+          cornerRadius(999),
+          tint(colors.ink),
         ]}
       />
-      <Button label="검색" onPress={onSubmit} />
+      <Button label="검색" onPress={onSubmit} modifiers={[tint(colors.ink)]} />
     </HStack>
   </Host>
 );

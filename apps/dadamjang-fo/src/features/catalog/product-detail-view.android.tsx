@@ -39,19 +39,20 @@ export const ProductDetailView = ({
     <ScrollView contentContainerStyle={styles.content}>
       <Host matchContents>
         <Column verticalArrangement={{ spacedBy: 14 }} modifiers={[paddingAll(16), fillMaxWidth()]}>
-          <RNHostView matchContents>
-            <Image source={product.imageUrls[0]} style={styles.heroImage} contentFit="cover" />
-          </RNHostView>
-          <Text style={{ typography: 'headlineMedium', fontWeight: 'bold' }}>{product.title}</Text>
-          <Text color={colors.primary} style={{ typography: 'headlineSmall', fontWeight: 'bold' }}>
+         <RNHostView matchContents>
+           <Image source={product.imageUrls[0]} style={styles.heroImage} contentFit="cover" />
+         </RNHostView>
+          <Text color={colors.muted} style={{ typography: 'labelSmall', fontWeight: 'bold' }}>DADAMJANG SELECT</Text>
+          <Text style={{ typography: 'headlineMedium', fontWeight: 'bold' }} color={colors.ink}>{product.title}</Text>
+          <Text color={colors.ink} style={{ typography: 'headlineSmall', fontWeight: 'bold' }}>
             {(selectedSku?.price ?? 0).toLocaleString()}원
           </Text>
           <Text color={colors.muted}>{product.description}</Text>
-          <Card colors={{ containerColor: colors.primarySoft }}>
+          <Card colors={{ containerColor: colors.surface }}>
             <Column verticalArrangement={{ spacedBy: 8 }} modifiers={[paddingAll(14)]}>
-              <Text style={{ typography: 'titleSmall', fontWeight: 'bold' }}>옵션</Text>
+              <Text style={{ typography: 'titleSmall', fontWeight: 'bold' }} color={colors.ink}>옵션 선택</Text>
               {product.skus.map((sku) => (
-                <Button key={sku.skuId} onClick={() => onSelectSku(sku.skuId)}>
+                <Button key={sku.skuId} onClick={() => onSelectSku(sku.skuId)} colors={{ containerColor: colors.primary }}>
                   <Text>
                     {selectedSku?.skuId === sku.skuId ? '✓ ' : ''}
                     {sku.optionName} · {sku.price.toLocaleString()}원 · 재고 {sku.stock}
@@ -77,5 +78,5 @@ export const ProductDetailView = ({
 
 const styles = StyleSheet.create({
   content: { paddingBottom: 120 },
-  heroImage: { width: '100%', height: 360, borderRadius: 20, backgroundColor: colors.canvas },
+  heroImage: { width: '100%', height: 390, borderRadius: 18, backgroundColor: colors.canvas },
 });

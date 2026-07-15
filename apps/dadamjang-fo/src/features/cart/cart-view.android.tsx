@@ -38,35 +38,35 @@ export const CartView = ({
           {cart.items.map((item) => (
             <Card key={item.cartItemId} colors={{ containerColor: colors.surface }}>
               <Column verticalArrangement={{ spacedBy: 8 }} modifiers={[paddingAll(12)]}>
-                <RNHostView matchContents>
-                  <Image source={item.product.imageUrls[0]} style={styles.image} contentFit="cover" />
-                </RNHostView>
-                <Text style={{ typography: 'titleMedium', fontWeight: 'bold' }}>{item.product.title}</Text>
+               <RNHostView matchContents>
+                 <Image source={item.product.imageUrls[0]} style={styles.image} contentFit="cover" />
+               </RNHostView>
+                <Text style={{ typography: 'titleMedium', fontWeight: 'bold' }} color={colors.ink}>{item.product.title}</Text>
                 <Text color={colors.muted}>
                   {item.sku.optionName} / {item.quantity}개
                 </Text>
-                <Button onClick={() => onChangeQuantity(item.sku.skuId, item.quantity + 1)}>
+                <Button onClick={() => onChangeQuantity(item.sku.skuId, item.quantity + 1)} colors={{ containerColor: colors.primary }}>
                   <Text>수량 +</Text>
                 </Button>
-                <Button onClick={() => onChangeQuantity(item.sku.skuId, Math.max(item.quantity - 1, 1))}>
+                <Button onClick={() => onChangeQuantity(item.sku.skuId, Math.max(item.quantity - 1, 1))} colors={{ containerColor: colors.primary }}>
                   <Text>수량 -</Text>
                 </Button>
-                <Text color={colors.primary} style={{ typography: 'titleLarge', fontWeight: 'bold' }}>
+                <Text color={colors.ink} style={{ typography: 'titleLarge', fontWeight: 'bold' }}>
                   {(item.sku.price * item.quantity).toLocaleString()}원
                 </Text>
-                <TextButton onClick={() => onRemove(item.sku.skuId)}>
+                <TextButton onClick={() => onRemove(item.sku.skuId)} colors={{ contentColor: colors.danger }}>
                   <Text>삭제</Text>
                 </TextButton>
               </Column>
             </Card>
           ))}
-          <Text style={{ typography: 'headlineSmall', fontWeight: 'bold' }}>
+          <Text style={{ typography: 'headlineSmall', fontWeight: 'bold' }} color={colors.ink}>
             총 {cart.totalAmount.toLocaleString()}원
           </Text>
           <Button onClick={checkoutPending ? () => undefined : onCheckout} colors={{ containerColor: colors.primary }}>
             <Text>{checkoutPending ? '주문 처리 중' : '주문하기'}</Text>
           </Button>
-          <Button onClick={checkoutPending ? () => undefined : onCheckoutFailure}>
+          <Button onClick={checkoutPending ? () => undefined : onCheckoutFailure} colors={{ containerColor: colors.danger }}>
             <Text>{checkoutPending ? '결제 처리 중' : 'mock 결제 실패 테스트'}</Text>
           </Button>
         </Column>
@@ -77,5 +77,5 @@ export const CartView = ({
 
 const styles = StyleSheet.create({
   content: { paddingBottom: 120 },
-  image: { width: '100%', height: 180, borderRadius: 14, backgroundColor: colors.canvas },
+  image: { width: '100%', height: 248, borderRadius: 14, backgroundColor: colors.canvas },
 });

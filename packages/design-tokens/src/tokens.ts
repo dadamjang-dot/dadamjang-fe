@@ -1,12 +1,12 @@
 export const colors = {
-  primary: '#4D45DF',
-  primarySoft: '#EEEDFF',
-  ink: '#17171C',
-  muted: '#72727B',
+  primary: '#111111',
+  primarySoft: '#F4F4F4',
+  ink: '#111111',
+  muted: '#8A8A8A',
   surface: '#FFFFFF',
-  canvas: '#F7F7FA',
-  line: '#E7E7EC',
-  danger: '#DE3F55',
+  canvas: '#FAFAFA',
+  line: '#E5E5E5',
+  danger: '#E5484D',
 } as const;
 
 export const spacing = {

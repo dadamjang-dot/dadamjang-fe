@@ -4,7 +4,7 @@ import { colors } from '@dadamjang/design-tokens';
 
 const TabLayout = () => (
   <NativeTabs
-    backgroundColor="#FFFFFF"
+    backgroundColor={colors.surface}
     blurEffect="systemChromeMaterialLight"
     disableTransparentOnScrollEdge
     iconColor={{
@@ -20,7 +20,9 @@ const TabLayout = () => (
         fontWeight: '700',
       },
     }}
+    labelVisibilityMode="selected"
     minimizeBehavior="never"
+    shadowColor={colors.line}
   >
     <NativeTabs.Trigger name="index">
       <NativeTabs.Trigger.Label>홈</NativeTabs.Trigger.Label>
@@ -33,10 +35,6 @@ const TabLayout = () => (
     <NativeTabs.Trigger name="wishlist">
       <NativeTabs.Trigger.Label>위시</NativeTabs.Trigger.Label>
       <NativeTabs.Trigger.Icon sf={{ default: 'heart', selected: 'heart.fill' }} />
-    </NativeTabs.Trigger>
-    <NativeTabs.Trigger name="compare">
-      <NativeTabs.Trigger.Label>비교</NativeTabs.Trigger.Label>
-      <NativeTabs.Trigger.Icon sf="rectangle.split.2x1" />
     </NativeTabs.Trigger>
     <NativeTabs.Trigger name="cart">
       <NativeTabs.Trigger.Label>장바구니</NativeTabs.Trigger.Label>
