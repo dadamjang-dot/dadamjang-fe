@@ -23,7 +23,7 @@ export const HomeShowcase = () => (
         accessibilityLabel="위시템 찾기"
         accessibilityRole="button"
         style={styles.primaryButton}
-        onPress={() => router.push('/search')}>
+        onPress={() => router.push('/shop')}>
         <Text style={styles.primaryButtonText}>위시템 찾기</Text>
       </Pressable>
     </View>
@@ -34,7 +34,7 @@ export const HomeShowcase = () => (
           accessibilityRole="button"
           key={category}
           style={styles.categoryChip}
-          onPress={() => router.push('/search')}>
+          onPress={() => router.push('/shop')}>
           <Text style={styles.categoryText}>{category}</Text>
         </Pressable>
       ))}

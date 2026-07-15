@@ -19,7 +19,7 @@ const sortOptions: { label: string; value: ProductSort }[] = [
   { label: '인기순', value: 'POPULAR' },
 ];
 
-const SearchScreen = () => {
+const ShopScreen = () => {
   const [keyword, setKeyword] = useState('');
   const [submittedKeyword, setSubmittedKeyword] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>();
@@ -41,7 +41,7 @@ const SearchScreen = () => {
 
   return (
     <>
-      <ScreenTitle title="Search" subtitle="원하는 위시템을 빠르게 찾아요." />
+      <ScreenTitle title="Shop" subtitle="원하는 위시템을 빠르게 찾아요." />
       <SearchBox value={keyword} onChange={setKeyword} onSubmit={submitSearch} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
         <Pressable style={styles.filterChip(!selectedCategoryId)} onPress={() => setSelectedCategoryId(undefined)}>
@@ -139,4 +139,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SearchScreen;
+export default ShopScreen;
