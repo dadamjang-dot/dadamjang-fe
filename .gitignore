@@ -1,22 +1,17 @@
 .DS_Store
 *.log
 .workflow/
-
 .env
 .env.*
 !.env.example
-
-node_modules/
+node_modules
+node_modules.nosync
 dist/
 coverage/
 .next/
 out/
-
 .expo/
 .expo-shared/
 web-build/
 ios/
 android/
-
-# iCloud exclusions
-node_modules.nosync
