@@ -3,7 +3,7 @@ import { ScrollView, Text, View, TextInput, Pressable } from "react-native";
 import { Image } from "expo-image";
 import { StyleSheet } from "react-native-unistyles";
 import { colors } from "@dadamjang/design-tokens";
-import { NativeMessage } from "@/shared/components";
+import { NativeMessage, PartnerBadge } from "@/shared/components";
 import type { StylePost } from "./types";
 
 type StyleViewProps = {
@@ -11,9 +11,10 @@ type StyleViewProps = {
   loading: boolean;
   onAddPost: (caption: string) => void;
   onToggleLike: (id: string) => void;
+  onPressPost?: (id: string) => void;
 };
 
-export const StyleView = ({ posts, loading, onAddPost, onToggleLike }: StyleViewProps) => {
+export const StyleView = ({ posts, loading, onAddPost, onToggleLike, onPressPost }: StyleViewProps) => {
   const [caption, setCaption] = useState("");
 
   const handleUpload = () => {
@@ -42,19 +43,20 @@ export const StyleView = ({ posts, loading, onAddPost, onToggleLike }: StyleView
       </View>
 
       {posts.map((post) => (
-        <View key={post.id} style={styles.postCard}>
+        <Pressable key={post.id} style={styles.postCard} onPress={() => onPressPost?.(post.id)}>
           <View style={styles.postHeader}>
             <View style={styles.avatar} />
             <Text style={styles.author}>@{post.author}</Text>
+            {post.isPartner && <PartnerBadge />}
           </View>
           <Image source={post.imageUrl} style={styles.postImage} contentFit="cover" transition={160} />
           <View style={styles.postActions}>
-            <Pressable style={styles.likeButton} onPress={() => onToggleLike(post.id)}>
+            <Pressable style={styles.likeButton} onPress={(e) => { e.stopPropagation(); onToggleLike(post.id); }}>
               <Text style={styles.likeText}>❤️ {post.likes}</Text>
             </Pressable>
           </View>
           <Text style={styles.caption}>{post.caption}</Text>
-        </View>
+        </Pressable>
       ))}
     </ScrollView>
   );

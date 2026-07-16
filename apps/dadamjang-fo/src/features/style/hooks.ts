@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react';
 import { getStylePosts } from './api';
 import type { StylePost } from './types';
 
+export const useStylePost = (id: string) => {
+  const { posts, loading, toggleLike } = useStylePosts();
+  const post = posts.find((p) => p.id === id);
+  return { post, loading, toggleLike };
+};
+
 export const useStylePosts = () => {
   const [posts, setPosts] = useState<StylePost[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -28,6 +34,7 @@ export const useStylePosts = () => {
       author: 'me_dadamjang',
       caption,
       likes: 0,
+      isPartner: false,
     };
     setPosts((prev) => [newPost, ...prev]);
   };

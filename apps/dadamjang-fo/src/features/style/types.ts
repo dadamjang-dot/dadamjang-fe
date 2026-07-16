@@ -4,4 +4,5 @@ export interface StylePost {
   author: string;
   caption: string;
   likes: number;
+  isPartner: boolean;
 }

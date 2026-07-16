@@ -1,8 +1,11 @@
+import { useRouter, type Href } from "expo-router";
+
 import { StyleView, useStylePosts } from "@/features/style";
 import { ScreenTitle } from "@/shared/components";
 
 const StyleScreen = () => {
   const { posts, loading, addPost, toggleLike } = useStylePosts();
+  const router = useRouter();
 
   return (
     <>
@@ -12,6 +15,7 @@ const StyleScreen = () => {
         loading={loading}
         onAddPost={addPost}
         onToggleLike={toggleLike}
+        onPressPost={(id) => router.push({ pathname: '/style/[style-id]', params: { 'style-id': id } } as unknown as Href)}
       />
     </>
   );

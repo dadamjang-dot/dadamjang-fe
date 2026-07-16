@@ -7,6 +7,7 @@ export const colors = {
   canvas: '#FAFAFA',
   line: '#E5E5E5',
   danger: '#E5484D',
+  partner: '#2563EB',
 } as const;
 
 export const spacing = {
