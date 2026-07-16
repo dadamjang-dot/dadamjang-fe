@@ -25,3 +25,6 @@ android/app/build/
 
 expo-env.d.ts
 # @end expo-cli
+
+# iCloud exclusions
+node_modules.nosync

@@ -17,3 +17,6 @@ out/
 web-build/
 ios/
 android/
+
+# iCloud exclusions
+node_modules.nosync
