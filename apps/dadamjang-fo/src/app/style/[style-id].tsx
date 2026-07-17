@@ -1,18 +1,13 @@
 import { useLocalSearchParams } from 'expo-router';
+import { View } from 'react-native';
 
-import { StyleDetailView, useStylePost } from '@/features/style';
+import { useStylePost } from '@/features/style';
 
 const StylePostScreen = () => {
   const { 'style-id': styleId } = useLocalSearchParams<{ 'style-id': string }>();
-  const { post, loading, toggleLike } = useStylePost(styleId);
+  useStylePost(styleId);
 
-  return (
-    <StyleDetailView
-      post={post}
-      loading={loading}
-      onToggleLike={toggleLike}
-    />
-  );
+  return <View style={{ flex: 1 }} />;
 };
 
 export default StylePostScreen;

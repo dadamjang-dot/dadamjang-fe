@@ -15,7 +15,8 @@
     "prebuild": "expo prebuild",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "verify:config": "expo config --type public"
+    "verify:config": "expo config --type public",
+    "nosync": "npx nosync-icloud && npx nosync-icloud -f .expo"
   },
   "dependencies": {
     "@dadamjang/design-tokens": "workspace:*",

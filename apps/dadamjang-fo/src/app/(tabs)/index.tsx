@@ -1,10 +1,7 @@
-import { HomeShowcase, ProductFeed } from '@/features/catalog';
+import { View } from 'react-native';
 
 const HomeScreen = () => (
-  <>
-    <HomeShowcase />
-    <ProductFeed />
-  </>
+  <View style={{ flex: 1 }} />
 );
 
 export default HomeScreen;

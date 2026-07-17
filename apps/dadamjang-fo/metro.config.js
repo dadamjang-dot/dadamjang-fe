@@ -10,4 +10,6 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
+config.resolver.unstable_enablePackageExports = false;
+
 module.exports = config;
