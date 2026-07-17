@@ -14,7 +14,7 @@ type ProductDetailViewProps = {
   loading: boolean;
   selectedSkuId?: string;
   onSelectSku: (skuId: string) => void;
-  onAddWishlist: () => void;
+  onAddWish: () => void;
   onAddComparison: () => void;
   onAddCart: () => void;
 };
@@ -27,7 +27,7 @@ export const ProductDetailView = ({
   loading,
   selectedSkuId,
   onSelectSku,
-  onAddWishlist,
+  onAddWish,
   onAddComparison,
   onAddCart,
 }: ProductDetailViewProps) => {
@@ -61,7 +61,7 @@ export const ProductDetailView = ({
               ))}
             </Column>
           </Card>
-          <Button onClick={onAddWishlist} colors={{ containerColor: colors.primary }}>
+          <Button onClick={onAddWish} colors={{ containerColor: colors.primary }}>
             <Text>위시템 저장</Text>
           </Button>
           <Button onClick={onAddComparison} colors={{ containerColor: colors.primary }}>

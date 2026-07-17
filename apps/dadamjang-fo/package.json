@@ -5,17 +5,17 @@
   "main": "index.js",
   "packageManager": "pnpm@10.13.1",
   "scripts": {
-    "start": "EXPO_ROUTER_APP_ROOT=src/app expo start",
-    "start:ios": "EXPO_ROUTER_APP_ROOT=src/app expo start --ios",
-    "start:android": "EXPO_ROUTER_APP_ROOT=src/app expo start --android",
-    "ios": "EXPO_ROUTER_APP_ROOT=src/app expo run:ios",
-    "build:development": "EXPO_ROUTER_APP_ROOT=src/app eas build --profile development",
-    "build:preview": "EXPO_ROUTER_APP_ROOT=src/app eas build --profile preview",
-    "build:production": "EXPO_ROUTER_APP_ROOT=src/app eas build --profile production",
-    "prebuild": "EXPO_ROUTER_APP_ROOT=src/app expo prebuild",
+    "start": "expo start",
+    "start:ios": "expo start --ios",
+    "start:android": "expo start --android",
+    "ios": "expo run:ios",
+    "build:development": "eas build --profile development",
+    "build:preview": "eas build --profile preview",
+    "build:production": "eas build --profile production",
+    "prebuild": "expo prebuild",
     "lint": "eslint .",
-    "typecheck": "EXPO_ROUTER_APP_ROOT=src/app tsc --noEmit",
-    "verify:config": "EXPO_ROUTER_APP_ROOT=src/app expo config --type public"
+    "typecheck": "tsc --noEmit",
+    "verify:config": "expo config --type public"
   },
   "dependencies": {
     "@dadamjang/design-tokens": "workspace:*",

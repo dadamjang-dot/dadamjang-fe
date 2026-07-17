@@ -23,7 +23,7 @@ type ProductDetailViewProps = {
   loading: boolean;
   selectedSkuId?: string;
   onSelectSku: (skuId: string) => void;
-  onAddWishlist: () => void;
+  onAddWish: () => void;
   onAddComparison: () => void;
   onAddCart: () => void;
 };
@@ -36,7 +36,7 @@ export const ProductDetailView = ({
   loading,
   selectedSkuId,
   onSelectSku,
-  onAddWishlist,
+  onAddWish,
   onAddComparison,
   onAddCart,
 }: ProductDetailViewProps) => {
@@ -77,7 +77,7 @@ export const ProductDetailView = ({
               />
             ))}
           </VStack>
-          <Button label="위시템 저장" onPress={onAddWishlist} modifiers={[tint(colors.ink)]} />
+          <Button label="위시템 저장" onPress={onAddWish} modifiers={[tint(colors.ink)]} />
           <Button label="비교함 담기" onPress={onAddComparison} modifiers={[tint(colors.ink)]} />
           <Button
             label="장바구니 담기"

@@ -5,14 +5,14 @@ import { trackCommerceEvent } from '@/features/analytics';
 import { ProductDetailView, useProduct } from '@/features/catalog';
 import { useCartActions } from '@/features/cart';
 import { useComparisonActions } from '@/features/comparison';
-import { useWishlistActions } from '@/features/wishlist';
+import { useWishActions } from '@/features/wish';
 
 const ProductScreen = () => {
   const { 'product-id': productId } = useLocalSearchParams<{ 'product-id': string }>();
   const product = useProduct(productId);
   const cart = useCartActions();
   const comparison = useComparisonActions();
-  const wishlist = useWishlistActions();
+  const wish = useWishActions();
   const [selectedSkuId, setSelectedSkuId] = useState<string>();
 
   useEffect(() => {
@@ -20,10 +20,10 @@ const ProductScreen = () => {
     if (primarySkuId && !selectedSkuId) setSelectedSkuId(primarySkuId);
   }, [product.data?.skus, selectedSkuId]);
 
-  const addWishlist = () => {
+  const addWish = () => {
     if (product.data?.productId) {
-      trackCommerceEvent({ eventType: 'WISHLIST_CLICKED', subjectType: 'PRODUCT', subjectId: product.data.productId });
-      wishlist.add.mutate(product.data.productId);
+      trackCommerceEvent({ eventType: 'WISH_CLICKED', subjectType: 'PRODUCT', subjectId: product.data.productId });
+      wish.add.mutate(product.data.productId);
     }
   };
 
@@ -47,7 +47,7 @@ const ProductScreen = () => {
       loading={product.isPending}
       selectedSkuId={selectedSkuId}
       onSelectSku={setSelectedSkuId}
-      onAddWishlist={addWishlist}
+      onAddWish={addWish}
       onAddComparison={addComparison}
       onAddCart={addCart}
     />
