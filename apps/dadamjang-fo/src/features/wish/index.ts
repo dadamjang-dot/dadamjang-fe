@@ -1,1 +1,1 @@
-export { useWish, useWishActions } from './hooks';
+export { useWishlist, useWishActions } from './hooks';

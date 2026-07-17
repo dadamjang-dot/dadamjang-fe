@@ -8,7 +8,7 @@ const categories = ['NEW', 'WISH', 'PRICE TRUST', 'DAILY', 'LIMITED'];
 
 const trustItems = [
   { label: '가격 근거', value: 'Price Trust' },
-  { label: '취향 저장', value: 'Wish' },
+  { label: '취향 저장', value: 'Wishlist' },
   { label: '상품 비교', value: 'Compare' },
 ];
 

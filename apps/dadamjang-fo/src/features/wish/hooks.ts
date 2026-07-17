@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { addWish, getWish, removeWish } from './api';
+import { addWish, getWishlist, removeWish } from './api';
 
-export const useWish = () => useQuery({ queryKey: ['wish'], queryFn: getWish });
+export const useWishlist = () => useQuery({ queryKey: ['wishlist'], queryFn: getWishlist });
 
 export const useWishActions = () => {
   const queryClient = useQueryClient();
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['wish'] });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['wishlist'] });
 
   return {
     add: useMutation({ mutationFn: addWish, onSuccess: invalidate }),

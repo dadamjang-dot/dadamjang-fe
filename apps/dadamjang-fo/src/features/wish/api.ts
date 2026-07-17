@@ -3,17 +3,17 @@ import { graphqlRequest } from '@dadamjang/graphql-client';
 import { productFields } from '@/features/catalog/api';
 import type { Product } from '@/features/catalog/types';
 
-export type WishItem = {
+export type WishlistItem = {
   wishId: string;
   productId: string;
   createdAt: string;
   product: Product;
 };
 
-export const getWish = async () => {
-  const data = await graphqlRequest<{ wish: WishItem[] }>(
-    `query Wish {
-      wish {
+export const getWishlist = async () => {
+  const data = await graphqlRequest<{ wishlist: WishlistItem[] }>(
+    `query Wishlist {
+      wishlist {
         wishId
         productId
         createdAt
@@ -22,7 +22,7 @@ export const getWish = async () => {
     }`,
   );
 
-  return data.wish;
+  return data.wishlist;
 };
 
 export const addWish = async (productId: string) => {
