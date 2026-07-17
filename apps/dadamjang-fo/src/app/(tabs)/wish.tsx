@@ -14,7 +14,7 @@ const renderWishlist = ({ item }: { item: WishlistItem }) => (
   <ProductCard product={item.product} onPress={() => router.push(`/product/${item.productId}`)} />
 );
 
-const WishlistScreen = () => {
+const WishScreen = () => {
   const wishlist = useWishlist();
   const items = wishlist.data ?? [];
 
@@ -39,4 +39,4 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingBottom: 120 },
 });
 
-export default WishlistScreen;
+export default WishScreen;

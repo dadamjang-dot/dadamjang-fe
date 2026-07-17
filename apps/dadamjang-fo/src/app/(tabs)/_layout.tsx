@@ -36,7 +36,7 @@ const TabLayout = () => (
       <NativeTabs.Trigger.Label>SHOP</NativeTabs.Trigger.Label>
       <NativeTabs.Trigger.Icon sf="magnifyingglass" />
     </NativeTabs.Trigger>
-    <NativeTabs.Trigger name="wishlist">
+    <NativeTabs.Trigger name="wish">
       <NativeTabs.Trigger.Label>WISH</NativeTabs.Trigger.Label>
       <NativeTabs.Trigger.Icon sf={{ default: "heart", selected: "heart.fill" }} />
     </NativeTabs.Trigger>
