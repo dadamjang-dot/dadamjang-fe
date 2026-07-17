@@ -1,17 +1,18 @@
-import { Host, HStack, Button } from '@expo/ui/swift-ui';
+import { View } from 'react-native';
+import { Host, Button } from '@expo/ui/swift-ui';
 import { labelStyle, buttonStyle } from '@expo/ui/swift-ui/modifiers';
 import { router } from 'expo-router';
 
 const AuthSheetHeader = () => (
-  <Host matchContents>
-    <HStack style={{ justifyContent: 'flex-end' }}>
+  <View style={{ alignItems: 'flex-end' }}>
+    <Host matchContents>
       <Button
         systemImage="xmark"
         onPress={() => router.back()}
         modifiers={[labelStyle('iconOnly'), buttonStyle('glass')]}
       />
-    </HStack>
-  </Host>
+    </Host>
+  </View>
 );
 
 export default AuthSheetHeader;

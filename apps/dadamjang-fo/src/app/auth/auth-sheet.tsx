@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, Text, View } from 'react-native';
 import AuthSheetHeader from '@/features/auth/components/auth-sheet-header';
 
 const AuthSheet = () => (
