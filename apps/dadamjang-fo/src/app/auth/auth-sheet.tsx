@@ -1,22 +1,9 @@
-import { BlurView } from 'expo-blur';
-import { router } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import AuthSheetHeader from '@/features/auth/components/auth-sheet-header';
 
 const AuthSheet = () => (
   <View style={{ flex: 1, padding: 24, paddingTop: 60 }}>
-    {/* X 버튼 (글래스) */}
-    <View style={{ alignItems: 'flex-end' }}>
-      <BlurView
-        tint="systemUltraThinMaterial"
-        intensity={100}
-        style={{ borderRadius: 50, overflow: 'hidden' }}>
-        <Pressable
-          onPress={() => router.back()}
-          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#fff' }}>X</Text>
-        </Pressable>
-      </BlurView>
-    </View>
+    <AuthSheetHeader />
 
     {/* 본문 */}
     <View style={{ flex: 1, justifyContent: 'center', gap: 16 }}>
