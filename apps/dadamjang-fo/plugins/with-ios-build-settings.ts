@@ -49,9 +49,11 @@ const withPodDeploymentTarget: ConfigPlugin<Required<IosBuildSettingsPluginOptio
 
     if (config.modResults.contents.includes(patch)) return config;
 
+    const postInstallRegex = /^(  post_install do \|installer\|\n)/m;
+
     const nextContents = config.modResults.contents.replace(
-      /^  post_install do \|installer\|\n/m,
-      `  post_install do |installer|\n${patch}\n`,
+      postInstallRegex,
+      '$1' + patch + '\n',
     );
 
     if (nextContents === config.modResults.contents) {
@@ -109,18 +111,18 @@ const withXcodeBuildSettingsFallback: ConfigPlugin = (config) =>
 
       if (!project.includes(SENTRY_DEBUG_SYMBOLS_SCRIPT)) return config;
 
-      const patchedProject = project
-        .replace(
-          new RegExp(
-            `([A-Z0-9]+ /\\* ${SENTRY_DEBUG_SYMBOLS_PHASE} \\*/ = \\{[\\s\\S]*?\\n\\t\\t\\tisa = PBXShellScriptBuildPhase;\\n)([\\s\\S]*?\\n\\t\\t\\};)`,
-          ),
-          (match: string, start: string, rest: string) => {
-            if (match.includes('alwaysOutOfDate = 1;')) return match;
+      const sentryPhaseRegex = new RegExp(
+        '([A-Z0-9]+ /\\* ' + SENTRY_DEBUG_SYMBOLS_PHASE + ' \\*/ = \\{\\n' +
+        '\\t\\t\\tisa = PBXShellScriptBuildPhase;' +
+        ')([\\s\\S]*?\\n\\t\\t\\};)',
+      );
 
-            return `${start}\t\t\talwaysOutOfDate = 1;${rest}`;
-          },
-        )
-        .replaceAll(`\n\t\t\t\t\t${DUPLICATED_LIBCXX_FLAG},`, '');
+      const patchedProject = project
+        .replace(sentryPhaseRegex, (match: string, start: string, rest: string) => {
+          if (match.includes('alwaysOutOfDate = 1;')) return match;
+          return start + '\\t\\t\\talwaysOutOfDate = 1;' + rest;
+        })
+        .split('\\n\\t\\t\\t\\t' + DUPLICATED_LIBCXX_FLAG + ',').join('');
 
       writeFileSync(projectPath, patchedProject);
 

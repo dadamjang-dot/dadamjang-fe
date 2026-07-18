@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { router } from 'expo-router';
 import { BackHandler, Pressable, Text, View } from 'react-native';
 
-import AuthSheetHeader from '@/features/auth/components/auth-header';
+import AuthHeader from '@/features/auth/components/auth-header';
 
 const AuthScreen = () => {
   useEffect(() => {
@@ -11,7 +11,7 @@ const AuthScreen = () => {
   }, []);
   return (
     <View style={{ flex: 1, padding: 24, paddingTop: 60 }}>
-      <AuthSheetHeader />
+      <AuthHeader />
 
       <View style={{ flex: 1, justifyContent: 'center', gap: 16 }}>
         <Text style={{ fontSize: 28, fontWeight: '900', letterSpacing: -0.5 }}>DADAMJANG</Text>

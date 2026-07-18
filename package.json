@@ -10,5 +10,6 @@
     "fo:build:preview": "pnpm --dir apps/dadamjang-fo build:preview",
     "fo:build:production": "pnpm --dir apps/dadamjang-fo build:production",
     "measure:fo-problems": "node scripts/measure-fo-problems.mjs"
-  }
+  },
+  "pnpm": {}
 }

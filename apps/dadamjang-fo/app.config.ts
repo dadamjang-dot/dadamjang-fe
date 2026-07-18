@@ -2,7 +2,7 @@ import 'tsx/cjs';
 
 import withIosBuildSettings from './plugins/with-ios-build-settings';
 
-const DEPLOYMENT_TARGET = '15.1';
+const DEPLOYMENT_TARGET = '16.4';
 
 const appConfig = ({ config }: { config: Record<string, unknown> }) => ({
   ...config,
