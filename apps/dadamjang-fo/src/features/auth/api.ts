@@ -2,12 +2,12 @@ import * as Linking from 'expo-linking';
 
 import { getDeviceId, graphqlRequest, setAuthTokens } from '@dadamjang/graphql-client';
 
-import type { TokenPayload, Viewer } from './types';
+import type { TokenPayload, CurrentUser } from './types';
 
 const apiBaseUrl = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000/graphql').replace(/\/graphql$/, '');
 
-export const getViewer = async () => {
-  const data = await graphqlRequest<{ me: Viewer }>('query Me { me { userId userid email role } }');
+export const getCurrentUser = async () => {
+  const data = await graphqlRequest<{ me: CurrentUser }>('query Me { me { userId userid email role } }');
   return data.me;
 };
 

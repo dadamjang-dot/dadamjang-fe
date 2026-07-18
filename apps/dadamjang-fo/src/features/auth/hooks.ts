@@ -4,7 +4,7 @@ import { clearAccessToken } from '@dadamjang/graphql-client';
 
 import {
   completeKakaoSignup,
-  getViewer,
+  getCurrentUser,
   openKakaoLogin,
   requestSignupEmailCode,
   signIn,
@@ -12,7 +12,7 @@ import {
   verifySignupEmailCode,
 } from './api';
 
-export const useViewer = () => useQuery({ queryKey: ['viewer'], queryFn: getViewer, retry: false });
+export const useCurrentUser = () => useQuery({ queryKey: ['viewer'], queryFn: getCurrentUser, retry: false });
 
 export const useSignIn = () => {
   const queryClient = useQueryClient();

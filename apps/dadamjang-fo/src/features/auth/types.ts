@@ -1,4 +1,4 @@
-export type Viewer = {
+export type CurrentUser = {
   userId: string;
   userid: string;
   email: string;
@@ -8,5 +8,5 @@ export type Viewer = {
 export type TokenPayload = {
   accessToken: string;
   refreshToken: string;
-  role: Viewer['role'];
+  role: CurrentUser['role'];
 };

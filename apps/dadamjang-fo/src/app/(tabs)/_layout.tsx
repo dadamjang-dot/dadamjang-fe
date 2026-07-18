@@ -26,11 +26,15 @@ const TabLayout = () => (
   >
     <NativeTabs.Trigger name="index">
       <NativeTabs.Trigger.Label>HOME</NativeTabs.Trigger.Label>
-      <NativeTabs.Trigger.Icon sf={{ default: "house", selected: "house.fill" }} />
+      <NativeTabs.Trigger.Icon
+        sf={{ default: "house", selected: "house.fill" }}
+      />
     </NativeTabs.Trigger>
     <NativeTabs.Trigger name="style">
       <NativeTabs.Trigger.Label>STYLE</NativeTabs.Trigger.Label>
-      <NativeTabs.Trigger.Icon sf={{ default: "plus.square", selected: "plus.square.fill" }} />
+      <NativeTabs.Trigger.Icon
+        sf={{ default: "plus.square", selected: "plus.square.fill" }}
+      />
     </NativeTabs.Trigger>
     <NativeTabs.Trigger name="shop">
       <NativeTabs.Trigger.Label>SHOP</NativeTabs.Trigger.Label>
@@ -38,11 +42,15 @@ const TabLayout = () => (
     </NativeTabs.Trigger>
     <NativeTabs.Trigger name="wish">
       <NativeTabs.Trigger.Label>WISH</NativeTabs.Trigger.Label>
-      <NativeTabs.Trigger.Icon sf={{ default: "heart", selected: "heart.fill" }} />
+      <NativeTabs.Trigger.Icon
+        sf={{ default: "heart", selected: "heart.fill" }}
+      />
     </NativeTabs.Trigger>
     <NativeTabs.Trigger name="my">
       <NativeTabs.Trigger.Label>MY</NativeTabs.Trigger.Label>
-      <NativeTabs.Trigger.Icon sf={{ default: "person", selected: "person.fill" }} />
+      <NativeTabs.Trigger.Icon
+        sf={{ default: "person", selected: "person.fill" }}
+      />
     </NativeTabs.Trigger>
   </NativeTabs>
 );

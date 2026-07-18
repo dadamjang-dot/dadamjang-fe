@@ -16,7 +16,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "verify:config": "expo config --type public",
-    "nosync": "npx nosync-icloud && npx nosync-icloud -f .expo"
+    "nosync": "npx nosync-icloud && npx nosync-icloud -f .expo",
+    "test": "jest"
   },
   "dependencies": {
     "@dadamjang/design-tokens": "workspace:*",
@@ -52,10 +53,14 @@
   },
   "devDependencies": {
     "@expo/config-plugins": "^55.0.10",
+    "@types/jest": "^30.0.0",
     "@types/node": "^26.1.1",
     "@types/react": "~19.2.2",
     "eslint": "^9.39.1",
     "eslint-config-expo": "~55.0.1",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.11",
+    "ts-node": "^10.9.2",
     "tsx": "^4.23.0",
     "typescript": "~5.9.2"
   }
