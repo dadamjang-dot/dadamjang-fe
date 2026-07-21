@@ -3,8 +3,8 @@ import { StyleSheet, TextInput } from 'react-native';
 import { BlurView } from 'expo-blur';
 import type { SearchInputProps } from './search-input.types';
 
-const SearchInput = forwardRef<TextInput, SearchInputProps>(({ placeholder = '검색', onFocus }, ref) => (
-  <BlurView intensity={20} tint="light" style={styles.container}>
+const SearchInput = forwardRef<TextInput, SearchInputProps>(({ placeholder = '검색', onFocus, style }, ref) => (
+  <BlurView intensity={20} tint="light" style={[styles.container, style]}>
     <TextInput
       ref={ref}
       placeholder={placeholder}

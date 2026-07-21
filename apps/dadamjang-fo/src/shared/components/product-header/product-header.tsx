@@ -1,5 +1,5 @@
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { type ReactNode, useCallback, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -14,9 +14,6 @@ type ProductHeaderProps = {
 };
 
 const ProductHeader = ({ children }: ProductHeaderProps) => {
-  const { width: screenWidth } = useWindowDimensions();
-  const screenWidthSV = useSharedValue(screenWidth);
-  useEffect(() => { screenWidthSV.value = screenWidth; }, [screenWidth]);
   const inputRef = useRef<TextInput>(null);
   const expandProgress = useSharedValue(0);
   const isExpanded = useSharedValue(false);
@@ -35,15 +32,10 @@ const ProductHeader = ({ children }: ProductHeaderProps) => {
     inputRef.current?.blur();
   }, [expandProgress, isExpanded]);
 
-  const searchStyle = useAnimatedStyle(() => ({
-    width: interpolate(expandProgress.value, [0, 1], [200, Math.max(screenWidthSV.value - 80, 200)]),
-  }));
-
   const buttonsStyle = useAnimatedStyle(() => ({
     opacity: interpolate(expandProgress.value, [0, 0.3, 1], [1, 0, 0]),
     transform: [
       { translateX: interpolate(expandProgress.value, [0, 1], [0, 20]) },
-      { scale: interpolate(expandProgress.value, [0, 1], [1, 0.8]) },
     ],
     width: buttonsWidth > 0 ? interpolate(expandProgress.value, [0, 1], [buttonsWidth, 0]) : undefined,
     overflow: 'hidden',
@@ -51,16 +43,13 @@ const ProductHeader = ({ children }: ProductHeaderProps) => {
 
   const cancelStyle = useAnimatedStyle(() => ({
     opacity: expandProgress.value,
-    width: interpolate(expandProgress.value, [0, 1], [0, 60]),
+    width: interpolate(expandProgress.value, [0, 1], [0, 40]),
     overflow: 'hidden',
-    transform: [{ translateX: interpolate(expandProgress.value, [0, 1], [20, 0]) }],
   }));
 
   return (
     <View style={s.container}>
-      <Animated.View style={[s.searchWrapper, searchStyle]}>
-        <SearchInput ref={inputRef} onFocus={handleSearch} />
-      </Animated.View>
+      <SearchInput ref={inputRef} onFocus={handleSearch} style={s.searchInput} />
       {children && (
         <Animated.View style={[s.buttonsWrapper, buttonsStyle]}>
           <View
@@ -85,16 +74,24 @@ const s = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 12,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  searchWrapper: {},
+  searchInput: {
+    flex: 1,
+  },
   buttonsWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
+    height: 40,
   },
-  cancelWrapper: {},
+  cancelWrapper: {
+    height: 40,
+    width: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   cancelText: {
     fontSize: 16,
     color: colors.ink,

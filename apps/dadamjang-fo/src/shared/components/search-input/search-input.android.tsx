@@ -3,8 +3,8 @@ import { StyleSheet, TextInput, View } from 'react-native';
 import { colors } from '@dadamjang/design-tokens';
 import type { SearchInputProps } from './search-input.types';
 
-const SearchInput = forwardRef<TextInput, SearchInputProps>(({ placeholder = '검색', onFocus }, ref) => (
-  <View style={styles.container}>
+const SearchInput = forwardRef<TextInput, SearchInputProps>(({ placeholder = '검색', onFocus, style }, ref) => (
+  <View style={[styles.container, style]}>
     <TextInput
       ref={ref}
       placeholder={placeholder}
