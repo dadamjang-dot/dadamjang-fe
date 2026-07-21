@@ -6,7 +6,7 @@ import Animated, {
   withTiming,
   interpolate,
 } from 'react-native-reanimated';
-import { colors } from '@dadamjang/design-tokens';
+import { ActionButton } from '@/shared/components';
 import { SearchInput } from '@/shared/components/search-input';
 
 type ProductHeaderProps = {
@@ -38,7 +38,7 @@ const ProductHeader = ({ children }: ProductHeaderProps) => {
   }));
 
   const cancelStyle = useAnimatedStyle(() => ({
-    width: interpolate(expandProgress.value, [0, 1], [0, 40]),
+    width: interpolate(expandProgress.value, [0, 1], [0, 50]),
     overflow: 'hidden',
   }));
 
@@ -57,9 +57,7 @@ const ProductHeader = ({ children }: ProductHeaderProps) => {
         </Animated.View>
       )}
       <Animated.View style={[s.cancelWrapper, cancelStyle]}>
-        <Pressable onPress={handleCancel}>
-          <Text style={s.cancelText} numberOfLines={1}>취소</Text>
-        </Pressable>
+        <ActionButton title="취소" onPress={handleCancel} />
       </Animated.View>
     </View>
   );
@@ -84,13 +82,6 @@ const s = StyleSheet.create({
   },
   cancelWrapper: {
     height: 40,
-    width: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelText: {
-    fontSize: 16,
-    color: colors.ink,
   },
 });
 
