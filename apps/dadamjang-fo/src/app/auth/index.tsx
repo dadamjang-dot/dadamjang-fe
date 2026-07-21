@@ -2,17 +2,14 @@ import { useEffect } from "react";
 import { router } from 'expo-router';
 import { BackHandler, Pressable, Text, View } from 'react-native';
 
-import AuthHeader from '@/features/auth/components/auth-header';
-
 const AuthScreen = () => {
   useEffect(() => {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => true);
     return () => subscription.remove();
   }, []);
+
   return (
     <View style={{ flex: 1, padding: 24, paddingTop: 60 }}>
-      <AuthHeader />
-
       <View style={{ flex: 1, justifyContent: 'center', gap: 16 }}>
         <Text style={{ fontSize: 28, fontWeight: '900', letterSpacing: -0.5 }}>DADAMJANG</Text>
         <Text style={{ fontSize: 15, color: '#666', lineHeight: 22 }}>
