@@ -1,5 +1,5 @@
-import { type ReactNode, useCallback, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -14,6 +14,9 @@ type ProductHeaderProps = {
 };
 
 const ProductHeader = ({ children }: ProductHeaderProps) => {
+  const { width: screenWidth } = useWindowDimensions();
+  const screenWidthSV = useSharedValue(screenWidth);
+  useEffect(() => { screenWidthSV.value = screenWidth; }, [screenWidth]);
   const inputRef = useRef<TextInput>(null);
   const expandProgress = useSharedValue(0);
   const isExpanded = useSharedValue(false);
@@ -33,7 +36,7 @@ const ProductHeader = ({ children }: ProductHeaderProps) => {
   }, [expandProgress, isExpanded]);
 
   const searchStyle = useAnimatedStyle(() => ({
-    flex: interpolate(expandProgress.value, [0, 1], [1, 8]),
+    width: interpolate(expandProgress.value, [0, 1], [200, Math.max(screenWidthSV.value - 80, 200)]),
   }));
 
   const buttonsStyle = useAnimatedStyle(() => ({
@@ -48,6 +51,8 @@ const ProductHeader = ({ children }: ProductHeaderProps) => {
 
   const cancelStyle = useAnimatedStyle(() => ({
     opacity: expandProgress.value,
+    width: interpolate(expandProgress.value, [0, 1], [0, 60]),
+    overflow: 'hidden',
     transform: [{ translateX: interpolate(expandProgress.value, [0, 1], [20, 0]) }],
   }));
 
@@ -80,20 +85,16 @@ const s = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  searchWrapper: {
-    flex: 1,
-  },
+  searchWrapper: {},
   buttonsWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 8,
   },
-  cancelWrapper: {
-    marginLeft: 8,
-  },
+  cancelWrapper: {},
   cancelText: {
     fontSize: 16,
     color: colors.ink,
