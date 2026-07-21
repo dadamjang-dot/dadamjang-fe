@@ -1,5 +1,4 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '@dadamjang/design-tokens';
 import type { ActionButtonProps } from './action-button.types';
 
 const iconMap: Record<string, string> = {
@@ -12,7 +11,7 @@ const iconMap: Record<string, string> = {
 
 const ActionButton = ({ icon, title, iconOnly, onPress }: ActionButtonProps) => (
   <Pressable onPress={onPress} style={[styles.button, !iconOnly && styles.textButton]}>
-    <Text style={styles.label}>{iconOnly ? iconMap[icon ?? ''] ?? '?' : title}</Text>
+    <Text style={[styles.label, !iconOnly && styles.textLabel]}>{iconOnly ? iconMap[icon ?? ''] ?? '?' : title}</Text>
   </Pressable>
 );
 
@@ -20,14 +19,18 @@ const styles = StyleSheet.create({
   button: {
     minWidth: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primarySoft,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CCCCCC',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 12,
   },
   textButton: {
-    borderRadius: 8,
+  },
+  textLabel: {
+    color: '#111111',
   },
   label: {
     fontSize: 16,

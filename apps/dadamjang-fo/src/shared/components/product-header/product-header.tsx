@@ -58,7 +58,7 @@ const ProductHeader = ({ children }: ProductHeaderProps) => {
       )}
       <Animated.View style={[s.cancelWrapper, cancelStyle]}>
         <Pressable onPress={handleCancel}>
-          <Text style={s.cancelText}>취소</Text>
+          <Text style={s.cancelText} numberOfLines={1}>취소</Text>
         </Pressable>
       </Animated.View>
     </View>
