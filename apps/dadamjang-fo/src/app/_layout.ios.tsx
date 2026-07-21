@@ -12,7 +12,7 @@ const RootLayout = () => (
   <SafeAreaProvider>
     <AppProviders>
       <StatusBar style="dark" />
-      <SafeAreaView style={s.container}>
+      <SafeAreaView style={s.container} edges={["top"]}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="auth" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
         </Stack>
