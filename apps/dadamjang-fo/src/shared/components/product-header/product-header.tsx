@@ -33,16 +33,11 @@ const ProductHeader = ({ children }: ProductHeaderProps) => {
   }, [expandProgress, isExpanded]);
 
   const buttonsStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(expandProgress.value, [0, 0.3, 1], [1, 0, 0]),
-    transform: [
-      { translateX: interpolate(expandProgress.value, [0, 1], [0, 20]) },
-    ],
-    width: buttonsWidth > 0 ? interpolate(expandProgress.value, [0, 1], [buttonsWidth, 0]) : undefined,
+    width: buttonsWidth > 0 ? interpolate(expandProgress.value, [0, 1], [buttonsWidth, 0]) : 0,
     overflow: 'hidden',
   }));
 
   const cancelStyle = useAnimatedStyle(() => ({
-    opacity: expandProgress.value,
     width: interpolate(expandProgress.value, [0, 1], [0, 40]),
     overflow: 'hidden',
   }));
@@ -85,6 +80,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     height: 40,
+    gap: 4,
   },
   cancelWrapper: {
     height: 40,

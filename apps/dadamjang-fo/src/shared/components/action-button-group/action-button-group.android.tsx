@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '@dadamjang/design-tokens';
-import type { IconButtonGroupProps } from './icon-button-group.types';
+import type { ActionButtonGroupProps } from './action-button-group.types';
 
 const iconMap: Record<string, string> = {
   bell: '\uD83D\uDD14',
@@ -10,11 +10,11 @@ const iconMap: Record<string, string> = {
   gearshape: '\u2699',
 };
 
-const IconButtonGroup = ({ icons }: IconButtonGroupProps) => (
+const ActionButtonGroup = ({ actions }: ActionButtonGroupProps) => (
   <View style={styles.container}>
-    {icons.map((item, index) => (
-      <Pressable key={index} onPress={item.onPress} style={styles.button}>
-        <Text style={styles.icon}>{iconMap[item.icon] ?? '?'}</Text>
+    {actions.map((item, index) => (
+      <Pressable key={index} onPress={item.onPress} style={[styles.button, !item.iconOnly && styles.textButton]}>
+        <Text style={styles.label}>{item.iconOnly ? iconMap[item.icon ?? ''] ?? '?' : item.title}</Text>
       </Pressable>
     ))}
   </View>
@@ -27,14 +27,18 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   button: {
-    width: 40,
+    minWidth: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 12,
   },
-  icon: {
-    fontSize: 20,
+  textButton: {
+    borderRadius: 8,
+  },
+  label: {
+    fontSize: 16,
   },
 });
 
-export default IconButtonGroup;
+export default ActionButtonGroup;

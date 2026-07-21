@@ -1,8 +1,9 @@
 import { type ReactNode } from 'react';
 
-export type IconButtonProps = {
-  icon: string;
+export type ActionButtonProps = {
+  icon?: string;
+  title?: string;
+  iconOnly?: boolean;
   onPress: () => void;
-  size?: number;
   children?: ReactNode;
 };
