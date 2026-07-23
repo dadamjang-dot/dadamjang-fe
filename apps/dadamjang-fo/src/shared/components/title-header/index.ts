@@ -1,1 +1,1 @@
-export { default as TitleHeader} from "./title-header";
+export { default as TitleHeader } from "./title-header";

@@ -1,1 +1,1 @@
-export { default as ProductHeader } from './product-header';
+export { default as ProductHeader } from "./product-header";

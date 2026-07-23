@@ -5,7 +5,7 @@ import { ActionButton, ProductHeader } from '@/shared/components'
 const StyleScreen = () => (
   <View style={s.container}>
     <ProductHeader>
-      <ActionButton actions={[{ icon: 'plus.square', onPress: () => {} }]} iconOnly />
+      <ActionButton actions={[{ icon: 'plus', onPress: () => {} }]} iconOnly />
       <ActionButton actions={[{ icon: 'cart', onPress: () => {} }]} iconOnly />
     </ProductHeader>
   </View>

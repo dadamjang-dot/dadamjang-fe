@@ -1,28 +1,37 @@
-import { type ReactNode } from 'react'
-import { Text, View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { type ReactNode } from "react";
+import { Text, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
 interface TitleHeaderProps {
-  title: string
-  children?: ReactNode
+  title: string;
+  children?: ReactNode;
 }
 
 const TitleHeader = ({ title, children }: TitleHeaderProps) => (
   <View style={s.container}>
     <Text style={s.title}>{title}</Text>
-    {children}
+    <View style={s.btnWrapper}>{children}</View>
   </View>
-)
+);
 
 const s = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    gap: 20,
+    justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
-  title: { fontSize: 24, fontWeight: '700' },
-})
+  title: {
+    flex: 1,
+    fontSize: 24,
+    fontWeight: "700",
+  },
+  btnWrapper: {
+    flexDirection: "row",
+    height: 40,
+    alignItems: "center",
+  },
+});
 
-export default TitleHeader
+export default TitleHeader;

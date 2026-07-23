@@ -1,9 +1,11 @@
 import { Host, HStack, Button, Image } from "@expo/ui/swift-ui";
 import {
   buttonBorderShape,
-  buttonStyle,
   controlSize,
+  buttonStyle,
   tint,
+  frame,
+  imageScale,
 } from "@expo/ui/swift-ui/modifiers";
 import { colors } from "@dadamjang/design-tokens";
 
@@ -14,8 +16,10 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
 
   const btnModifiers = [
     buttonStyle("glass"),
-    controlSize("regular"),
+    controlSize("small"),
     tint(colors.ink),
+    frame({ height: 40 }),
+    imageScale("small"),
   ];
 
   if (actions.length === 1) {
@@ -24,14 +28,14 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
 
     return (
       <Host matchContents>
-        <Button
-          label={label}
-          onPress={onPress}
-          modifiers={[
-            ...btnModifiers,
-            buttonBorderShape(isCircle ? "circle" : "capsule"),
-          ]}
-        >
+          <Button
+            label={label}
+            onPress={onPress}
+            modifiers={[
+              ...btnModifiers,
+              buttonBorderShape(isCircle ? "circle" : "capsule"),
+            ]}
+          >
           <Image systemName={icon} />
         </Button>
       </Host>
@@ -40,7 +44,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
 
   return (
     <Host matchContents>
-      <Button modifiers={btnModifiers}>
+      <Button modifiers={[...btnModifiers, buttonBorderShape("capsule")]}>
         <HStack spacing={12}>
           {actions.map((action) => (
             <Image key={action.label} systemName={action.icon} />

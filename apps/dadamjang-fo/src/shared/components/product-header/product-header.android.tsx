@@ -1,22 +1,42 @@
-import { type ReactNode } from 'react'
-import { View } from 'react-native'
-import { StyleSheet } from 'react-native-unistyles'
+import { type ReactNode } from "react";
+import { View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
+
+import { SearchInput } from "@/shared/components/search-input";
 
 interface ProductHeaderProps {
-  children?: ReactNode
+  children?: ReactNode;
 }
 
 const ProductHeader = ({ children }: ProductHeaderProps) => (
-  <View style={s.container}>{children}</View>
-)
+  <View style={s.container}>
+    <SearchInput placeholder="Search" style={s.input} />
+    <View style={s.btnWrapper}>{children}</View>
+  </View>
+);
 
 const s = StyleSheet.create({
   container: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 20,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  input: {
+    flex: 1,
+    height: 40,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    overflow: "hidden",
+    justifyContent: "center",
     paddingHorizontal: 16,
   },
-})
+  btnWrapper: {
+    height: 40,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+});
 
-export default ProductHeader
+export default ProductHeader;
