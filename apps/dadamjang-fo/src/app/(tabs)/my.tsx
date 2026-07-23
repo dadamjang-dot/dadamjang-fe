@@ -10,8 +10,8 @@ const MyScreen = () => {
   return (
     <View style={s.container}>
       <TitleHeader title="My">
-        <ActionButton icon="gearshape" onPress={() => {}} iconOnly />
-        <ActionButton icon="cart" onPress={() => {}} iconOnly />
+        <ActionButton actions={[{ icon: 'gearshape', onPress: () => {} }]} iconOnly />
+        <ActionButton actions={[{ icon: 'cart', onPress: () => {} }]} iconOnly />
       </TitleHeader>
     </View>
   );

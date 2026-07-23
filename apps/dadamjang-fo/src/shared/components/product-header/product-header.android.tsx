@@ -1,10 +1,21 @@
-import React from 'react'
-import { View } from 'react-native';
+import { type ReactNode } from 'react'
+import { View } from 'react-native'
 
-const ProductHeader = () => {
-  return (
-    <View>ProductHeader</View>
-  )
+interface ProductHeaderProps {
+  children?: ReactNode
 }
 
-export default ProductHeader;
+const ProductHeader = ({ children }: ProductHeaderProps) => (
+  <View
+    style={{
+      flexDirection: 'row',
+      gap: 20,
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+    }}
+  >
+    {children}
+  </View>
+)
+
+export default ProductHeader

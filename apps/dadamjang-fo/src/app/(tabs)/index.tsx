@@ -1,14 +1,15 @@
 import { StyleSheet, View } from 'react-native';
-import { ActionButtonGroup, ProductHeader } from '@/shared/components';
+import { ActionButton, ProductHeader } from '@/shared/components';
 
 const HomeScreen = () => (
   <View style={s.container}>
     <ProductHeader>
-      <ActionButtonGroup
+      <ActionButton
         actions={[
-          { icon: 'bell', onPress: () => {}, iconOnly: true },
-          { icon: 'cart', onPress: () => {}, iconOnly: true },
+          { icon: 'bell', onPress: () => {} },
+          { icon: 'cart', onPress: () => {} },
         ]}
+        iconOnly
       />
     </ProductHeader>
   </View>

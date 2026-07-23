@@ -1,10 +1,24 @@
-import React from 'react'
-import { View } from 'react-native';
+import { type ReactNode } from 'react'
+import { Text, View } from 'react-native'
 
-const TitleHeader = () => {
-  return (
-    <View>TitleHeader</View>
-  )
+interface TitleHeaderProps {
+  title: string
+  children?: ReactNode
 }
 
-export default TitleHeader;
+const TitleHeader = ({ title, children }: TitleHeaderProps) => (
+  <View
+    style={{
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    }}
+  >
+    <Text style={{ fontSize: 24, fontWeight: '700' }}>{title}</Text>
+    {children}
+  </View>
+)
+
+export default TitleHeader

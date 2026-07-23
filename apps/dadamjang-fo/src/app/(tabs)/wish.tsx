@@ -10,7 +10,7 @@ const WishScreen = () => {
   return (
     <View style={s.container}>
       <TitleHeader title="Wish">
-        <ActionButton icon="cart" onPress={() => {}} iconOnly />
+        <ActionButton actions={[{ icon: 'cart', onPress: () => {} }]} iconOnly />
       </TitleHeader>
     </View>
   );

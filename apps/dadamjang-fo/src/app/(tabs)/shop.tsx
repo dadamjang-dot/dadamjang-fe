@@ -1,14 +1,15 @@
 import { StyleSheet, View } from 'react-native';
-import { ActionButtonGroup, ProductHeader } from '@/shared/components';
+import { ActionButton, ProductHeader } from '@/shared/components';
 
 const ShopScreen = () => (
   <View style={s.container}>
     <ProductHeader>
-      <ActionButtonGroup
+      <ActionButton
         actions={[
-          { icon: 'line.3.horizontal', onPress: () => {}, iconOnly: true },
-          { icon: 'cart', onPress: () => {}, iconOnly: true },
+          { icon: 'line.3.horizontal', onPress: () => {} },
+          { icon: 'cart', onPress: () => {} },
         ]}
+        iconOnly
       />
     </ProductHeader>
   </View>
