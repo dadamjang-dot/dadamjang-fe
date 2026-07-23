@@ -18,8 +18,7 @@ const ProductHeader = ({ children }: ProductHeaderProps) => (
 const s = StyleSheet.create({
   container: {
     flexDirection: "row",
-    gap: 20,
-    justifyContent: "space-between",
+    gap: 16,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
@@ -36,6 +35,7 @@ const s = StyleSheet.create({
     height: 40,
     flexDirection: "row",
     alignItems: "center",
+    gap: 6
   },
 });
 

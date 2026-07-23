@@ -14,11 +14,13 @@ import type { ActionButtonProps } from "./action-button.types";
 const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
   if (actions?.length === 0) return null;
 
+  const btnWidth = actions.length > 1 ? undefined : 40;
+
   const btnModifiers = [
     buttonStyle("glass"),
-    controlSize("small"),
+    controlSize("regular"),
     tint(colors.ink),
-    frame({ height: 40 }),
+    frame({ height: 38, width: btnWidth }),
     imageScale("small"),
   ];
 
