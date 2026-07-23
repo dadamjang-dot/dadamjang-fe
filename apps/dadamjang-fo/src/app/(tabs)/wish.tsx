@@ -1,11 +1,12 @@
-import { StyleSheet, View } from 'react-native';
-import { useCurrentUser } from '@/features/auth';
-import { ActionButton, TitleHeader } from '@/shared/components';
+import { View } from 'react-native'
+import { StyleSheet } from 'react-native-unistyles'
+import { useCurrentUser } from '@/features/auth'
+import { ActionButton, TitleHeader } from '@/shared/components'
 
 const WishScreen = () => {
-  const { isPending } = useCurrentUser();
+  const { isPending } = useCurrentUser()
 
-  if (isPending) return null;
+  if (isPending) return null
 
   return (
     <View style={s.container}>
@@ -13,9 +14,9 @@ const WishScreen = () => {
         <ActionButton actions={[{ icon: 'cart', onPress: () => {} }]} iconOnly />
       </TitleHeader>
     </View>
-  );
-};
+  )
+}
 
-const s = StyleSheet.create({ container: { flex: 1 } });
+const s = StyleSheet.create({ container: { flex: 1 } })
 
-export default WishScreen;
+export default WishScreen

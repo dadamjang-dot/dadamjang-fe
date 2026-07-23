@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { StyleSheet } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
 import { AppProviders } from "@/providers/app-providers";
 import { initSentry, Sentry } from "@/shared/observability/sentry";

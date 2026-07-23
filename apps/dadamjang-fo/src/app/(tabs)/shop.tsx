@@ -1,5 +1,6 @@
-import { StyleSheet, View } from 'react-native';
-import { ActionButton, ProductHeader } from '@/shared/components';
+import { View } from 'react-native'
+import { StyleSheet } from 'react-native-unistyles'
+import { ActionButton, ProductHeader } from '@/shared/components'
 
 const ShopScreen = () => (
   <View style={s.container}>
@@ -13,8 +14,8 @@ const ShopScreen = () => (
       />
     </ProductHeader>
   </View>
-);
+)
 
-const s = StyleSheet.create({ container: { flex: 1 } });
+const s = StyleSheet.create({ container: { flex: 1 } })
 
-export default ShopScreen;
+export default ShopScreen
