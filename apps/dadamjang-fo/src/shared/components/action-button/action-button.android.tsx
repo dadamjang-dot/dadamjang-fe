@@ -66,19 +66,21 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
         modifiers={[height(40)]}
       >
         <Row modifiers={[paddingAll(0)]}>
-          {actions.map((action, idx) => (
-            <IconButton
-              key={action.label ?? idx}
-              onClick={action.onPress}
-              modifiers={[size(32, 32)]}
-            >
-              {action.label ? (
-                <Text>{action.label}</Text>
-              ) : action.icon ? (
-                <Icon source={{ uri: action.icon }} size={20} />
-              ) : null}
-            </IconButton>
-          ))}
+          {actions.map((action, idx) => {
+            const itemModifiers = action.label && !action.icon ? [height(32)] : [size(32, 32)];
+            return (
+              <IconButton
+                key={action.label ?? idx}
+                onClick={action.onPress}
+                modifiers={itemModifiers}
+              >
+                <Row modifiers={[paddingAll(0)]}>
+                  {action.icon ? <Icon source={{ uri: action.icon }} size={20} /> : null}
+                  {action.label ? <Text>{action.label}</Text> : null}
+                </Row>
+              </IconButton>
+            );
+          })}
         </Row>
       </FilledTonalButton>
     </Host>
