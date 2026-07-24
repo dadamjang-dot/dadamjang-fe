@@ -11,7 +11,7 @@ const MyScreen = () => {
   return (
     <View style={s.container}>
       <TitleHeader title="MY">
-        <ActionButton actions={[{ icon: 'gearshape', onPress: () => {} }]} iconOnly />
+        <ActionButton actions={[{ icon: 'gear', onPress: () => {} }]} iconOnly />
         <ActionButton actions={[{ icon: 'cart', onPress: () => {} }]} iconOnly />
       </TitleHeader>
     </View>
