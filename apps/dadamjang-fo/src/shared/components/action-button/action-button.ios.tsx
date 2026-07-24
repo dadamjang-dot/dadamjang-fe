@@ -1,4 +1,4 @@
-import { Host, HStack, Button, Image } from "@expo/ui/swift-ui";
+import { Host, HStack, Button, Image, type ButtonProps, type ImageProps } from "@expo/ui/swift-ui";
 import {
   buttonBorderShape,
   controlSize,
@@ -8,7 +8,11 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 import { colors } from "@dadamjang/design-tokens";
 
-import type { ActionButtonProps } from "./action-button.types";
+import type { ActionButtonProps as BaseActionButtonProps } from "./action-button.types";
+
+export interface ActionButtonProps
+  extends BaseActionButtonProps,
+    Omit<ButtonProps, "systemImage"> {}
 
 const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
   if (actions?.length === 0) return null;
@@ -38,7 +42,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
             buttonBorderShape(isCircle ? "circle" : "capsule"),
           ]}
         >
-          <Image systemName={icon} modifiers={imgModifiers} />
+          <Image systemName={icon as ImageProps["systemName"]} modifiers={imgModifiers} />
         </Button>
       </Host>
     );
@@ -49,7 +53,11 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
       <Button modifiers={[...btnModifiers, buttonBorderShape("capsule")]}>
         <HStack spacing={12}>
           {actions.map((action) => (
-            <Image key={action.label} systemName={action.icon} modifiers={imgModifiers} />
+            <Image
+              key={action.label}
+              systemName={action.icon as ImageProps["systemName"]}
+              modifiers={imgModifiers}
+            />
           ))}
         </HStack>
       </Button>

@@ -1,12 +1,10 @@
-import { ButtonProps } from "@expo/ui/swift-ui";
-
-interface Action {
-  icon?: ButtonProps["systemImage"];
+export interface Action {
+  icon?: string;
   label?: string;
-  onPress: () => void
+  onPress: () => void;
 }
 
-export interface ActionButtonProps extends Omit<ButtonProps, "systemImage"> {
+export interface ActionButtonProps {
   actions: Action[];
   iconOnly?: boolean;
 }
