@@ -1,2 +1,2 @@
-export { default as ActionButton } from './action-button.ios';
-
+export { default as ActionButton } from "./action-button";
+export * from "./action-button.types";
