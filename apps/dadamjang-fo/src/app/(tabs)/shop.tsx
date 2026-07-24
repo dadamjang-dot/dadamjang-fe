@@ -1,46 +1,24 @@
-import { useState } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
-import { ActionButton, ProductHeader, SearchContent } from "@/shared/components";
+import { ActionButton, ProductLayout } from "@/shared/components";
 
-const ShopScreen = () => {
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
-
-  const handleCancelSearch = () => {
-    setIsSearching(false);
-    setSearchValue("");
-  };
-
-  return (
-    <View style={s.container}>
-      <ProductHeader
-        isSearching={isSearching}
-        onSearchFocus={() => setIsSearching(true)}
-        onSearchCancel={handleCancelSearch}
-        searchValue={searchValue}
-        onSearchValueChange={setSearchValue}
-      >
-        <ActionButton
-          actions={[
-            { icon: "line.3.horizontal", onPress: () => {} },
-            { icon: "cart", onPress: () => {} },
-          ]}
-          iconOnly
-        />
-      </ProductHeader>
-
-      {isSearching ? (
-        <SearchContent keyword={searchValue} />
-      ) : (
-        <View style={s.content} />
-      )}
-    </View>
-  );
-};
+const ShopScreen = () => (
+  <ProductLayout
+    headerChildren={
+      <ActionButton
+        actions={[
+          { icon: "line.3.horizontal", onPress: () => {} },
+          { icon: "cart", onPress: () => {} },
+        ]}
+        iconOnly
+      />
+    }
+  >
+    <View style={s.content} />
+  </ProductLayout>
+);
 
 const s = StyleSheet.create({
-  container: { flex: 1 },
   content: { flex: 1 },
 });
 
