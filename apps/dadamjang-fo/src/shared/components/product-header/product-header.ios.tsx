@@ -2,16 +2,42 @@ import { type ReactNode } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
+import { ActionButton } from "@/shared/components/action-button";
 import { SearchInput } from "@/shared/components/search-input";
 
-interface ProductHeaderProps {
+export interface ProductHeaderProps {
   children?: ReactNode;
+  isSearching?: boolean;
+  onSearchFocus?: () => void;
+  onSearchCancel?: () => void;
+  searchValue?: string;
+  onSearchValueChange?: (text: string) => void;
 }
 
-const ProductHeader = ({ children }: ProductHeaderProps) => (
+const ProductHeader = ({
+  children,
+  isSearching = false,
+  onSearchFocus,
+  onSearchCancel,
+  searchValue,
+  onSearchValueChange,
+}: ProductHeaderProps) => (
   <View style={s.container}>
-    <SearchInput placeholder="Search" />
-    <View style={s.btnWrapper}>{children}</View>
+    <SearchInput
+      value={searchValue}
+      placeholder="Search"
+      onValueChange={onSearchValueChange}
+      onFocus={onSearchFocus}
+    />
+    <View style={s.btnWrapper}>
+      {isSearching ? (
+        <ActionButton
+          actions={[{ label: "취소", onPress: onSearchCancel ?? (() => {}) }]}
+        />
+      ) : (
+        children
+      )}
+    </View>
   </View>
 );
 
