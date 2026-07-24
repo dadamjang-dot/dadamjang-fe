@@ -17,7 +17,9 @@ export interface ActionButtonProps
 const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
   if (actions?.length === 0) return null;
 
-  const btnWidth = actions.length > 1 ? undefined : 40;
+  const singleAction = actions.length === 1 ? actions[0] : null;
+  const isIconOnlySingle = !!(iconOnly && singleAction?.icon && !singleAction?.label);
+  const btnWidth = isIconOnlySingle ? 40 : undefined;
 
   const btnModifiers = [
     buttonStyle("glass"),
@@ -30,7 +32,6 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
 
   if (actions.length === 1) {
     const { icon, label, onPress } = actions[0];
-    const isCircle = iconOnly && !!icon && !label;
 
     return (
       <Host matchContents>
@@ -39,10 +40,12 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
           onPress={onPress}
           modifiers={[
             ...btnModifiers,
-            buttonBorderShape(isCircle ? "circle" : "capsule"),
+            buttonBorderShape(isIconOnlySingle ? "circle" : "capsule"),
           ]}
         >
-          <Image systemName={icon as ImageProps["systemName"]} modifiers={imgModifiers} />
+          {icon ? (
+            <Image systemName={icon as ImageProps["systemName"]} modifiers={imgModifiers} />
+          ) : undefined}
         </Button>
       </Host>
     );
