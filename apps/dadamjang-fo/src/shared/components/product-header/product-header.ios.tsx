@@ -1,5 +1,5 @@
-import { type ReactNode } from "react";
-import { View } from "react-native";
+import { useRef, type ReactNode } from "react";
+import { View, type TextInput } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { ActionButton } from "@/shared/components/action-button";
@@ -21,25 +21,33 @@ const ProductHeader = ({
   onSearchCancel,
   searchValue,
   onSearchValueChange,
-}: ProductHeaderProps) => (
-  <View style={s.container}>
-    <SearchInput
-      value={searchValue}
-      placeholder="Search"
-      onValueChange={onSearchValueChange}
-      onFocus={onSearchFocus}
-    />
-    <View style={s.btnWrapper}>
-      {isSearching ? (
-        <ActionButton
-          actions={[{ label: "취소", onPress: onSearchCancel ?? (() => {}) }]}
-        />
-      ) : (
-        children
-      )}
+}: ProductHeaderProps) => {
+  const inputRef = useRef<TextInput>(null);
+
+  const handleCancel = () => {
+    inputRef.current?.blur();
+    onSearchCancel?.();
+  };
+
+  return (
+    <View style={s.container}>
+      <SearchInput
+        ref={inputRef}
+        value={searchValue}
+        placeholder="Search"
+        onValueChange={onSearchValueChange}
+        onFocus={onSearchFocus}
+      />
+      <View style={s.btnWrapper}>
+        {isSearching ? (
+          <ActionButton actions={[{ label: "취소", onPress: handleCancel }]} />
+        ) : (
+          children
+        )}
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 const s = StyleSheet.create({
   container: {
