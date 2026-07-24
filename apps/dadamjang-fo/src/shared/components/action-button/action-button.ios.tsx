@@ -1,4 +1,4 @@
-import { Host, HStack, Button, Image, type ButtonProps, type ImageProps } from "@expo/ui/swift-ui";
+import { Host, HStack, Button, Image, Text, type ButtonProps, type ImageProps } from "@expo/ui/swift-ui";
 import {
   buttonBorderShape,
   controlSize,
@@ -15,7 +15,7 @@ export interface ActionButtonProps
     Omit<ButtonProps, "systemImage"> {}
 
 const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
-  if (actions?.length === 0) return null;
+  if (!actions || actions.length === 0) return null;
 
   const singleAction = actions.length === 1 ? actions[0] : null;
   const isIconOnlySingle = !!(iconOnly && singleAction?.icon && !singleAction?.label);
@@ -55,12 +55,16 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
     <Host matchContents>
       <Button modifiers={[...btnModifiers, buttonBorderShape("capsule")]}>
         <HStack spacing={12}>
-          {actions.map((action) => (
-            <Image
-              key={action.label}
-              systemName={action.icon as ImageProps["systemName"]}
-              modifiers={imgModifiers}
-            />
+          {actions.map((action, idx) => (
+            <HStack key={action.label ?? idx} spacing={4}>
+              {action.icon ? (
+                <Image
+                  systemName={action.icon as ImageProps["systemName"]}
+                  modifiers={imgModifiers}
+                />
+              ) : null}
+              {action.label ? <Text>{action.label}</Text> : null}
+            </HStack>
           ))}
         </HStack>
       </Button>
