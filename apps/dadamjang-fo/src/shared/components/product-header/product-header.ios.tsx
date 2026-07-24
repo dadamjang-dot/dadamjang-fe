@@ -10,7 +10,7 @@ interface ProductHeaderProps {
 
 const ProductHeader = ({ children }: ProductHeaderProps) => (
   <View style={s.container}>
-    <SearchInput placeholder="Search" style={s.input} />
+    <SearchInput placeholder="Search" />
     <View style={s.btnWrapper}>{children}</View>
   </View>
 );
@@ -22,20 +22,11 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  input: {
-    flex: 1,
-    height: 40,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    overflow: "hidden",
-    justifyContent: "center",
-    paddingHorizontal: 16,
-  },
   btnWrapper: {
     height: 40,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6
+    gap: 6,
   },
 });
 
