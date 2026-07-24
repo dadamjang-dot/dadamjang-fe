@@ -31,6 +31,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     height: 40,
     alignItems: "center",
+    gap: 6,
   },
 });
 
