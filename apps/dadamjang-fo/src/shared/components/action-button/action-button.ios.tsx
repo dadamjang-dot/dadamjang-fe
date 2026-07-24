@@ -5,6 +5,7 @@ import {
   buttonStyle,
   tint,
   frame,
+  padding,
 } from "@expo/ui/swift-ui/modifiers";
 import { colors } from "@dadamjang/design-tokens";
 
@@ -29,6 +30,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
   ];
 
   const imgModifiers = [frame({ width: 24, height: 24 })];
+  const textModifiers = [padding({ vertical: 2.83 })];
 
   if (actions.length === 1) {
     const { icon, label, onPress } = actions[0];
@@ -36,7 +38,6 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
     return (
       <Host matchContents>
         <Button
-          label={label}
           onPress={onPress}
           modifiers={[
             ...btnModifiers,
@@ -45,6 +46,8 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
         >
           {icon ? (
             <Image systemName={icon as ImageProps["systemName"]} modifiers={imgModifiers} />
+          ) : label ? (
+            <Text modifiers={textModifiers}>{label}</Text>
           ) : undefined}
         </Button>
       </Host>
@@ -63,7 +66,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
                   modifiers={imgModifiers}
                 />
               ) : null}
-              {action.label ? <Text>{action.label}</Text> : null}
+              {action.label ? <Text modifiers={textModifiers}>{action.label}</Text> : null}
             </HStack>
           ))}
         </HStack>
