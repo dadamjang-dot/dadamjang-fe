@@ -20,6 +20,24 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
     const { icon, label, onPress } = actions[0];
     const isCircle = iconOnly && !!icon && !label;
 
+    if (label && !icon) {
+      return (
+        <Host matchContents>
+          <FilledTonalButton
+            onClick={onPress}
+            shape={Shape.Pill({})}
+            colors={{
+              containerColor: colors.surface,
+              contentColor: colors.ink,
+            }}
+            modifiers={[height(40)]}
+          >
+            <Text>{label}</Text>
+          </FilledTonalButton>
+        </Host>
+      );
+    }
+
     return (
       <Host matchContents>
         <FilledTonalIconButton
@@ -31,11 +49,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
           }}
           modifiers={[size(40, 40)]}
         >
-          {label ? (
-            <Text>{label}</Text>
-          ) : icon ? (
-            <Icon source={{ uri: icon }} size={20} />
-          ) : null}
+          {icon ? <Icon source={{ uri: icon }} size={20} /> : null}
         </FilledTonalIconButton>
       </Host>
     );
