@@ -2,8 +2,7 @@ import { useRef, type ReactNode } from "react";
 import { View, type TextInput } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
-import { ActionButton } from "@/shared/components/action-button";
-import { SearchInput } from "@/shared/components/search-input";
+import { ActionButton, SearchInput } from "@/shared/components";
 
 export interface ProductHeaderProps {
   children?: ReactNode;
