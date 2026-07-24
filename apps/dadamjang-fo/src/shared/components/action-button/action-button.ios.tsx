@@ -5,7 +5,6 @@ import {
   buttonStyle,
   tint,
   frame,
-  imageScale,
 } from "@expo/ui/swift-ui/modifiers";
 import { colors } from "@dadamjang/design-tokens";
 
@@ -20,9 +19,10 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
     buttonStyle("glass"),
     controlSize("regular"),
     tint(colors.ink),
-    frame({ height: 38, width: btnWidth }),
-    imageScale("small"),
+    frame({ height: 40, width: btnWidth }),
   ];
+
+  const imgModifiers = [frame({ width: 24, height: 24 })];
 
   if (actions.length === 1) {
     const { icon, label, onPress } = actions[0];
@@ -30,15 +30,15 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
 
     return (
       <Host matchContents>
-          <Button
-            label={label}
-            onPress={onPress}
-            modifiers={[
-              ...btnModifiers,
-              buttonBorderShape(isCircle ? "circle" : "capsule"),
-            ]}
-          >
-          <Image systemName={icon} />
+        <Button
+          label={label}
+          onPress={onPress}
+          modifiers={[
+            ...btnModifiers,
+            buttonBorderShape(isCircle ? "circle" : "capsule"),
+          ]}
+        >
+          <Image systemName={icon} modifiers={imgModifiers} />
         </Button>
       </Host>
     );
@@ -49,7 +49,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
       <Button modifiers={[...btnModifiers, buttonBorderShape("capsule")]}>
         <HStack spacing={12}>
           {actions.map((action) => (
-            <Image key={action.label} systemName={action.icon} />
+            <Image key={action.label} systemName={action.icon} modifiers={imgModifiers} />
           ))}
         </HStack>
       </Button>
