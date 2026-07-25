@@ -1,22 +1,24 @@
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
-import { ActionButton, ProductLayout } from "@/shared/components";
+import {
+  ProductLayout,
+  ProductLayoutHeaderActionsType,
+} from "@/shared/components";
 
-const ShopScreen = () => (
-  <ProductLayout
-    headerChildren={
-      <ActionButton
-        actions={[
-          { icon: "line.3.horizontal", onPress: () => {} },
-          { icon: "cart", onPress: () => {} },
-        ]}
-        iconOnly
-      />
-    }
-  >
-    <View style={s.content} />
-  </ProductLayout>
-);
+const ShopScreen = () => {
+  const headerActions: ProductLayoutHeaderActionsType = [
+    [
+      { icon: "line.3.horizontal", onPress: () => {} },
+      { icon: "cart", onPress: () => {} },
+    ],
+  ];
+
+  return (
+    <ProductLayout headerActions={headerActions}>
+      <View style={s.content} />
+    </ProductLayout>
+  );
+};
 
 const s = StyleSheet.create({
   content: { flex: 1 },
