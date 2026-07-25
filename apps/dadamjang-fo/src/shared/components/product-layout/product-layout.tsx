@@ -2,10 +2,10 @@ import { useState } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
-import { ProductHeader, SearchContent } from "@/shared/components";
+import { ActionButton, ProductHeader, SearchContent } from "@/shared/components";
 import type { ProductLayoutProps } from "./product-layout.types";
 
-const ProductLayout = ({ headerChildren, children }: ProductLayoutProps) => {
+const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
@@ -23,7 +23,9 @@ const ProductLayout = ({ headerChildren, children }: ProductLayoutProps) => {
         searchValue={searchValue}
         onSearchValueChange={setSearchValue}
       >
-        {headerChildren}
+        {headerActions?.map((actions, i) => (
+          <ActionButton key={i} actions={actions} iconOnly />
+        ))}
       </ProductHeader>
 
       {isSearching ? <SearchContent keyword={searchValue} /> : children}
