@@ -1,18 +1,19 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { ActionButton, ProductHeader, SearchContent } from "@/shared/components";
+import { colors } from "@dadamjang/design-tokens";
 import type { ProductLayoutProps } from "./product-layout.types";
 
 const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
-  const handleCancelSearch = () => {
+  const handleCancelSearch = useCallback(() => {
     setIsSearching(false);
     setSearchValue("");
-  };
+  }, []);
 
   return (
     <View style={s.container}>
@@ -34,7 +35,7 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
 };
 
 const s = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: colors.surface },
 });
 
 export default ProductLayout;
