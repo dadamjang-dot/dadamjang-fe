@@ -1,8 +1,13 @@
 import type { ReactNode } from "react";
 import type { Action } from "../action-button/action-button.types";
 
-export type ProductLayoutHeaderActionsType = [[Action, Action]] | [[Action], [Action]];
+type SingleButtonTwoActions = [[Action, Action]];
+type TwoButtonsSingleAction = [[Action], [Action]];
+
+export type ProductLayoutHeaderActionsType =
+  | SingleButtonTwoActions
+  | TwoButtonsSingleAction;
 export interface ProductLayoutProps {
-  headerActions: [[Action, Action]] | [[Action], [Action]];
+  headerActions: ProductLayoutHeaderActionsType;
   children: ReactNode;
 }

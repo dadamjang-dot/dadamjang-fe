@@ -1,6 +1,5 @@
 import { useRef, type ReactNode } from "react";
-import { View, type TextInput } from "react-native";
-import { StyleSheet } from "react-native-unistyles";
+import { StyleSheet, View, type TextInput } from "react-native";
 
 import { ActionButton, SearchInput } from "@/shared/components";
 

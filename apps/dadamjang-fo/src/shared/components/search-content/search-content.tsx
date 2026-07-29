@@ -23,7 +23,7 @@ const s = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: colors.canvas,
+    backgroundColor: colors.surface,
   },
   title: {
     fontSize: 16,
