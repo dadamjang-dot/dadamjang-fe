@@ -199,7 +199,6 @@ const actionStyles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     position: "relative",
-    overflow: "hidden",
   },
   centerContent: {
     alignItems: "center",
