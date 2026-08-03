@@ -7,6 +7,7 @@ import Animated, {
   interpolate,
   withSpring,
   Extrapolation,
+  LinearTransition,
 } from "react-native-reanimated";
 
 import { ActionButton, SearchInput } from "@/shared/components";
@@ -31,7 +32,6 @@ const ProductHeader = ({
 }: ProductHeaderProps) => {
   const inputRef = useRef<TextInput>(null);
 
-  const containerWidth = useSharedValue(0);
   const childrenWidth = useSharedValue(0);
   const cancelWidth = useSharedValue(0);
 
@@ -42,13 +42,6 @@ const ProductHeader = ({
       inputRef.current?.blur();
     }
   }, [isSearching]);
-
-  const handleContainerLayout = useCallback(
-    (e: LayoutChangeEvent) => {
-      containerWidth.value = e.nativeEvent.layout.width;
-    },
-    [containerWidth]
-  );
 
   const handleChildrenLayout = useCallback(
     (e: LayoutChangeEvent) => {
@@ -81,20 +74,16 @@ const ProductHeader = ({
     );
   });
 
-  const searchInputStyle = useAnimatedStyle(() => {
-    const calcWidth = containerWidth.value - 32 - 16 - btnWrapperWidth.value;
-    return {
-      width: calcWidth > 0 ? calcWidth : "100%",
-    };
-  });
-
   const btnWrapperStyle = useAnimatedStyle(() => ({
     width: btnWrapperWidth.value,
   }));
 
   return (
-    <View style={s.container} onLayout={handleContainerLayout}>
-      <Animated.View style={[s.searchInputWrapper, searchInputStyle]}>
+    <View style={s.container}>
+      <Animated.View
+        style={s.searchInputWrapper}
+        layout={LinearTransition.springify().damping(25).stiffness(260)}
+      >
         <SearchInput
           ref={inputRef}
           value={searchValue}
@@ -126,6 +115,8 @@ const s = StyleSheet.create({
     backgroundColor: colors.primarySoft,
   },
   searchInputWrapper: {
+    flex: 1,
+    minWidth: 0,
     height: 40,
   },
   btnWrapper: {
