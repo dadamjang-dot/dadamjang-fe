@@ -74,9 +74,13 @@ const ProductHeader = ({
     );
   });
 
-  const btnWrapperStyle = useAnimatedStyle(() => ({
-    width: btnWrapperWidth.value,
-  }));
+  const btnWrapperStyle = useAnimatedStyle(() => {
+    if (childrenWidth.value === 0 || cancelWidth.value === 0) {
+      return {};
+    }
+
+    return { width: btnWrapperWidth.value };
+  });
 
   return (
     <View style={s.container}>
@@ -124,6 +128,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
+    flexShrink: 0,
   },
   measureLayer: {
     position: "absolute",

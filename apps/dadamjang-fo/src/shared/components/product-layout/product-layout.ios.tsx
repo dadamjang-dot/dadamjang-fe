@@ -49,14 +49,20 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
     });
   }, [isSearching, progress]);
 
-  const singleBtnContainerStyle = useAnimatedStyle(() => ({
-    width: interpolate(
-      progress.value,
-      [0, 1],
-      [childrenWidth.value, cancelWidth.value],
-      Extrapolation.CLAMP
-    ),
-  }));
+  const singleBtnContainerStyle = useAnimatedStyle(() => {
+    if (childrenWidth.value === 0 || cancelWidth.value === 0) {
+      return {};
+    }
+
+    return {
+      width: interpolate(
+        progress.value,
+        [0, 1],
+        [childrenWidth.value, cancelWidth.value],
+        Extrapolation.CLAMP
+      ),
+    };
+  });
 
   const singleIconStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 0.45], [1, 0], Extrapolation.CLAMP),
@@ -144,6 +150,9 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
     </View>
   ) : (
     <Animated.View style={[actionStyles.expandingBtn, singleBtnContainerStyle]}>
+      <View style={actionStyles.sizingLayer} pointerEvents="none">
+        <ActionButton actions={headerActions[0]} iconOnly />
+      </View>
       <Animated.View style={[StyleSheet.absoluteFill, actionStyles.rightContent, singleIconStyle]}>
         <ActionButton actions={headerActions[0]} iconOnly />
       </Animated.View>
@@ -199,6 +208,9 @@ const actionStyles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     position: "relative",
+  },
+  sizingLayer: {
+    opacity: 0,
   },
   centerContent: {
     alignItems: "center",
