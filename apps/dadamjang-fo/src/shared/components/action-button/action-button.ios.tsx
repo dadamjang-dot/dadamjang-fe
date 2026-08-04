@@ -6,6 +6,7 @@ import {
   tint,
   frame,
   padding,
+  foregroundStyle,
 } from "@expo/ui/swift-ui/modifiers";
 import { colors } from "@dadamjang/design-tokens";
 
@@ -23,13 +24,13 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
   const btnWidth = isIconOnlySingle ? 40 : undefined;
 
   const btnModifiers = [
-    buttonStyle("glass"),
+    buttonStyle("glassProminent"),
     controlSize("regular"),
-    tint(colors.ink),
+    tint(colors.canvas),
     frame({ height: 40, width: btnWidth }),
   ];
 
-  const imgModifiers = [frame({ width: 24, height: 24 })];
+  const imgModifiers = [frame({ width: 24, height: 24 }), foregroundStyle(colors.primary)];
   const textModifiers = [padding({ vertical: 2.83 })];
 
   if (actions.length === 1) {
