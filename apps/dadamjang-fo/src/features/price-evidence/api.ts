@@ -29,6 +29,7 @@ export const getProductPriceSummaries = async (
     `query ProductPriceSummaries($filter: ProductFilterInput) {
       productPriceSummaries(filter: $filter) {
         nodes { ${productPriceSummaryFields} }
+        totalCount
         nextCursor
         hasNextPage
       }

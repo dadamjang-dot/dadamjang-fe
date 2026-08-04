@@ -12,6 +12,7 @@ export type ProductPriceSummary = {
 
 export type ProductPriceSummaryConnection = {
   nodes: ProductPriceSummary[];
+  totalCount: number;
   nextCursor: string | null;
   hasNextPage: boolean;
 };
