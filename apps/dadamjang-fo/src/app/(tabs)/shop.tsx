@@ -3,14 +3,8 @@ import { useMemo } from 'react';
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
-import {
-  ProductLayout,
-  ProductLayoutHeaderActionsType,
-  ShopCategoryBar,
-  ShopFilterBar,
-  ShopProductGrid,
-  ShopSortBar,
-} from "@/shared/components";
+import { ProductLayout, ProductLayoutHeaderActionsType } from "@/shared/components";
+import { ShopCategoryBar, ShopFilterBar, ShopProductGrid, ShopSortBar } from '@/features/shop';
 import {
   toProductFilter,
   useCategories,

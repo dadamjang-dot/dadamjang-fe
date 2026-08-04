@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { ShopFilterSheet } from '@/shared/components';
+import { ShopFilterSheet } from '@/features/shop';
 import type { ShopFilterMode } from '@/features/catalog';
 
 const filterModes: ShopFilterMode[] = ['category', 'brand', 'color', 'size', 'price', 'sort'];
