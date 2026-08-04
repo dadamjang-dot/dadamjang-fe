@@ -1,49 +1,87 @@
-import { Host, HStack, Button, Image, Text, type ButtonProps, type ImageProps } from "@expo/ui/swift-ui";
+import {
+  Button,
+  HStack,
+  Host,
+  Image,
+  Text,
+  type ButtonProps,
+  type ImageProps,
+} from "@expo/ui/swift-ui";
 import {
   controlSize,
   frame,
   padding,
   foregroundStyle,
+  glassEffect,
+  buttonStyle,
 } from "@expo/ui/swift-ui/modifiers";
 import { colors } from "@dadamjang/design-tokens";
 
-import type { ActionButtonProps as BaseActionButtonProps } from "./action-button.types";
+import type {
+  Action,
+  ActionButtonProps as BaseActionButtonProps,
+} from "./action-button.types";
 
 export interface ActionButtonProps
   extends BaseActionButtonProps,
     Omit<ButtonProps, "systemImage"> {}
 
+const getButtonModifiers = (action: Action, iconOnly?: boolean) => {
+  const isIconOnly = !!(iconOnly && action.icon && !action.label);
+
+  return [
+    controlSize("regular"),
+    frame({ height: 40, width: isIconOnly ? 40 : undefined }),
+    glassEffect({
+      glass: {
+        variant: "regular",
+        interactive: true,
+        tint: colors.surface,
+      },
+      shape: isIconOnly ? "circle" : "capsule",
+    }),
+  ];
+};
+
+const getGroupedActionModifiers = (action: Action, iconOnly?: boolean) => {
+  const isIconOnly = !!(iconOnly && action.icon && !action.label);
+
+  return [
+    buttonStyle("plain"),
+    controlSize("regular"),
+    frame({ height: 40, width: isIconOnly ? 40 : undefined }),
+  ];
+};
+
+const groupedButtonModifiers = [
+  frame({ height: 40 }),
+  padding({ horizontal: 4 }),
+  glassEffect({
+    glass: {
+      variant: "regular",
+      interactive: true,
+      tint: colors.surface,
+    },
+    shape: "capsule",
+  }),
+];
+
 const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
   if (!actions || actions.length === 0) return null;
-
-  const singleAction = actions.length === 1 ? actions[0] : null;
-  const isIconOnlySingle = !!(iconOnly && singleAction?.icon && !singleAction?.label);
-  const btnWidth = isIconOnlySingle ? 40 : undefined;
-
-  const btnModifiers = [
-    controlSize("regular"),
-    frame({ height: 40, width: btnWidth }),
-  ];
 
   const imgModifiers = [frame({ width: 24, height: 24 }), foregroundStyle(colors.primary)];
   const textModifiers = [padding({ vertical: 2.83 }), foregroundStyle(colors.primary)];
 
   if (actions.length === 1) {
-    const { icon, label, onPress } = actions[0];
+    const action = actions[0];
 
     return (
       <Host matchContents>
-        <Button
-          onPress={onPress}
-          modifiers={[
-            ...btnModifiers,
-            // buttonBorderShape(isIconOnlySingle ? "circle" : "capsule"),
-          ]}
-        >
-          {icon ? (
-            <Image systemName={icon as ImageProps["systemName"]} modifiers={imgModifiers} />
-          ) : label ? (
-            <Text modifiers={textModifiers}>{label}</Text>
+        <Button onPress={action.onPress} modifiers={getButtonModifiers(action, iconOnly)}>
+          {action.icon ? (
+            <Image systemName={action.icon as ImageProps["systemName"]} modifiers={imgModifiers} />
+          ) : action.label ? (
+            <Text modifiers={textModifiers}>{action.label}</Text>
           ) : undefined}
         </Button>
       </Host>
@@ -52,24 +90,24 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
 
   return (
     <Host matchContents>
-      <Button modifiers={[
-        ...btnModifiers, 
-        // buttonBorderShape("capsule")
-      ]}>
-        <HStack spacing={12}>
-          {actions.map((action, idx) => (
-            <HStack key={action.label ?? idx} spacing={4}>
-              {action.icon ? (
-                <Image
-                  systemName={action.icon as ImageProps["systemName"]}
-                  modifiers={imgModifiers}
-                />
-              ) : null}
-              {action.label ? <Text modifiers={textModifiers}>{action.label}</Text> : null}
-            </HStack>
-          ))}
-        </HStack>
-      </Button>
+      <HStack spacing={4} modifiers={groupedButtonModifiers}>
+        {actions.map((action, idx) => (
+          <Button
+            key={action.label ?? action.icon ?? idx}
+            onPress={action.onPress}
+            modifiers={getGroupedActionModifiers(action, iconOnly)}
+          >
+            {action.icon ? (
+              <Image
+                systemName={action.icon as ImageProps["systemName"]}
+                modifiers={imgModifiers}
+              />
+            ) : action.label ? (
+              <Text modifiers={textModifiers}>{action.label}</Text>
+            ) : undefined}
+          </Button>
+        ))}
+      </HStack>
     </Host>
   );
 };
