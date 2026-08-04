@@ -16,7 +16,7 @@ const RootLayout = () => (
       <ShopFiltersProvider>
         <StatusBar style="dark" />
         <SafeAreaView style={s.container} edges={["top"]}>
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.primarySoft } }}>
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.surface } }}>
             <Stack.Screen
               name="auth"
               options={{ presentation: "fullScreenModal", gestureEnabled: false }}
@@ -38,7 +38,7 @@ const RootLayout = () => (
 );
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.primarySoft },
+  container: { flex: 1, backgroundColor: colors.surface },
 });
 
 export default Sentry.wrap(RootLayout);

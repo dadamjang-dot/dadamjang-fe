@@ -1,9 +1,6 @@
 import { Host, HStack, Button, Image, Text, type ButtonProps, type ImageProps } from "@expo/ui/swift-ui";
 import {
-  buttonBorderShape,
   controlSize,
-  buttonStyle,
-  tint,
   frame,
   padding,
   foregroundStyle,
@@ -24,14 +21,12 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
   const btnWidth = isIconOnlySingle ? 40 : undefined;
 
   const btnModifiers = [
-    buttonStyle("glassProminent"),
     controlSize("regular"),
-    tint(colors.canvas),
     frame({ height: 40, width: btnWidth }),
   ];
 
   const imgModifiers = [frame({ width: 24, height: 24 }), foregroundStyle(colors.primary)];
-  const textModifiers = [padding({ vertical: 2.83 })];
+  const textModifiers = [padding({ vertical: 2.83 }), foregroundStyle(colors.primary)];
 
   if (actions.length === 1) {
     const { icon, label, onPress } = actions[0];
@@ -42,7 +37,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
           onPress={onPress}
           modifiers={[
             ...btnModifiers,
-            buttonBorderShape(isIconOnlySingle ? "circle" : "capsule"),
+            // buttonBorderShape(isIconOnlySingle ? "circle" : "capsule"),
           ]}
         >
           {icon ? (
@@ -57,7 +52,10 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
 
   return (
     <Host matchContents>
-      <Button modifiers={[...btnModifiers, buttonBorderShape("capsule")]}>
+      <Button modifiers={[
+        ...btnModifiers, 
+        // buttonBorderShape("capsule")
+      ]}>
         <HStack spacing={12}>
           {actions.map((action, idx) => (
             <HStack key={action.label ?? idx} spacing={4}>

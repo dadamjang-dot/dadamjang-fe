@@ -116,7 +116,7 @@ const s = StyleSheet.create({
     gap: 16,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.surface,
   },
   searchInputWrapper: {
     flex: 1,
