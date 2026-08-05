@@ -50,7 +50,6 @@ const getButtonModifiers = (action: Action, iconOnly?: boolean) => {
       glass: {
         variant: "clear",
         interactive: true,
-        tint: colors.primarySoft,
       },
       shape: isIconOnly ? "circle" : "capsule",
     }),
@@ -62,7 +61,6 @@ const groupedActionModifiers = [
   controlSize("regular"),
   frame({ width: 40, height: 40 }),
   background(colors.primarySoft, shapes.rectangle()),
-  strokeBorder({ color: colors.primarySoft, shape: "rectangle", style: { lineWidth: 1 } }),
   padding({ horizontal: 2 }),
   contentShape(shapes.rectangle()),
 ];
@@ -70,17 +68,16 @@ const groupedActionModifiers = [
 const groupedButtonModifiers = [
   frame({ height: 40 }),
   background(colors.primarySoft, shapes.capsule()),
+  clipShape("capsule"),
   strokeBorder({
     color: colors.line,
     shape: "capsule",
     style: { lineWidth: 1 },
   }),
-  clipShape("capsule"),
   glassEffect({
     glass: {
       variant: "clear",
       interactive: true,
-      tint: colors.primarySoft,
     },
     shape: "capsule",
   }),
@@ -102,7 +99,10 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
       <Host matchContents>
         <Button onPress={action.onPress} modifiers={getButtonModifiers(action, iconOnly)}>
           {action.icon ? (
-            <Image systemName={action.icon as ImageProps["systemName"]} modifiers={imgModifiers} />
+            <Image
+              systemName={action.icon as ImageProps["systemName"]}
+              modifiers={imgModifiers}
+            />
           ) : action.label ? (
             <Text modifiers={textModifiers}>{action.label}</Text>
           ) : undefined}
