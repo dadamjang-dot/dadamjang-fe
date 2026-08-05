@@ -12,8 +12,13 @@ import {
   frame,
   padding,
   foregroundStyle,
+  background,
+  clipShape,
+  contentShape,
   glassEffect,
   buttonStyle,
+  shapes,
+  strokeBorder,
 } from "@expo/ui/swift-ui/modifiers";
 import { colors } from "@dadamjang/design-tokens";
 
@@ -32,35 +37,50 @@ const getButtonModifiers = (action: Action, iconOnly?: boolean) => {
   return [
     controlSize("regular"),
     frame({ height: 40, width: isIconOnly ? 40 : undefined }),
+    background(
+      colors.primarySoft,
+      isIconOnly ? shapes.circle() : shapes.capsule()
+    ),
+    strokeBorder({
+      color: colors.line,
+      shape: isIconOnly ? "circle" : "capsule",
+      style: { lineWidth: 1 },
+    }),
     glassEffect({
       glass: {
-        variant: "regular",
+        variant: "clear",
         interactive: true,
-        tint: colors.surface,
+        tint: colors.primarySoft,
       },
       shape: isIconOnly ? "circle" : "capsule",
     }),
   ];
 };
 
-const getGroupedActionModifiers = (action: Action, iconOnly?: boolean) => {
-  const isIconOnly = !!(iconOnly && action.icon && !action.label);
-
-  return [
-    buttonStyle("plain"),
-    controlSize("regular"),
-    frame({ height: 40, width: isIconOnly ? 40 : undefined }),
-  ];
-};
+const groupedActionModifiers = [
+  buttonStyle("plain"),
+  controlSize("regular"),
+  frame({ width: 40, height: 40 }),
+  background(colors.primarySoft, shapes.rectangle()),
+  strokeBorder({ color: colors.primarySoft, shape: "rectangle", style: { lineWidth: 1 } }),
+  padding({ horizontal: 2 }),
+  contentShape(shapes.rectangle()),
+];
 
 const groupedButtonModifiers = [
   frame({ height: 40 }),
-  padding({ horizontal: 4 }),
+  background(colors.primarySoft, shapes.capsule()),
+  strokeBorder({
+    color: colors.line,
+    shape: "capsule",
+    style: { lineWidth: 1 },
+  }),
+  clipShape("capsule"),
   glassEffect({
     glass: {
-      variant: "regular",
+      variant: "clear",
       interactive: true,
-      tint: colors.surface,
+      tint: colors.primarySoft,
     },
     shape: "capsule",
   }),
@@ -70,7 +90,10 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
   if (!actions || actions.length === 0) return null;
 
   const imgModifiers = [frame({ width: 24, height: 24 }), foregroundStyle(colors.primary)];
-  const textModifiers = [padding({ vertical: 2.83 }), foregroundStyle(colors.primary)];
+  const textModifiers = [
+    padding({ vertical: 2.83, horizontal: 16 }),
+    foregroundStyle(colors.primary),
+  ];
 
   if (actions.length === 1) {
     const action = actions[0];
@@ -90,12 +113,12 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
 
   return (
     <Host matchContents>
-      <HStack spacing={4} modifiers={groupedButtonModifiers}>
+      <HStack spacing={0} modifiers={groupedButtonModifiers}>
         {actions.map((action, idx) => (
           <Button
             key={action.label ?? action.icon ?? idx}
             onPress={action.onPress}
-            modifiers={getGroupedActionModifiers(action, iconOnly)}
+            modifiers={groupedActionModifiers}
           >
             {action.icon ? (
               <Image
