@@ -20,6 +20,7 @@ export interface ProductHeaderProps {
   onSearchCancel?: () => void;
   searchValue?: string;
   onSearchValueChange?: (text: string) => void;
+  actionTransitionPhaseEnd?: number;
 }
 
 const ProductHeader = ({
@@ -29,6 +30,7 @@ const ProductHeader = ({
   onSearchCancel,
   searchValue,
   onSearchValueChange,
+  actionTransitionPhaseEnd = 0,
 }: ProductHeaderProps) => {
   const inputRef = useRef<TextInput>(null);
 
@@ -68,7 +70,7 @@ const ProductHeader = ({
   const btnWrapperWidth = useDerivedValue(() => {
     return interpolate(
       progress.value,
-      [0, 1],
+      [actionTransitionPhaseEnd, 1],
       [childrenWidth.value, cancelWidth.value],
       Extrapolation.CLAMP
     );

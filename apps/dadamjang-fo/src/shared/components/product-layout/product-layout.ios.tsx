@@ -12,6 +12,9 @@ import { ActionButton, ProductHeader, SearchContent } from "@/shared/components"
 import { colors } from "@dadamjang/design-tokens";
 import type { ProductLayoutProps } from "./product-layout.types";
 
+const firstButtonPhaseEnd = 0.45;
+const singleButtonWidthPhaseEnd = 0.65;
+
 const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -57,7 +60,7 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
     return {
       width: interpolate(
         progress.value,
-        [0, 1],
+        [0, singleButtonWidthPhaseEnd],
         [childrenWidth.value, cancelWidth.value],
         Extrapolation.CLAMP
       ),
@@ -65,23 +68,33 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   });
 
   const singleIconStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.45], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(progress.value, [0, 0.2], [1, 0], Extrapolation.CLAMP),
     transform: [
       {
-        scale: interpolate(progress.value, [0, 0.45], [1, 0.85], Extrapolation.CLAMP),
+        scale: interpolate(progress.value, [0, 0.2], [1, 0.85], Extrapolation.CLAMP),
       },
     ],
-    display: progress.value === 1 ? "none" : "flex",
+    display: progress.value >= 0.2 ? "none" : "flex",
   }));
 
   const singleCancelStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0.35, 1], [0, 1], Extrapolation.CLAMP),
+    opacity: interpolate(
+      progress.value,
+      [singleButtonWidthPhaseEnd, 1],
+      [0, 1],
+      Extrapolation.CLAMP
+    ),
     transform: [
       {
-        scale: interpolate(progress.value, [0.35, 1], [0.85, 1], Extrapolation.CLAMP),
+        scale: interpolate(
+          progress.value,
+          [singleButtonWidthPhaseEnd, 1],
+          [0.85, 1],
+          Extrapolation.CLAMP
+        ),
       },
     ],
-    display: progress.value === 0 ? "none" : "flex",
+    display: progress.value <= singleButtonWidthPhaseEnd ? "none" : "flex",
   }));
 
   const firstBtnStyle = useAnimatedStyle(() => {
@@ -91,47 +104,72 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
         {
           translateX: interpolate(
             progress.value,
-            [0, 1],
+            [0, firstButtonPhaseEnd],
             [0, moveDist > 0 ? moveDist : 0],
             Extrapolation.CLAMP
           ),
         },
         {
-          scale: interpolate(progress.value, [0, 0.65], [1, 0.85], Extrapolation.CLAMP),
+          scale: interpolate(
+            progress.value,
+            [0, firstButtonPhaseEnd],
+            [1, 0.85],
+            Extrapolation.CLAMP
+          ),
         },
       ],
-      opacity: interpolate(progress.value, [0, 0.65], [1, 0], Extrapolation.CLAMP),
-      display: progress.value === 1 ? "none" : "flex",
+      opacity: interpolate(progress.value, [0, firstButtonPhaseEnd], [1, 0], Extrapolation.CLAMP),
+      display: progress.value >= firstButtonPhaseEnd ? "none" : "flex",
     };
   });
 
   const secondBtnStyle = useAnimatedStyle(() => ({
     width: interpolate(
       progress.value,
-      [0, 1],
+      [firstButtonPhaseEnd, 1],
       [40, cancelWidth.value],
       Extrapolation.CLAMP
     ),
   }));
 
   const secondBtnIconStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.45], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(
+      progress.value,
+      [firstButtonPhaseEnd, firstButtonPhaseEnd + 0.2],
+      [1, 0],
+      Extrapolation.CLAMP
+    ),
     transform: [
       {
-        scale: interpolate(progress.value, [0, 0.45], [1, 0.85], Extrapolation.CLAMP),
+        scale: interpolate(
+          progress.value,
+          [firstButtonPhaseEnd, firstButtonPhaseEnd + 0.2],
+          [1, 0.85],
+          Extrapolation.CLAMP
+        ),
       },
     ],
     display: progress.value === 1 ? "none" : "flex",
   }));
 
   const secondBtnCancelStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0.35, 1], [0, 1], Extrapolation.CLAMP),
+    opacity: interpolate(
+      progress.value,
+      [firstButtonPhaseEnd + 0.2, 1],
+      [0, 1],
+      Extrapolation.CLAMP
+    ),
     transform: [
       {
-        scale: interpolate(progress.value, [0.35, 1], [0.85, 1], Extrapolation.CLAMP),
+        scale: interpolate(
+          progress.value,
+          [firstButtonPhaseEnd + 0.2, 1],
+          [0.85, 1],
+          Extrapolation.CLAMP
+        ),
       },
     ],
-    display: progress.value === 0 ? "none" : "flex",
+    display: progress.value <= firstButtonPhaseEnd ? "none" : "flex",
   }));
 
   const buttonGroup = isTwoBtnCase ? (
@@ -165,6 +203,9 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   return (
     <View style={s.container}>
       <ProductHeader
+        actionTransitionPhaseEnd={
+          isTwoBtnCase ? firstButtonPhaseEnd : singleButtonWidthPhaseEnd
+        }
         isSearching={isSearching}
         onSearchFocus={() => setIsSearching(true)}
         onSearchCancel={handleCancelSearch}
