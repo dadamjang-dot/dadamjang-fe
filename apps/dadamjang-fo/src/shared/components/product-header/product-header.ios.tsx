@@ -7,11 +7,13 @@ import Animated, {
   interpolate,
   withSpring,
   Extrapolation,
-  LinearTransition,
 } from "react-native-reanimated";
 
 import { ActionButton, SearchInput } from "@/shared/components";
 import { colors } from "@dadamjang/design-tokens";
+
+const horizontalPadding = 16;
+const headerGap = 16;
 
 export interface ProductHeaderProps {
   children?: ReactNode;
@@ -34,6 +36,7 @@ const ProductHeader = ({
 }: ProductHeaderProps) => {
   const inputRef = useRef<TextInput>(null);
 
+  const containerWidth = useSharedValue(0);
   const childrenWidth = useSharedValue(0);
   const cancelWidth = useSharedValue(0);
 
@@ -45,11 +48,20 @@ const ProductHeader = ({
     }
   }, [isSearching]);
 
+  const handleContainerLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      containerWidth.value = e.nativeEvent.layout.width;
+    },
+    [containerWidth]
+  );
+
   const handleChildrenLayout = useCallback(
     (e: LayoutChangeEvent) => {
-      childrenWidth.value = e.nativeEvent.layout.width;
+      if (!isSearching) {
+        childrenWidth.value = e.nativeEvent.layout.width;
+      }
     },
-    [childrenWidth]
+    [childrenWidth, isSearching]
   );
 
   const handleCancelLayout = useCallback(
@@ -84,12 +96,27 @@ const ProductHeader = ({
     return { width: btnWrapperWidth.value };
   });
 
+  const searchInputStyle = useAnimatedStyle(() => {
+    if (
+      containerWidth.value === 0 ||
+      childrenWidth.value === 0 ||
+      cancelWidth.value === 0
+    ) {
+      return { flex: 1 };
+    }
+
+    return {
+      flex: 0,
+      width: Math.max(
+        0,
+        containerWidth.value - horizontalPadding * 2 - headerGap - btnWrapperWidth.value
+      ),
+    };
+  });
+
   return (
-    <View style={s.container}>
-      <Animated.View
-        style={s.searchInputWrapper}
-        layout={LinearTransition.springify().damping(25).stiffness(260)}
-      >
+    <View style={s.container} onLayout={handleContainerLayout}>
+      <Animated.View style={[s.searchInputWrapper, searchInputStyle]}>
         <SearchInput
           ref={inputRef}
           value={searchValue}
@@ -115,13 +142,12 @@ const ProductHeader = ({
 const s = StyleSheet.create({
   container: {
     flexDirection: "row",
-    gap: 16,
-    paddingHorizontal: 16,
+    gap: headerGap,
+    paddingHorizontal: horizontalPadding,
     paddingVertical: 8,
     backgroundColor: colors.surface,
   },
   searchInputWrapper: {
-    flex: 1,
     minWidth: 0,
     height: 40,
   },
