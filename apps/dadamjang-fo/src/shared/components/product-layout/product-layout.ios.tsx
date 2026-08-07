@@ -1,19 +1,22 @@
+import { LiquidGlassContainerView, LiquidGlassView } from "@callstack/liquid-glass";
 import { useCallback, useEffect, useState } from "react";
-import { View, StyleSheet, type LayoutChangeEvent } from "react-native";
+import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   interpolate,
   withSpring,
   Extrapolation,
 } from "react-native-reanimated";
 
 import { ActionButton, ProductHeader, SearchContent } from "@/shared/components";
+import { ActionButtonContent } from "@/shared/components/action-button/action-button.ios";
 import { colors } from "@dadamjang/design-tokens";
 import type { ProductLayoutProps } from "./product-layout.types";
 
 const firstButtonPhaseEnd = 0.45;
 const singleButtonWidthPhaseEnd = 0.65;
+const AnimatedLiquidGlassView = Animated.createAnimatedComponent(LiquidGlassView);
 
 const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   const [isSearching, setIsSearching] = useState(false);
@@ -31,15 +34,15 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   const isTwoBtnCase = headerActions.length === 2;
 
   const handleChildrenLayout = useCallback(
-    (e: LayoutChangeEvent) => {
-      childrenWidth.value = e.nativeEvent.layout.width;
+    (event: LayoutChangeEvent) => {
+      childrenWidth.value = event.nativeEvent.layout.width;
     },
     [childrenWidth]
   );
 
   const handleCancelLayout = useCallback(
-    (e: LayoutChangeEvent) => {
-      cancelWidth.value = e.nativeEvent.layout.width;
+    (event: LayoutChangeEvent) => {
+      cancelWidth.value = event.nativeEvent.layout.width;
     },
     [cancelWidth]
   );
@@ -54,10 +57,11 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
 
   const singleBtnContainerStyle = useAnimatedStyle(() => {
     if (childrenWidth.value === 0 || cancelWidth.value === 0) {
-      return {};
+      return { opacity: 1 };
     }
 
     return {
+      opacity: 1,
       width: interpolate(
         progress.value,
         [0, singleButtonWidthPhaseEnd],
@@ -99,6 +103,7 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
 
   const firstBtnStyle = useAnimatedStyle(() => {
     const moveDist = childrenWidth.value - cancelWidth.value;
+
     return {
       transform: [
         {
@@ -173,28 +178,44 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   }));
 
   const buttonGroup = isTwoBtnCase ? (
-    <View style={actionStyles.twoBtnRow}>
-      <Animated.View style={firstBtnStyle}>
-        <ActionButton actions={headerActions[0]} iconOnly />
-      </Animated.View>
-      <Animated.View style={[actionStyles.expandingBtn, secondBtnStyle]}>
-        <Animated.View style={[StyleSheet.absoluteFill, actionStyles.centerContent, secondBtnIconStyle]}>
-          <ActionButton actions={headerActions[1]} iconOnly />
+    <LiquidGlassContainerView spacing={6} style={actionStyles.twoBtnRow}>
+      <AnimatedLiquidGlassView
+        effect="clear"
+        interactive
+        style={[actionStyles.iconGlassButton, firstBtnStyle]}
+      >
+        <ActionButtonContent action={headerActions[0][0]} iconOnly />
+        <View pointerEvents="none" style={actionStyles.surfaceBorder} />
+      </AnimatedLiquidGlassView>
+      <AnimatedLiquidGlassView
+        effect="clear"
+        interactive
+        style={[actionStyles.expandingGlassButton, secondBtnStyle]}
+      >
+        <Animated.View
+          style={[actionStyles.absoluteFill, actionStyles.centerContent, secondBtnIconStyle]}
+        >
+          <ActionButtonContent action={headerActions[1][0]} iconOnly />
         </Animated.View>
-        <Animated.View style={[StyleSheet.absoluteFill, actionStyles.rightContent, secondBtnCancelStyle]}>
-          <ActionButton actions={[{ label: "취소", onPress: handleCancelSearch }]} />
+        <Animated.View
+          style={[actionStyles.absoluteFill, actionStyles.rightContent, secondBtnCancelStyle]}
+        >
+          <ActionButtonContent
+            action={{ label: "취소", onPress: handleCancelSearch }}
+          />
         </Animated.View>
-      </Animated.View>
-    </View>
+        <View pointerEvents="none" style={actionStyles.surfaceBorder} />
+      </AnimatedLiquidGlassView>
+    </LiquidGlassContainerView>
   ) : (
     <Animated.View style={[actionStyles.expandingBtn, singleBtnContainerStyle]}>
-      <View style={actionStyles.sizingLayer} pointerEvents="none">
+      <View pointerEvents="none" style={actionStyles.sizingLayer}>
         <ActionButton actions={headerActions[0]} iconOnly />
       </View>
-      <Animated.View style={[StyleSheet.absoluteFill, actionStyles.rightContent, singleIconStyle]}>
+      <Animated.View style={[actionStyles.absoluteFill, actionStyles.rightContent, singleIconStyle]}>
         <ActionButton actions={headerActions[0]} iconOnly />
       </Animated.View>
-      <Animated.View style={[StyleSheet.absoluteFill, actionStyles.rightContent, singleCancelStyle]}>
+      <Animated.View style={[actionStyles.absoluteFill, actionStyles.rightContent, singleCancelStyle]}>
         <ActionButton actions={[{ label: "취소", onPress: handleCancelSearch }]} />
       </Animated.View>
     </Animated.View>
@@ -209,15 +230,15 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
         isSearching={isSearching}
         onSearchFocus={() => setIsSearching(true)}
         onSearchCancel={handleCancelSearch}
-        searchValue={searchValue}
         onSearchValueChange={setSearchValue}
+        searchValue={searchValue}
       >
-        <View style={actionStyles.measureOuter} onLayout={handleChildrenLayout}>
-          {headerActions.map((actions, i) => (
-            <ActionButton key={i} actions={actions} iconOnly />
+        <View onLayout={handleChildrenLayout} style={actionStyles.measureOuter}>
+          {headerActions.map((actions, index) => (
+            <ActionButton key={index} actions={actions} iconOnly />
           ))}
         </View>
-        <View style={actionStyles.measureOuter} onLayout={handleCancelLayout}>
+        <View onLayout={handleCancelLayout} style={actionStyles.measureOuter}>
           <ActionButton actions={[{ label: "취소", onPress: () => {} }]} />
         </View>
         {buttonGroup}
@@ -240,18 +261,47 @@ const actionStyles = StyleSheet.create({
     alignItems: "center",
   },
   twoBtnRow: {
+    height: 40,
     flexDirection: "row",
     gap: 6,
     alignItems: "center",
     justifyContent: "flex-end",
   },
-  expandingBtn: {
+  iconGlassButton: {
+    width: 40,
     height: 40,
     borderRadius: 20,
+    flexShrink: 0,
+  },
+  expandingGlassButton: {
+    height: 40,
+    borderRadius: 20,
+    position: "relative",
+    flexShrink: 0,
+  },
+  expandingBtn: {
+    height: 40,
     position: "relative",
   },
   sizingLayer: {
     opacity: 0,
+  },
+  absoluteFill: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  surfaceBorder: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 20,
   },
   centerContent: {
     alignItems: "center",

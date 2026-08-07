@@ -1,128 +1,117 @@
-import {
-  Button,
-  HStack,
-  Host,
-  Image,
-  Text,
-  type ButtonProps,
-  type ImageProps,
-} from "@expo/ui/swift-ui";
-import {
-  controlSize,
-  frame,
-  padding,
-  foregroundStyle,
-  background,
-  clipShape,
-  contentShape,
-  glassEffect,
-  buttonStyle,
-  shapes,
-  strokeBorder,
-} from "@expo/ui/swift-ui/modifiers";
-import { colors } from "@dadamjang/design-tokens";
+import { LiquidGlassView } from "@callstack/liquid-glass";
+import { SymbolView, type SFSymbol } from "expo-symbols";
+import { Pressable, Text, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
+import { colors } from "@dadamjang/design-tokens";
 import type {
   Action,
   ActionButtonProps as BaseActionButtonProps,
 } from "./action-button.types";
 
-export interface ActionButtonProps
-  extends BaseActionButtonProps,
-    Omit<ButtonProps, "systemImage"> {}
+export type ActionButtonProps = BaseActionButtonProps;
 
-const getSurfaceModifiers = (shape: "circle" | "capsule") => [
-  background("transparent"),
-  strokeBorder({
-    color: colors.line,
-    shape,
-    style: { lineWidth: 1 },
-  }),
-  glassEffect({
-    glass: {
-      variant: "clear",
-      interactive: true,
-    },
-    shape,
-  }),
-];
+interface ActionButtonContentProps {
+  action: Action;
+  iconOnly?: boolean;
+}
 
-const getButtonModifiers = (action: Action, iconOnly?: boolean) => {
-  const isIconOnly = !!(iconOnly && action.icon && !action.label);
-  const shape = isIconOnly ? "circle" : "capsule";
+export const ActionButtonContent = ({ action, iconOnly }: ActionButtonContentProps) => {
+  const isIconOnly = Boolean(iconOnly && action.icon && !action.label);
 
-  return [
-    buttonStyle("plain"),
-    controlSize("regular"),
-    frame({ height: 40, width: isIconOnly ? 40 : undefined }),
-    ...getSurfaceModifiers(shape),
-  ];
+  return (
+    <Pressable
+      accessibilityLabel={action.label ?? action.icon}
+      accessibilityRole="button"
+      onPress={action.onPress}
+      style={[s.action, isIconOnly ? s.iconAction : s.labelAction]}
+    >
+      {action.icon ? (
+        <SymbolView name={action.icon as SFSymbol} size={24} tintColor={colors.primary} />
+      ) : action.label ? (
+        <Text style={s.label}>{action.label}</Text>
+      ) : null}
+    </Pressable>
+  );
 };
 
-const groupedActionModifiers = [
-  buttonStyle("plain"),
-  controlSize("regular"),
-  frame({ width: 40, height: 40 }),
-  padding({ horizontal: 2 }),
-  contentShape(shapes.rectangle()),
-];
-
-const groupedButtonModifiers = [
-  frame({ height: 40 }),
-  clipShape("capsule"),
-  ...getSurfaceModifiers("capsule"),
-];
-
 const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
-  if (!actions || actions.length === 0) return null;
-
-  const imgModifiers = [frame({ width: 24, height: 24 }), foregroundStyle(colors.primary)];
-  const textModifiers = [
-    padding({ vertical: 2.83, horizontal: 16 }),
-    foregroundStyle(colors.primary),
-  ];
+  if (!actions.length) return null;
 
   if (actions.length === 1) {
     const action = actions[0];
+    const isIconOnly = Boolean(iconOnly && action.icon && !action.label);
 
     return (
-      <Host matchContents>
-        <Button onPress={action.onPress} modifiers={getButtonModifiers(action, iconOnly)}>
-          {action.icon ? (
-            <Image
-              systemName={action.icon as ImageProps["systemName"]}
-              modifiers={imgModifiers}
-            />
-          ) : action.label ? (
-            <Text modifiers={textModifiers}>{action.label}</Text>
-          ) : undefined}
-        </Button>
-      </Host>
+      <LiquidGlassView
+        effect="clear"
+        interactive
+        style={isIconOnly ? s.iconSurface : s.labelSurface}
+      >
+        <ActionButtonContent action={action} iconOnly={iconOnly} />
+        <View pointerEvents="none" style={s.surfaceBorder} />
+      </LiquidGlassView>
     );
   }
 
   return (
-    <Host matchContents>
-      <HStack spacing={0} modifiers={groupedButtonModifiers}>
-        {actions.map((action, idx) => (
-          <Button
-            key={action.label ?? action.icon ?? idx}
-            onPress={action.onPress}
-            modifiers={groupedActionModifiers}
-          >
-            {action.icon ? (
-              <Image
-                systemName={action.icon as ImageProps["systemName"]}
-                modifiers={imgModifiers}
-              />
-            ) : action.label ? (
-              <Text modifiers={textModifiers}>{action.label}</Text>
-            ) : undefined}
-          </Button>
+    <LiquidGlassView effect="clear" interactive style={s.groupSurface}>
+      <View style={s.groupContent}>
+        {actions.map((action, index) => (
+          <ActionButtonContent
+            key={action.label ?? action.icon ?? index}
+            action={action}
+            iconOnly={iconOnly}
+          />
         ))}
-      </HStack>
-    </Host>
+      </View>
+      <View pointerEvents="none" style={s.surfaceBorder} />
+    </LiquidGlassView>
   );
 };
+
+const s = StyleSheet.create({
+  action: {
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconAction: {
+    width: 40,
+  },
+  labelAction: {
+    paddingHorizontal: 16,
+  },
+  label: {
+    color: colors.primary,
+  },
+  iconSurface: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  labelSurface: {
+    height: 40,
+    borderRadius: 20,
+  },
+  groupSurface: {
+    height: 40,
+    borderRadius: 20,
+  },
+  surfaceBorder: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 20,
+  },
+  groupContent: {
+    flexDirection: "row",
+    paddingHorizontal: 2,
+  },
+});
 
 export default ActionButton;

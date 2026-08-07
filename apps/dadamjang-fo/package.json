@@ -20,6 +20,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@callstack/liquid-glass": "^0.8.0",
     "@dadamjang/design-tokens": "workspace:*",
     "@dadamjang/domain": "workspace:*",
     "@dadamjang/graphql-client": "workspace:*",
@@ -39,6 +40,7 @@
     "expo-secure-store": "~57.0.0",
     "expo-splash-screen": "~57.0.4",
     "expo-status-bar": "~57.0.1",
+    "expo-symbols": "~57.0.2",
     "expo-system-ui": "~57.0.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",

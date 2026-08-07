@@ -90,10 +90,13 @@ const ProductHeader = ({
 
   const btnWrapperStyle = useAnimatedStyle(() => {
     if (childrenWidth.value === 0 || cancelWidth.value === 0) {
-      return {};
+      return { opacity: 1 };
     }
 
-    return { width: btnWrapperWidth.value };
+    return {
+      opacity: 1,
+      width: btnWrapperWidth.value,
+    };
   });
 
   const searchInputStyle = useAnimatedStyle(() => {
