@@ -28,7 +28,7 @@ const s = StyleSheet.create({
   input: {
     width: "100%",
     height: 40,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.canvas,
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: 20,

@@ -31,28 +31,32 @@ export interface ActionButtonProps
   extends BaseActionButtonProps,
     Omit<ButtonProps, "systemImage"> {}
 
+const getSurfaceModifiers = (shape: "circle" | "capsule") => [
+  background("transparent"),
+  strokeBorder({
+    color: colors.line,
+    shape,
+    style: { lineWidth: 1 },
+  }),
+  glassEffect({
+    glass: {
+      variant: "clear",
+      interactive: true,
+      tint: colors.canvas,
+    },
+    shape,
+  }),
+];
+
 const getButtonModifiers = (action: Action, iconOnly?: boolean) => {
   const isIconOnly = !!(iconOnly && action.icon && !action.label);
+  const shape = isIconOnly ? "circle" : "capsule";
 
   return [
+    buttonStyle("plain"),
     controlSize("regular"),
     frame({ height: 40, width: isIconOnly ? 40 : undefined }),
-    background(
-      colors.primarySoft,
-      isIconOnly ? shapes.circle() : shapes.capsule()
-    ),
-    strokeBorder({
-      color: colors.line,
-      shape: isIconOnly ? "circle" : "capsule",
-      style: { lineWidth: 1 },
-    }),
-    glassEffect({
-      glass: {
-        variant: "clear",
-        interactive: true,
-      },
-      shape: isIconOnly ? "circle" : "capsule",
-    }),
+    ...getSurfaceModifiers(shape),
   ];
 };
 
@@ -60,27 +64,14 @@ const groupedActionModifiers = [
   buttonStyle("plain"),
   controlSize("regular"),
   frame({ width: 40, height: 40 }),
-  background(colors.primarySoft, shapes.rectangle()),
   padding({ horizontal: 2 }),
   contentShape(shapes.rectangle()),
 ];
 
 const groupedButtonModifiers = [
   frame({ height: 40 }),
-  background(colors.primarySoft, shapes.capsule()),
   clipShape("capsule"),
-  strokeBorder({
-    color: colors.line,
-    shape: "capsule",
-    style: { lineWidth: 1 },
-  }),
-  glassEffect({
-    glass: {
-      variant: "clear",
-      interactive: true,
-    },
-    shape: "capsule",
-  }),
+  ...getSurfaceModifiers("capsule"),
 ];
 
 const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {

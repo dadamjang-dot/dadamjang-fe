@@ -165,7 +165,6 @@ const s = StyleSheet.create({
     opacity: 0,
     pointerEvents: "none",
     flexDirection: "row",
-    gap: 6,
     alignItems: "center",
   },
 });
