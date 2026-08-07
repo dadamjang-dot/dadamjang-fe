@@ -42,7 +42,6 @@ const getSurfaceModifiers = (shape: "circle" | "capsule") => [
     glass: {
       variant: "clear",
       interactive: true,
-      tint: colors.canvas,
     },
     shape,
   }),
