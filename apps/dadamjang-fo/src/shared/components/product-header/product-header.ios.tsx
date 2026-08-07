@@ -5,7 +5,8 @@ import Animated, {
   useAnimatedStyle,
   useDerivedValue,
   interpolate,
-  withSpring,
+  Easing,
+  withTiming,
   Extrapolation,
 } from "react-native-reanimated";
 
@@ -14,6 +15,7 @@ import { colors } from "@dadamjang/design-tokens";
 
 const horizontalPadding = 16;
 const headerGap = 16;
+const searchTransitionDuration = 220;
 
 export interface ProductHeaderProps {
   children?: ReactNode;
@@ -72,10 +74,9 @@ const ProductHeader = ({
   );
 
   useEffect(() => {
-    progress.value = withSpring(isSearching ? 1 : 0, {
-      mass: 0.9,
-      damping: 25,
-      stiffness: 260,
+    progress.value = withTiming(isSearching ? 1 : 0, {
+      duration: searchTransitionDuration,
+      easing: Easing.linear,
     });
   }, [isSearching, progress]);
 

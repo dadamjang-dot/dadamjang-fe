@@ -8,7 +8,7 @@ import {
   Text,
   Shape,
 } from "@expo/ui/jetpack-compose";
-import { size, height, paddingAll } from "@expo/ui/jetpack-compose/modifiers";
+import { size, height, paddingAll, width } from "@expo/ui/jetpack-compose/modifiers";
 import { colors } from "@dadamjang/design-tokens";
 
 import type { ActionButtonProps } from "./action-button.types";
@@ -30,7 +30,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
               containerColor: colors.surface,
               contentColor: colors.ink,
             }}
-            modifiers={[height(40)]}
+            modifiers={[width(72), height(40)]}
           >
             <Text>{label}</Text>
           </FilledTonalButton>

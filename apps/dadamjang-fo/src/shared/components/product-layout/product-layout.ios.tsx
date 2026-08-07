@@ -5,7 +5,8 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   interpolate,
-  withSpring,
+  Easing,
+  withTiming,
   Extrapolation,
 } from "react-native-reanimated";
 
@@ -14,8 +15,10 @@ import { ActionButtonContent } from "@/shared/components/action-button/action-bu
 import { colors } from "@dadamjang/design-tokens";
 import type { ProductLayoutProps } from "./product-layout.types";
 
-const firstButtonPhaseEnd = 0.45;
-const singleButtonWidthPhaseEnd = 0.65;
+const firstButtonPhaseEnd = 0.35;
+const singleButtonWidthPhaseEnd = firstButtonPhaseEnd;
+const singleButtonIconPhaseEnd = singleButtonWidthPhaseEnd + 0.2;
+const searchTransitionDuration = 220;
 const AnimatedLiquidGlassView = Animated.createAnimatedComponent(LiquidGlassView);
 
 const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
@@ -48,10 +51,9 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   );
 
   useEffect(() => {
-    progress.value = withSpring(isSearching ? 1 : 0, {
-      mass: 0.9,
-      damping: 25,
-      stiffness: 260,
+    progress.value = withTiming(isSearching ? 1 : 0, {
+      duration: searchTransitionDuration,
+      easing: Easing.linear,
     });
   }, [isSearching, progress]);
 
@@ -72,19 +74,29 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   });
 
   const singleIconStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.2], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(
+      progress.value,
+      [singleButtonWidthPhaseEnd, singleButtonIconPhaseEnd],
+      [1, 0],
+      Extrapolation.CLAMP
+    ),
     transform: [
       {
-        scale: interpolate(progress.value, [0, 0.2], [1, 0.85], Extrapolation.CLAMP),
+        scale: interpolate(
+          progress.value,
+          [singleButtonWidthPhaseEnd, singleButtonIconPhaseEnd],
+          [1, 0.85],
+          Extrapolation.CLAMP
+        ),
       },
     ],
-    display: progress.value >= 0.2 ? "none" : "flex",
+    display: progress.value >= singleButtonIconPhaseEnd ? "none" : "flex",
   }));
 
   const singleCancelStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
       progress.value,
-      [singleButtonWidthPhaseEnd, 1],
+      [singleButtonIconPhaseEnd, 1],
       [0, 1],
       Extrapolation.CLAMP
     ),
@@ -92,13 +104,13 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
       {
         scale: interpolate(
           progress.value,
-          [singleButtonWidthPhaseEnd, 1],
+          [singleButtonIconPhaseEnd, 1],
           [0.85, 1],
           Extrapolation.CLAMP
         ),
       },
     ],
-    display: progress.value <= singleButtonWidthPhaseEnd ? "none" : "flex",
+    display: progress.value <= singleButtonIconPhaseEnd ? "none" : "flex",
   }));
 
   const firstBtnStyle = useAnimatedStyle(() => {
@@ -129,12 +141,7 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   });
 
   const secondBtnStyle = useAnimatedStyle(() => ({
-    width: interpolate(
-      progress.value,
-      [firstButtonPhaseEnd, 1],
-      [40, cancelWidth.value],
-      Extrapolation.CLAMP
-    ),
+    width: progress.value < firstButtonPhaseEnd ? 40 : cancelWidth.value,
   }));
 
   const secondBtnIconStyle = useAnimatedStyle(() => ({

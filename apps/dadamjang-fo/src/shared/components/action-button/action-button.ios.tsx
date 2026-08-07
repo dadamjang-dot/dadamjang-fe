@@ -80,6 +80,7 @@ const s = StyleSheet.create({
     width: 40,
   },
   labelAction: {
+    width: 57,
     paddingHorizontal: 16,
   },
   label: {
