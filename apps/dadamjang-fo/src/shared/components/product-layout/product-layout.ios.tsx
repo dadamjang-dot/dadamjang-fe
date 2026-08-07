@@ -15,10 +15,11 @@ import { ActionButtonContent } from "@/shared/components/action-button/action-bu
 import { colors } from "@dadamjang/design-tokens";
 import type { ProductLayoutProps } from "./product-layout.types";
 
-const firstButtonPhaseEnd = 0.35;
+const firstButtonPhaseEnd = 0.25;
 const singleButtonWidthPhaseEnd = firstButtonPhaseEnd;
-const singleButtonIconPhaseEnd = singleButtonWidthPhaseEnd + 0.2;
-const searchTransitionDuration = 220;
+const singleButtonIconPhaseStart = singleButtonWidthPhaseEnd + 0.15;
+const singleButtonIconPhaseEnd = singleButtonIconPhaseStart + 0.15;
+const searchTransitionDuration = 280;
 const AnimatedLiquidGlassView = Animated.createAnimatedComponent(LiquidGlassView);
 
 const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
@@ -76,7 +77,7 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   const singleIconStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
       progress.value,
-      [singleButtonWidthPhaseEnd, singleButtonIconPhaseEnd],
+      [singleButtonIconPhaseStart, singleButtonIconPhaseEnd],
       [1, 0],
       Extrapolation.CLAMP
     ),
@@ -84,8 +85,13 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
       {
         scale: interpolate(
           progress.value,
-          [singleButtonWidthPhaseEnd, singleButtonIconPhaseEnd],
-          [1, 0.85],
+          [
+            0,
+            singleButtonWidthPhaseEnd,
+            singleButtonIconPhaseStart,
+            singleButtonIconPhaseEnd,
+          ],
+          [1, 0.9, 0.9, 0.85],
           Extrapolation.CLAMP
         ),
       },
@@ -215,17 +221,27 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
       </AnimatedLiquidGlassView>
     </LiquidGlassContainerView>
   ) : (
-    <Animated.View style={[actionStyles.expandingBtn, singleBtnContainerStyle]}>
-      <View pointerEvents="none" style={actionStyles.sizingLayer}>
-        <ActionButton actions={headerActions[0]} iconOnly />
-      </View>
-      <Animated.View style={[actionStyles.absoluteFill, actionStyles.rightContent, singleIconStyle]}>
-        <ActionButton actions={headerActions[0]} iconOnly />
+    <AnimatedLiquidGlassView
+      effect="clear"
+      interactive
+      style={[actionStyles.expandingGlassButton, singleBtnContainerStyle]}
+    >
+      <Animated.View style={[actionStyles.absoluteFill, actionStyles.centerContent, singleIconStyle]}>
+        <View style={actionStyles.singleButtonContent}>
+          {headerActions[0].map((action, index) => (
+            <ActionButtonContent
+              key={action.label ?? action.icon ?? index}
+              action={action}
+              iconOnly
+            />
+          ))}
+        </View>
       </Animated.View>
       <Animated.View style={[actionStyles.absoluteFill, actionStyles.rightContent, singleCancelStyle]}>
-        <ActionButton actions={[{ label: "취소", onPress: handleCancelSearch }]} />
+        <ActionButtonContent action={{ label: "취소", onPress: handleCancelSearch }} />
       </Animated.View>
-    </Animated.View>
+      <View pointerEvents="none" style={actionStyles.surfaceBorder} />
+    </AnimatedLiquidGlassView>
   );
 
   return (
@@ -285,13 +301,7 @@ const actionStyles = StyleSheet.create({
     borderRadius: 20,
     position: "relative",
     flexShrink: 0,
-  },
-  expandingBtn: {
-    height: 40,
-    position: "relative",
-  },
-  sizingLayer: {
-    opacity: 0,
+    overflow: "hidden",
   },
   absoluteFill: {
     position: "absolute",
@@ -317,6 +327,9 @@ const actionStyles = StyleSheet.create({
   rightContent: {
     alignItems: "flex-end",
     justifyContent: "center",
+  },
+  singleButtonContent: {
+    flexDirection: "row",
   },
 });
 

@@ -15,7 +15,7 @@ import { colors } from "@dadamjang/design-tokens";
 
 const horizontalPadding = 16;
 const headerGap = 16;
-const searchTransitionDuration = 220;
+const searchTransitionDuration = 280;
 
 export interface ProductHeaderProps {
   children?: ReactNode;
