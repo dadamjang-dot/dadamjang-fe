@@ -301,7 +301,6 @@ const actionStyles = StyleSheet.create({
     borderRadius: 20,
     position: "relative",
     flexShrink: 0,
-    overflow: "hidden",
   },
   absoluteFill: {
     position: "absolute",
