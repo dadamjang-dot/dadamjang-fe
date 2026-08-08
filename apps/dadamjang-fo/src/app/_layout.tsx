@@ -16,15 +16,24 @@ const RootLayout = () => (
       <ShopFiltersProvider>
         <StatusBar style="dark" />
         <SafeAreaView style={s.container} edges={["top"]}>
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.surface } }}>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.surface },
+            }}
+          >
             <Stack.Screen
               name="auth"
-              options={{ presentation: "fullScreenModal", gestureEnabled: false }}
+              options={{
+                presentation: "fullScreenModal",
+                gestureEnabled: false,
+              }}
             />
             <Stack.Screen
               name="shop-filter-sheet"
               options={{
-                presentation: process.env.EXPO_OS === 'ios' ? 'formSheet' : 'modal',
+                presentation:
+                  process.env.EXPO_OS === "ios" ? "formSheet" : "modal",
                 sheetAllowedDetents: [0.5, 1],
                 sheetGrabberVisible: true,
                 headerShown: false,

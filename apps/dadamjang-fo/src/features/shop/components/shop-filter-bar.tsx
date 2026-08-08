@@ -1,9 +1,9 @@
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { StyleSheet } from 'react-native-unistyles';
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
-import { colors } from '@dadamjang/design-tokens';
+import { colors } from "@dadamjang/design-tokens";
 
-import type { ShopFilterMode, ShopFilters } from '@/features/catalog';
+import type { ShopFilterMode, ShopFilters } from "@/features/catalog";
 
 type ShopFilterBarProps = {
   filters: ShopFilters;
@@ -29,7 +29,12 @@ const FilterChip = ({ label, active, onPress }: FilterChipProps) => (
   </Pressable>
 );
 
-const ShopFilterBar = ({ filters, onOpenFilter, onToggleSale, onToggleExpress }: ShopFilterBarProps) => (
+const ShopFilterBar = ({
+  filters,
+  onOpenFilter,
+  onToggleSale,
+  onToggleExpress,
+}: ShopFilterBarProps) => (
   <View style={s.container}>
     <ScrollView
       horizontal
@@ -37,7 +42,11 @@ const ShopFilterBar = ({ filters, onOpenFilter, onToggleSale, onToggleExpress }:
       contentContainerStyle={s.chips}
       contentInsetAdjustmentBehavior="automatic"
     >
-      <FilterChip label="슈퍼세일" active={filters.saleOnly} onPress={() => onToggleSale(!filters.saleOnly)} />
+      <FilterChip
+        label="슈퍼세일"
+        active={filters.saleOnly}
+        onPress={() => onToggleSale(!filters.saleOnly)}
+      />
       <FilterChip
         label="바로배송"
         active={filters.expressOnly}
@@ -45,16 +54,32 @@ const ShopFilterBar = ({ filters, onOpenFilter, onToggleSale, onToggleExpress }:
       />
       <FilterChip
         label="카테고리"
-        active={filters.categorySource === 'filter' && Boolean(filters.categoryId)}
-        onPress={() => onOpenFilter('category')}
+        active={
+          filters.categorySource === "filter" && Boolean(filters.categoryId)
+        }
+        onPress={() => onOpenFilter("category")}
       />
-      <FilterChip label="브랜드" active={filters.brandIds.length > 0} onPress={() => onOpenFilter('brand')} />
-      <FilterChip label="색상" active={filters.colorIds.length > 0} onPress={() => onOpenFilter('color')} />
-      <FilterChip label="사이즈" active={filters.sizeIds.length > 0} onPress={() => onOpenFilter('size')} />
+      <FilterChip
+        label="브랜드"
+        active={filters.brandIds.length > 0}
+        onPress={() => onOpenFilter("brand")}
+      />
+      <FilterChip
+        label="색상"
+        active={filters.colorIds.length > 0}
+        onPress={() => onOpenFilter("color")}
+      />
+      <FilterChip
+        label="사이즈"
+        active={filters.sizeIds.length > 0}
+        onPress={() => onOpenFilter("size")}
+      />
       <FilterChip
         label="가격대"
-        active={filters.minPrice !== undefined || filters.maxPrice !== undefined}
-        onPress={() => onOpenFilter('price')}
+        active={
+          filters.minPrice !== undefined || filters.maxPrice !== undefined
+        }
+        onPress={() => onOpenFilter("price")}
       />
     </ScrollView>
   </View>
@@ -74,7 +99,7 @@ const s = StyleSheet.create({
   },
   chip: {
     minHeight: 34,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingHorizontal: 13,
     borderRadius: 17,
     borderWidth: 1,
@@ -88,7 +113,7 @@ const s = StyleSheet.create({
   chipLabel: {
     color: colors.ink,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   activeChipLabel: {
     color: colors.surface,

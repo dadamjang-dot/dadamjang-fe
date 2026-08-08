@@ -1,11 +1,13 @@
-import { useLocalSearchParams } from 'expo-router';
-import { View } from 'react-native';
-import { StyleSheet } from 'react-native-unistyles';
+import { useLocalSearchParams } from "expo-router";
+import { View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
-import { useProduct } from '@/features/catalog';
+import { useProduct } from "@/features/catalog";
 
 const ProductScreen = () => {
-  const { 'product-id': productId } = useLocalSearchParams<{ 'product-id': string }>();
+  const { "product-id": productId } = useLocalSearchParams<{
+    "product-id": string;
+  }>();
   useProduct(productId);
 
   return <View style={s.container} />;

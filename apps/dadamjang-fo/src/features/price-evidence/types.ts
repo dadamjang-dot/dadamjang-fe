@@ -1,4 +1,4 @@
-import type { ProductFilter } from '@/features/catalog';
+import type { ProductFilter } from "@/features/catalog";
 
 export type ProductPriceSummary = {
   productId: string;

@@ -1,4 +1,4 @@
-import { LogBox } from 'react-native';
+import { LogBox } from "react-native";
 
 export const configureLogBox = () => {
   if (__DEV__) {
@@ -7,5 +7,5 @@ export const configureLogBox = () => {
     return;
   }
 
-  LogBox.ignoreLogs(['You are using an unsupported debugging client']);
+  LogBox.ignoreLogs(["You are using an unsupported debugging client"]);
 };

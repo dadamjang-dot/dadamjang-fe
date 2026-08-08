@@ -1,5 +1,5 @@
-const { configureLogBox } = require('./src/shared/observability/log-box');
+const { configureLogBox } = require("./src/shared/observability/log-box");
 
 configureLogBox();
 
-require('expo-router/entry');
+require("expo-router/entry");

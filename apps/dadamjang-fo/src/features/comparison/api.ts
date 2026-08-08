@@ -1,8 +1,8 @@
-import { graphqlRequest } from '@dadamjang/graphql-client';
+import { graphqlRequest } from "@dadamjang/graphql-client";
 
-import { productFields } from '@/features/catalog/api';
+import { productFields } from "@/features/catalog/api";
 
-import type { ComparisonItem } from './types';
+import type { ComparisonItem } from "./types";
 
 export const getComparison = async () => {
   const data = await graphqlRequest<{ comparison: ComparisonItem[] }>(
@@ -29,6 +29,6 @@ export const addComparisonItem = async (productId: string) =>
 
 export const removeComparisonItem = async (productId: string) =>
   graphqlRequest(
-    'mutation RemoveComparisonItem($productId: String!) { removeComparisonItem(productId: $productId) }',
+    "mutation RemoveComparisonItem($productId: String!) { removeComparisonItem(productId: $productId) }",
     { productId },
   );

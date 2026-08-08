@@ -1,4 +1,4 @@
-import { graphqlRequest } from '@dadamjang/graphql-client';
+import { graphqlRequest } from "@dadamjang/graphql-client";
 
 export type Order = {
   orderId: string;

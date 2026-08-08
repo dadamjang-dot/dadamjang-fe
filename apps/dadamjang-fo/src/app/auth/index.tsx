@@ -1,11 +1,14 @@
 import { useEffect } from "react";
-import { router } from 'expo-router';
-import { BackHandler, Pressable, Text, View } from 'react-native';
-import { StyleSheet } from 'react-native-unistyles';
+import { router } from "expo-router";
+import { BackHandler, Pressable, Text, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
 const AuthScreen = () => {
   useEffect(() => {
-    const subscription = BackHandler.addEventListener("hardwareBackPress", () => true);
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => true,
+    );
     return () => subscription.remove();
   }, []);
 
@@ -13,20 +16,20 @@ const AuthScreen = () => {
     <View style={s.screen}>
       <View style={s.hero}>
         <Text style={s.brandName}>DADAMJANG</Text>
-        <Text style={s.subtitle}>
-          로그인해서 주문과 위시템을 관리해요.
-        </Text>
+        <Text style={s.subtitle}>로그인해서 주문과 위시템을 관리해요.</Text>
 
         <View style={s.actions}>
           <Pressable
-            onPress={() => router.push('/auth/signin')}
-            style={s.primaryButton}>
+            onPress={() => router.push("/auth/signin")}
+            style={s.primaryButton}
+          >
             <Text style={s.primaryButtonText}>로그인</Text>
           </Pressable>
 
           <Pressable
-            onPress={() => router.push('/auth/signup')}
-            style={s.secondaryButton}>
+            onPress={() => router.push("/auth/signup")}
+            style={s.secondaryButton}
+          >
             <Text style={s.secondaryButtonText}>회원가입</Text>
           </Pressable>
         </View>
@@ -43,17 +46,17 @@ const s = StyleSheet.create({
   },
   hero: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     gap: 16,
   },
   brandName: {
     fontSize: 28,
-    fontWeight: '900',
+    fontWeight: "900",
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: '#666',
+    color: "#666",
     lineHeight: 22,
   },
   actions: {
@@ -61,25 +64,25 @@ const s = StyleSheet.create({
     marginTop: 20,
   },
   primaryButton: {
-    backgroundColor: '#000',
+    backgroundColor: "#000",
     borderRadius: 999,
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
   },
   primaryButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   secondaryButton: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
     borderRadius: 999,
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
   },
   secondaryButtonText: {
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 });
 

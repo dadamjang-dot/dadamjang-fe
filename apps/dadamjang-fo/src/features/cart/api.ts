@@ -1,6 +1,6 @@
-import { graphqlRequest } from '@dadamjang/graphql-client';
+import { graphqlRequest } from "@dadamjang/graphql-client";
 
-import type { Cart, CheckoutCartInput } from './types';
+import type { Cart, CheckoutCartInput } from "./types";
 
 export const getCart = async () => {
   const data = await graphqlRequest<{ cart: Cart }>(
@@ -31,7 +31,7 @@ export const upsertCartItem = async (skuId: string, quantity: number) =>
 
 export const removeCartItem = async (skuId: string) =>
   graphqlRequest(
-    'mutation RemoveCartItem($skuId: String!) { removeCartItem(skuId: $skuId) }',
+    "mutation RemoveCartItem($skuId: String!) { removeCartItem(skuId: $skuId) }",
     { skuId },
   );
 

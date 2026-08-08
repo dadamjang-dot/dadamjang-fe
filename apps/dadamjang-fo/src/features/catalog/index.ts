@@ -1,18 +1,18 @@
-export { catalogQueryKeys } from './query-keys';
+export { catalogQueryKeys } from "./query-keys";
 export {
   defaultShopFilters,
   normalizeShopFilters,
   ShopFiltersProvider,
   toProductFilter,
   useShopFilters,
-} from './shop-filters';
+} from "./shop-filters";
 export {
   useCatalogFilterOptions,
   useCatalogProducts,
   useCategories,
   useProduct,
   useProductSearch,
-} from './hooks';
+} from "./hooks";
 export type {
   CatalogBrandOption,
   CatalogColorOption,
@@ -25,5 +25,9 @@ export type {
   ProductFilter,
   ProductSku,
   ProductSort,
-} from './types';
-export type { ShopCategorySource, ShopFilterMode, ShopFilters } from './shop-filters';
+} from "./types";
+export type {
+  ShopCategorySource,
+  ShopFilterMode,
+  ShopFilters,
+} from "./shop-filters";

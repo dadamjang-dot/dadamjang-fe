@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { clearAccessToken } from '@dadamjang/graphql-client';
+import { clearAccessToken } from "@dadamjang/graphql-client";
 
 import {
   completeKakaoSignup,
@@ -10,9 +10,10 @@ import {
   signIn,
   signUp,
   verifySignupEmailCode,
-} from './api';
+} from "./api";
 
-export const useCurrentUser = () => useQuery({ queryKey: ['viewer'], queryFn: getCurrentUser, retry: false });
+export const useCurrentUser = () =>
+  useQuery({ queryKey: ["viewer"], queryFn: getCurrentUser, retry: false });
 
 export const useSignIn = () => {
   const queryClient = useQueryClient();
@@ -20,7 +21,7 @@ export const useSignIn = () => {
   return useMutation({
     mutationFn: ({ userid, password }: { userid: string; password: string }) =>
       signIn(userid, password),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['viewer'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["viewer"] }),
   });
 };
 
@@ -29,7 +30,7 @@ export const useSignUp = () => {
 
   return useMutation({
     mutationFn: signUp,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['viewer'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["viewer"] }),
   });
 };
 
@@ -38,7 +39,7 @@ export const useCompleteKakaoSignup = () => {
 
   return useMutation({
     mutationFn: completeKakaoSignup,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['viewer'] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["viewer"] }),
   });
 };
 
@@ -58,6 +59,6 @@ export const useSignOut = () => {
 
   return async () => {
     await clearAccessToken();
-    queryClient.removeQueries({ queryKey: ['viewer'] });
+    queryClient.removeQueries({ queryKey: ["viewer"] });
   };
 };

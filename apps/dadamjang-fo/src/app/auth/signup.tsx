@@ -1,5 +1,5 @@
-import { View } from 'react-native';
-import { StyleSheet } from 'react-native-unistyles';
+import { View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
 const SignupScreen = () => <View style={s.container} />;
 

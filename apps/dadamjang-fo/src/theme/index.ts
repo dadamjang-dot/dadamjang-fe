@@ -1,2 +1,2 @@
-export { lightTheme } from './unistyles'
-export type { AppTheme } from './unistyles'
+export { lightTheme } from "./unistyles";
+export type { AppTheme } from "./unistyles";

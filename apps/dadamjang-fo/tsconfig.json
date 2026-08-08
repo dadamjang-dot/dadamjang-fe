@@ -9,10 +9,11 @@
       "@/*": ["./src/*"],
       "@dadamjang/design-tokens": ["../../packages/design-tokens/src/index.ts"],
       "@dadamjang/domain": ["../../packages/domain/src/index.ts"],
-      "@dadamjang/graphql-client": ["../../packages/graphql-client/src/index.ts"],
+      "@dadamjang/graphql-client": [
+        "../../packages/graphql-client/src/index.ts"
+      ]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
-,
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
   "exclude": ["node_modules", "node_modules.nosync", "dist"]
 }

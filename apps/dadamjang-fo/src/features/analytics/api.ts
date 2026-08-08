@@ -1,6 +1,6 @@
-import { graphqlRequest } from '@dadamjang/graphql-client';
+import { graphqlRequest } from "@dadamjang/graphql-client";
 
-import type { CommerceEventInput } from './types';
+import type { CommerceEventInput } from "./types";
 
 export const recordCommerceEvent = async (input: CommerceEventInput) =>
   graphqlRequest(

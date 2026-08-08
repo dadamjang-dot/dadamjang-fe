@@ -19,7 +19,7 @@ const SearchInput = forwardRef<TextInput, SearchInputProps>(
         style={s.input}
       />
     );
-  }
+  },
 );
 
 SearchInput.displayName = "SearchInput";

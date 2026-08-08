@@ -1,9 +1,17 @@
-import { createContext, use, useCallback, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  use,
+  useCallback,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
-import type { ProductFilter, ProductSort } from './types';
+import type { ProductFilter, ProductSort } from "./types";
 
-export type ShopFilterMode = 'category' | 'brand' | 'color' | 'size' | 'price' | 'sort';
-export type ShopCategorySource = 'navigation' | 'filter';
+export type ShopFilterMode =
+  "category" | "brand" | "color" | "size" | "price" | "sort";
+export type ShopCategorySource = "navigation" | "filter";
 
 export type ShopFilters = {
   categoryId?: string;
@@ -34,7 +42,7 @@ export const defaultShopFilters: ShopFilters = {
   sizeIds: [],
   saleOnly: false,
   expressOnly: false,
-  sort: 'RECOMMENDED',
+  sort: "RECOMMENDED",
 };
 
 export const normalizeShopFilters = (filters: ShopFilters): ShopFilters => ({
@@ -56,11 +64,14 @@ export const toProductFilter = (filters: ShopFilters): ProductFilter => ({
   sort: filters.sort,
 });
 
-const ShopFiltersContext = createContext<ShopFiltersContextValue | undefined>(undefined);
+const ShopFiltersContext = createContext<ShopFiltersContextValue | undefined>(
+  undefined,
+);
 
 export const ShopFiltersProvider = ({ children }: { children: ReactNode }) => {
   const [filters, setFilters] = useState<ShopFilters>(defaultShopFilters);
-  const [draftFilters, setDraftFilters] = useState<ShopFilters>(defaultShopFilters);
+  const [draftFilters, setDraftFilters] =
+    useState<ShopFilters>(defaultShopFilters);
 
   const updateFilters = useCallback((updates: Partial<ShopFilters>) => {
     setFilters((current) => normalizeShopFilters({ ...current, ...updates }));
@@ -71,7 +82,9 @@ export const ShopFiltersProvider = ({ children }: { children: ReactNode }) => {
   }, [filters]);
 
   const updateDraft = useCallback((updates: Partial<ShopFilters>) => {
-    setDraftFilters((current) => normalizeShopFilters({ ...current, ...updates }));
+    setDraftFilters((current) =>
+      normalizeShopFilters({ ...current, ...updates }),
+    );
   }, []);
 
   const applyDraft = useCallback(() => {
@@ -105,11 +118,15 @@ export const ShopFiltersProvider = ({ children }: { children: ReactNode }) => {
     ],
   );
 
-  return <ShopFiltersContext.Provider value={value}>{children}</ShopFiltersContext.Provider>;
+  return (
+    <ShopFiltersContext.Provider value={value}>
+      {children}
+    </ShopFiltersContext.Provider>
+  );
 };
 
 export const useShopFilters = () => {
   const value = use(ShopFiltersContext);
-  if (!value) throw new Error('ShopFiltersProvider is required');
+  if (!value) throw new Error("ShopFiltersProvider is required");
   return value;
 };

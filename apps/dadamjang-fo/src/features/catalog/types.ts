@@ -30,7 +30,10 @@ export type ProductConnection = {
   hasNextPage: boolean;
 };
 
-export type PersonalizedFeedConnection = Omit<ProductConnection, 'totalCount'> & {
+export type PersonalizedFeedConnection = Omit<
+  ProductConnection,
+  "totalCount"
+> & {
   totalCount?: number;
 };
 
@@ -42,7 +45,8 @@ export type Category = {
   sortOrder: number;
 };
 
-export type ProductSort = 'RECOMMENDED' | 'LATEST' | 'LOW_PRICE' | 'HIGH_PRICE' | 'POPULAR';
+export type ProductSort =
+  "RECOMMENDED" | "LATEST" | "LOW_PRICE" | "HIGH_PRICE" | "POPULAR";
 
 export type ProductFilter = {
   categoryId?: string;

@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
-import { StyleSheet, View, type LayoutChangeEvent, type TextInput } from "react-native";
+import {
+  StyleSheet,
+  View,
+  type LayoutChangeEvent,
+  type TextInput,
+} from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -54,7 +59,7 @@ const ProductHeader = ({
     (e: LayoutChangeEvent) => {
       containerWidth.value = e.nativeEvent.layout.width;
     },
-    [containerWidth]
+    [containerWidth],
   );
 
   const handleChildrenLayout = useCallback(
@@ -63,14 +68,14 @@ const ProductHeader = ({
         childrenWidth.value = e.nativeEvent.layout.width;
       }
     },
-    [childrenWidth]
+    [childrenWidth],
   );
 
   const handleCancelLayout = useCallback(
     (e: LayoutChangeEvent) => {
       cancelWidth.value = e.nativeEvent.layout.width;
     },
-    [cancelWidth]
+    [cancelWidth],
   );
 
   useEffect(() => {
@@ -85,7 +90,7 @@ const ProductHeader = ({
       progress.value,
       [actionTransitionPhaseEnd, 1],
       [childrenWidth.value, cancelWidth.value],
-      Extrapolation.CLAMP
+      Extrapolation.CLAMP,
     );
   });
 
@@ -113,7 +118,10 @@ const ProductHeader = ({
       flex: 0,
       width: Math.max(
         0,
-        containerWidth.value - horizontalPadding * 2 - headerGap - btnWrapperWidth.value
+        containerWidth.value -
+          horizontalPadding * 2 -
+          headerGap -
+          btnWrapperWidth.value,
       ),
     };
   });

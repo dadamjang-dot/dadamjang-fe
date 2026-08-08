@@ -1,7 +1,7 @@
-import { View } from 'react-native';
-import { StyleSheet } from 'react-native-unistyles';
+import { View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
-import { useOrders } from '@/features/order';
+import { useOrders } from "@/features/order";
 
 const OrdersScreen = () => {
   useOrders();

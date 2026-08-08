@@ -1,14 +1,17 @@
-const { defineConfig } = require('eslint/config');
-const expoConfig = require('eslint-config-expo/flat');
+const { defineConfig } = require("eslint/config");
+const expoConfig = require("eslint-config-expo/flat");
 
 module.exports = defineConfig([
   {
-    ignores: ['.expo/**', 'dist/**', 'node_modules/**'],
+    ignores: [".expo/**", "dist/**", "node_modules/**"],
   },
   expoConfig,
   {
     rules: {
-      'import/no-unresolved': ['error', { ignore: ['^@/.*', '^@dadamjang/.*'] }],
+      "import/no-unresolved": [
+        "error",
+        { ignore: ["^@/.*", "^@dadamjang/.*"] },
+      ],
     },
   },
 ]);

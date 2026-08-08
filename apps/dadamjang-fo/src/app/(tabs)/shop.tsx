@@ -1,16 +1,24 @@
-import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useRouter } from "expo-router";
+import { useMemo } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
-import { ProductLayout, ProductLayoutHeaderActionsType } from "@/shared/components";
-import { ShopCategoryBar, ShopFilterBar, ShopProductGrid, ShopSortBar } from '@/features/shop';
+import {
+  ProductLayout,
+  ProductLayoutHeaderActionsType,
+} from "@/shared/components";
+import {
+  ShopCategoryBar,
+  ShopFilterBar,
+  ShopProductGrid,
+  ShopSortBar,
+} from "@/features/shop";
 import {
   toProductFilter,
   useCategories,
   useShopFilters,
-} from '@/features/catalog';
-import { useProductPriceSummaries } from '@/features/price-evidence';
+} from "@/features/catalog";
+import { useProductPriceSummaries } from "@/features/price-evidence";
 
 const ShopScreen = () => {
   const router = useRouter();
@@ -18,12 +26,15 @@ const ShopScreen = () => {
   const { data: categories = [] } = useCategories();
   const productFilter = useMemo(() => toProductFilter(filters), [filters]);
   const productsQuery = useProductPriceSummaries(productFilter);
-  const products = productsQuery.data?.pages.flatMap((page) => page.nodes) ?? [];
+  const products =
+    productsQuery.data?.pages.flatMap((page) => page.nodes) ?? [];
   const totalCount = productsQuery.data?.pages[0]?.totalCount ?? 0;
 
-  const openFilter = (mode: 'category' | 'brand' | 'color' | 'size' | 'price' | 'sort') => {
+  const openFilter = (
+    mode: "category" | "brand" | "color" | "size" | "price" | "sort",
+  ) => {
     startDraft();
-    router.push({ pathname: '/shop-filter-sheet', params: { mode } });
+    router.push({ pathname: "/shop-filter-sheet", params: { mode } });
   };
 
   const headerActions: ProductLayoutHeaderActionsType = [
@@ -42,7 +53,7 @@ const ShopScreen = () => {
           onSelectCategory={(categoryId) =>
             updateFilters({
               categoryId,
-              categorySource: categoryId ? 'navigation' : undefined,
+              categorySource: categoryId ? "navigation" : undefined,
             })
           }
         />
@@ -55,7 +66,7 @@ const ShopScreen = () => {
         <ShopSortBar
           sort={filters.sort}
           totalCount={totalCount}
-          onOpenSort={() => openFilter('sort')}
+          onOpenSort={() => openFilter("sort")}
         />
         <ShopProductGrid
           hasNextPage={Boolean(productsQuery.hasNextPage)}
