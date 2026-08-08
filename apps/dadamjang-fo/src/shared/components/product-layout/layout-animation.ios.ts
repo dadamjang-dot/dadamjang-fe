@@ -108,6 +108,10 @@ export const useCapsuleAnimation = (
     };
   });
 
+  const iconStyle = useAnimatedStyle(() => ({
+    opacity: progress.value > 0 ? 0 : 1,
+  }));
+
   const cancelBtnStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [phaseEnd, 1], [0, 1], Extrapolation.CLAMP),
     transform: [
@@ -125,6 +129,7 @@ export const useCapsuleAnimation = (
 
   const groupAnim: [ActionButtonGroupAnimation, ActionButtonGroupAnimation?] = [
     capsuleStyle,
+    iconStyle,
   ];
 
   return { groupAnim, cancelAnim: cancelBtnStyle };

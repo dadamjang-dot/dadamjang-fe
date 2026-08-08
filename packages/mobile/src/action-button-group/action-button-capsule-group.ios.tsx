@@ -18,7 +18,7 @@ const ActionButtonCapsuleGroup = ({
         style={s.capsuleGlassButton}
         tintColor={colors.canvas}
       >
-        <View style={s.capsuleContent}>
+        <Animated.View style={[s.capsuleContent, animations?.[1]]}>
           {actions.map((action, index) => (
             <ActionButtonContent
               key={action.label ?? action.icon ?? index}
@@ -26,7 +26,7 @@ const ActionButtonCapsuleGroup = ({
               iconOnly
             />
           ))}
-        </View>
+        </Animated.View>
         <View pointerEvents="none" style={s.surfaceBorder} />
       </LiquidGlassView>
     </Animated.View>
