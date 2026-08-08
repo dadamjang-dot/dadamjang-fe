@@ -5,7 +5,7 @@ import { colors } from "@dadamjang/design-tokens";
 import type { ActionButtonGroupProps } from "./action-button-group.types";
 
 const ActionButtonGroup = ({
-  variant,
+  variant = "capsule",
   actions,
 }: ActionButtonGroupProps) => {
   if (variant === "circularPair") {

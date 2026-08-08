@@ -1,8 +1,9 @@
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { useCurrentUser } from "@/features/auth";
-import { ActionButton, TitleHeader } from "@/shared/components";
+import { TitleHeader } from "@/shared/components";
 import { colors } from "@dadamjang/design-tokens";
+import { ActionButtonGroup } from "@dadamjang/mobile";
 
 const MyScreen = () => {
   const { isPending } = useCurrentUser();
@@ -12,13 +13,12 @@ const MyScreen = () => {
   return (
     <View style={s.container}>
       <TitleHeader title="MY">
-        <ActionButton
-          actions={[{ icon: "gear", onPress: () => {} }]}
-          iconOnly
-        />
-        <ActionButton
-          actions={[{ icon: "cart", onPress: () => {} }]}
-          iconOnly
+        <ActionButtonGroup
+          variant="circularPair"
+          actions={[
+            { icon: "gear", onPress: () => {} },
+            { icon: "cart", onPress: () => {} },
+          ]}
         />
       </TitleHeader>
     </View>

@@ -8,7 +8,7 @@ export type ActionButtonGroupAnimation = AnimatedStyle<ViewStyle>;
 
 export interface ActionButtonGroupProps {
   actions: Action[];
-  variant: ActionButtonGroupVariant;
+  variant?: ActionButtonGroupVariant;
   animations?: [ActionButtonGroupAnimation, ActionButtonGroupAnimation?];
 }
 
