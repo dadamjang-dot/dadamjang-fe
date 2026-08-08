@@ -150,6 +150,8 @@ const s = StyleSheet.create({
     paddingHorizontal: horizontalPadding,
     paddingVertical: 8,
     backgroundColor: colors.surface,
+    overflow: "visible",
+    zIndex: 1,
   },
   searchInputWrapper: {
     minWidth: 0,
