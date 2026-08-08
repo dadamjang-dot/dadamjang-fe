@@ -1,16 +1,34 @@
+import {
+  LiquidGlassContainerView,
+  LiquidGlassView,
+} from "@callstack/liquid-glass";
 import { useCallback, useEffect, useState } from "react";
-import { View, StyleSheet, type LayoutChangeEvent } from "react-native";
+import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   interpolate,
-  withSpring,
+  Easing,
+  withTiming,
   Extrapolation,
 } from "react-native-reanimated";
 
-import { ActionButton, ProductHeader, SearchContent } from "@/shared/components";
+import {
+  ActionButton,
+  ProductHeader,
+  SearchContent,
+} from "@/shared/components";
+import { ActionButtonContent } from "@/shared/components/action-button/action-button.ios";
 import { colors } from "@dadamjang/design-tokens";
 import type { ProductLayoutProps } from "./product-layout.types";
+
+const firstButtonPhaseEnd = 0.25;
+const singleButtonWidthPhaseEnd = firstButtonPhaseEnd;
+const singleButtonIconPhaseStart = singleButtonWidthPhaseEnd + 0.15;
+const singleButtonIconPhaseEnd = singleButtonIconPhaseStart + 0.15;
+const searchTransitionDuration = 280;
+const AnimatedLiquidGlassView =
+  Animated.createAnimatedComponent(LiquidGlassView);
 
 const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   const [isSearching, setIsSearching] = useState(false);
@@ -28,155 +46,259 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   const isTwoBtnCase = headerActions.length === 2;
 
   const handleChildrenLayout = useCallback(
-    (e: LayoutChangeEvent) => {
-      childrenWidth.value = e.nativeEvent.layout.width;
+    (event: LayoutChangeEvent) => {
+      childrenWidth.value = event.nativeEvent.layout.width;
     },
-    [childrenWidth]
+    [childrenWidth],
   );
 
   const handleCancelLayout = useCallback(
-    (e: LayoutChangeEvent) => {
-      cancelWidth.value = e.nativeEvent.layout.width;
+    (event: LayoutChangeEvent) => {
+      cancelWidth.value = event.nativeEvent.layout.width;
     },
-    [cancelWidth]
+    [cancelWidth],
   );
 
   useEffect(() => {
-    progress.value = withSpring(isSearching ? 1 : 0, {
-      mass: 0.9,
-      damping: 25,
-      stiffness: 260,
+    progress.value = withTiming(isSearching ? 1 : 0, {
+      duration: searchTransitionDuration,
+      easing: Easing.linear,
     });
   }, [isSearching, progress]);
 
   const singleBtnContainerStyle = useAnimatedStyle(() => {
     if (childrenWidth.value === 0 || cancelWidth.value === 0) {
-      return {};
+      return { opacity: 1 };
     }
 
     return {
+      opacity: 1,
       width: interpolate(
         progress.value,
-        [0, 1],
+        [0, singleButtonWidthPhaseEnd],
         [childrenWidth.value, cancelWidth.value],
-        Extrapolation.CLAMP
+        Extrapolation.CLAMP,
       ),
     };
   });
 
   const singleIconStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.45], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(
+      progress.value,
+      [singleButtonIconPhaseStart, singleButtonIconPhaseEnd],
+      [1, 0],
+      Extrapolation.CLAMP,
+    ),
     transform: [
       {
-        scale: interpolate(progress.value, [0, 0.45], [1, 0.85], Extrapolation.CLAMP),
+        scale: interpolate(
+          progress.value,
+          [
+            0,
+            singleButtonWidthPhaseEnd,
+            singleButtonIconPhaseStart,
+            singleButtonIconPhaseEnd,
+          ],
+          [1, 0.9, 0.9, 0.85],
+          Extrapolation.CLAMP,
+        ),
       },
     ],
-    display: progress.value === 1 ? "none" : "flex",
+    display: progress.value >= singleButtonIconPhaseEnd ? "none" : "flex",
   }));
 
   const singleCancelStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0.35, 1], [0, 1], Extrapolation.CLAMP),
+    opacity: interpolate(
+      progress.value,
+      [singleButtonIconPhaseEnd, 1],
+      [0, 1],
+      Extrapolation.CLAMP,
+    ),
     transform: [
       {
-        scale: interpolate(progress.value, [0.35, 1], [0.85, 1], Extrapolation.CLAMP),
+        scale: interpolate(
+          progress.value,
+          [singleButtonIconPhaseEnd, 1],
+          [0.85, 1],
+          Extrapolation.CLAMP,
+        ),
       },
     ],
-    display: progress.value === 0 ? "none" : "flex",
+    display: progress.value <= singleButtonIconPhaseEnd ? "none" : "flex",
   }));
 
   const firstBtnStyle = useAnimatedStyle(() => {
     const moveDist = childrenWidth.value - cancelWidth.value;
+
     return {
       transform: [
         {
           translateX: interpolate(
             progress.value,
-            [0, 1],
+            [0, firstButtonPhaseEnd],
             [0, moveDist > 0 ? moveDist : 0],
-            Extrapolation.CLAMP
+            Extrapolation.CLAMP,
           ),
         },
         {
-          scale: interpolate(progress.value, [0, 0.65], [1, 0.85], Extrapolation.CLAMP),
+          scale: interpolate(
+            progress.value,
+            [0, firstButtonPhaseEnd],
+            [1, 0.85],
+            Extrapolation.CLAMP,
+          ),
         },
       ],
-      opacity: interpolate(progress.value, [0, 0.65], [1, 0], Extrapolation.CLAMP),
-      display: progress.value === 1 ? "none" : "flex",
+      opacity: interpolate(
+        progress.value,
+        [0, firstButtonPhaseEnd],
+        [1, 0],
+        Extrapolation.CLAMP,
+      ),
+      display: progress.value >= firstButtonPhaseEnd ? "none" : "flex",
     };
   });
 
   const secondBtnStyle = useAnimatedStyle(() => ({
-    width: interpolate(
-      progress.value,
-      [0, 1],
-      [40, cancelWidth.value],
-      Extrapolation.CLAMP
-    ),
+    width: progress.value < firstButtonPhaseEnd ? 40 : cancelWidth.value,
   }));
 
   const secondBtnIconStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.45], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(
+      progress.value,
+      [firstButtonPhaseEnd, firstButtonPhaseEnd + 0.2],
+      [1, 0],
+      Extrapolation.CLAMP,
+    ),
     transform: [
       {
-        scale: interpolate(progress.value, [0, 0.45], [1, 0.85], Extrapolation.CLAMP),
+        scale: interpolate(
+          progress.value,
+          [firstButtonPhaseEnd, firstButtonPhaseEnd + 0.2],
+          [1, 0.85],
+          Extrapolation.CLAMP,
+        ),
       },
     ],
     display: progress.value === 1 ? "none" : "flex",
   }));
 
   const secondBtnCancelStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0.35, 1], [0, 1], Extrapolation.CLAMP),
+    opacity: interpolate(
+      progress.value,
+      [firstButtonPhaseEnd + 0.2, 1],
+      [0, 1],
+      Extrapolation.CLAMP,
+    ),
     transform: [
       {
-        scale: interpolate(progress.value, [0.35, 1], [0.85, 1], Extrapolation.CLAMP),
+        scale: interpolate(
+          progress.value,
+          [firstButtonPhaseEnd + 0.2, 1],
+          [0.85, 1],
+          Extrapolation.CLAMP,
+        ),
       },
     ],
-    display: progress.value === 0 ? "none" : "flex",
+    display: progress.value <= firstButtonPhaseEnd ? "none" : "flex",
   }));
 
   const buttonGroup = isTwoBtnCase ? (
-    <View style={actionStyles.twoBtnRow}>
-      <Animated.View style={firstBtnStyle}>
-        <ActionButton actions={headerActions[0]} iconOnly />
-      </Animated.View>
-      <Animated.View style={[actionStyles.expandingBtn, secondBtnStyle]}>
-        <Animated.View style={[StyleSheet.absoluteFill, actionStyles.centerContent, secondBtnIconStyle]}>
-          <ActionButton actions={headerActions[1]} iconOnly />
+    <LiquidGlassContainerView spacing={0} style={actionStyles.twoBtnRow}>
+      <AnimatedLiquidGlassView
+        effect="clear"
+        interactive
+        style={[actionStyles.iconGlassButton, firstBtnStyle]}
+        tintColor={colors.canvas}
+      >
+        <ActionButtonContent action={headerActions[0][0]} iconOnly />
+        <View pointerEvents="none" style={actionStyles.surfaceBorder} />
+      </AnimatedLiquidGlassView>
+      <AnimatedLiquidGlassView
+        effect="clear"
+        interactive
+        style={[actionStyles.expandingGlassButton, secondBtnStyle]}
+        tintColor={colors.canvas}
+      >
+        <Animated.View
+          style={[
+            actionStyles.absoluteFill,
+            actionStyles.centerContent,
+            secondBtnIconStyle,
+          ]}
+        >
+          <ActionButtonContent action={headerActions[1][0]} iconOnly />
         </Animated.View>
-        <Animated.View style={[StyleSheet.absoluteFill, actionStyles.rightContent, secondBtnCancelStyle]}>
-          <ActionButton actions={[{ label: "취소", onPress: handleCancelSearch }]} />
+        <Animated.View
+          style={[
+            actionStyles.absoluteFill,
+            actionStyles.rightContent,
+            secondBtnCancelStyle,
+          ]}
+        >
+          <ActionButtonContent
+            action={{ label: "취소", onPress: handleCancelSearch }}
+          />
         </Animated.View>
-      </Animated.View>
-    </View>
+        <View pointerEvents="none" style={actionStyles.surfaceBorder} />
+      </AnimatedLiquidGlassView>
+    </LiquidGlassContainerView>
   ) : (
-    <Animated.View style={[actionStyles.expandingBtn, singleBtnContainerStyle]}>
-      <View style={actionStyles.sizingLayer} pointerEvents="none">
-        <ActionButton actions={headerActions[0]} iconOnly />
-      </View>
-      <Animated.View style={[StyleSheet.absoluteFill, actionStyles.rightContent, singleIconStyle]}>
-        <ActionButton actions={headerActions[0]} iconOnly />
+    <AnimatedLiquidGlassView
+      effect="clear"
+      interactive
+      style={[actionStyles.expandingGlassButton, singleBtnContainerStyle]}
+    >
+      <Animated.View
+        style={[
+          actionStyles.absoluteFill,
+          actionStyles.centerContent,
+          singleIconStyle,
+        ]}
+      >
+        <View style={actionStyles.singleButtonContent}>
+          {headerActions[0].map((action, index) => (
+            <ActionButtonContent
+              key={action.label ?? action.icon ?? index}
+              action={action}
+              iconOnly
+            />
+          ))}
+        </View>
       </Animated.View>
-      <Animated.View style={[StyleSheet.absoluteFill, actionStyles.rightContent, singleCancelStyle]}>
-        <ActionButton actions={[{ label: "취소", onPress: handleCancelSearch }]} />
+      <Animated.View
+        style={[
+          actionStyles.absoluteFill,
+          actionStyles.rightContent,
+          singleCancelStyle,
+        ]}
+      >
+        <ActionButtonContent
+          action={{ label: "취소", onPress: handleCancelSearch }}
+        />
       </Animated.View>
-    </Animated.View>
+      <View pointerEvents="none" style={actionStyles.surfaceBorder} />
+    </AnimatedLiquidGlassView>
   );
 
   return (
     <View style={s.container}>
       <ProductHeader
+        actionTransitionPhaseEnd={
+          isTwoBtnCase ? firstButtonPhaseEnd : singleButtonWidthPhaseEnd
+        }
         isSearching={isSearching}
         onSearchFocus={() => setIsSearching(true)}
         onSearchCancel={handleCancelSearch}
-        searchValue={searchValue}
         onSearchValueChange={setSearchValue}
+        searchValue={searchValue}
       >
-        <View style={actionStyles.measureOuter} onLayout={handleChildrenLayout}>
-          {headerActions.map((actions, i) => (
-            <ActionButton key={i} actions={actions} iconOnly />
+        <View onLayout={handleChildrenLayout} style={actionStyles.measureOuter}>
+          {headerActions.map((actions, index) => (
+            <ActionButton key={index} actions={actions} iconOnly />
           ))}
         </View>
-        <View style={actionStyles.measureOuter} onLayout={handleCancelLayout}>
+        <View onLayout={handleCancelLayout} style={actionStyles.measureOuter}>
           <ActionButton actions={[{ label: "취소", onPress: () => {} }]} />
         </View>
         {buttonGroup}
@@ -199,18 +321,40 @@ const actionStyles = StyleSheet.create({
     alignItems: "center",
   },
   twoBtnRow: {
+    height: 40,
     flexDirection: "row",
-    gap: 6,
+    gap: 8,
     alignItems: "center",
     justifyContent: "flex-end",
   },
-  expandingBtn: {
+  iconGlassButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    flexShrink: 0,
+  },
+  expandingGlassButton: {
     height: 40,
     borderRadius: 20,
     position: "relative",
+    flexShrink: 0,
   },
-  sizingLayer: {
-    opacity: 0,
+  absoluteFill: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  surfaceBorder: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 20,
   },
   centerContent: {
     alignItems: "center",
@@ -219,6 +363,9 @@ const actionStyles = StyleSheet.create({
   rightContent: {
     alignItems: "flex-end",
     justifyContent: "center",
+  },
+  singleButtonContent: {
+    flexDirection: "row",
   },
 });
 

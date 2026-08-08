@@ -8,7 +8,12 @@ import {
   Text,
   Shape,
 } from "@expo/ui/jetpack-compose";
-import { size, height, paddingAll } from "@expo/ui/jetpack-compose/modifiers";
+import {
+  size,
+  height,
+  paddingAll,
+  width,
+} from "@expo/ui/jetpack-compose/modifiers";
 import { colors } from "@dadamjang/design-tokens";
 
 import type { ActionButtonProps } from "./action-button.types";
@@ -30,7 +35,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
               containerColor: colors.surface,
               contentColor: colors.ink,
             }}
-            modifiers={[height(40)]}
+            modifiers={[width(72), height(40)]}
           >
             <Text>{label}</Text>
           </FilledTonalButton>
@@ -67,7 +72,8 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
       >
         <Row modifiers={[paddingAll(0)]}>
           {actions.map((action, idx) => {
-            const itemModifiers = action.label && !action.icon ? [height(32)] : [size(32, 32)];
+            const itemModifiers =
+              action.label && !action.icon ? [height(32)] : [size(32, 32)];
             return (
               <IconButton
                 key={action.label ?? idx}
@@ -75,7 +81,9 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
                 modifiers={itemModifiers}
               >
                 <Row modifiers={[paddingAll(0)]}>
-                  {action.icon ? <Icon source={{ uri: action.icon }} size={20} /> : null}
+                  {action.icon ? (
+                    <Icon source={{ uri: action.icon }} size={20} />
+                  ) : null}
                   {action.label ? <Text>{action.label}</Text> : null}
                 </Row>
               </IconButton>

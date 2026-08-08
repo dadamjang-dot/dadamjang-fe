@@ -1,17 +1,26 @@
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
-import { StyleSheet, View, type LayoutChangeEvent, type TextInput } from "react-native";
+import {
+  StyleSheet,
+  View,
+  type LayoutChangeEvent,
+  type TextInput,
+} from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   useDerivedValue,
   interpolate,
-  withSpring,
+  Easing,
+  withTiming,
   Extrapolation,
-  LinearTransition,
 } from "react-native-reanimated";
 
 import { ActionButton, SearchInput } from "@/shared/components";
 import { colors } from "@dadamjang/design-tokens";
+
+const horizontalPadding = 16;
+const headerGap = 16;
+const searchTransitionDuration = 280;
 
 export interface ProductHeaderProps {
   children?: ReactNode;
@@ -20,6 +29,7 @@ export interface ProductHeaderProps {
   onSearchCancel?: () => void;
   searchValue?: string;
   onSearchValueChange?: (text: string) => void;
+  actionTransitionPhaseEnd?: number;
 }
 
 const ProductHeader = ({
@@ -29,9 +39,11 @@ const ProductHeader = ({
   onSearchCancel,
   searchValue,
   onSearchValueChange,
+  actionTransitionPhaseEnd = 0,
 }: ProductHeaderProps) => {
   const inputRef = useRef<TextInput>(null);
 
+  const containerWidth = useSharedValue(0);
   const childrenWidth = useSharedValue(0);
   const cancelWidth = useSharedValue(0);
 
@@ -43,51 +55,80 @@ const ProductHeader = ({
     }
   }, [isSearching]);
 
+  const handleContainerLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      containerWidth.value = e.nativeEvent.layout.width;
+    },
+    [containerWidth],
+  );
+
   const handleChildrenLayout = useCallback(
     (e: LayoutChangeEvent) => {
-      childrenWidth.value = e.nativeEvent.layout.width;
+      if (childrenWidth.value === 0 && e.nativeEvent.layout.width > 0) {
+        childrenWidth.value = e.nativeEvent.layout.width;
+      }
     },
-    [childrenWidth]
+    [childrenWidth],
   );
 
   const handleCancelLayout = useCallback(
     (e: LayoutChangeEvent) => {
       cancelWidth.value = e.nativeEvent.layout.width;
     },
-    [cancelWidth]
+    [cancelWidth],
   );
 
   useEffect(() => {
-    progress.value = withSpring(isSearching ? 1 : 0, {
-      mass: 0.9,
-      damping: 25,
-      stiffness: 260,
+    progress.value = withTiming(isSearching ? 1 : 0, {
+      duration: searchTransitionDuration,
+      easing: Easing.linear,
     });
   }, [isSearching, progress]);
 
   const btnWrapperWidth = useDerivedValue(() => {
     return interpolate(
       progress.value,
-      [0, 1],
+      [actionTransitionPhaseEnd, 1],
       [childrenWidth.value, cancelWidth.value],
-      Extrapolation.CLAMP
+      Extrapolation.CLAMP,
     );
   });
 
   const btnWrapperStyle = useAnimatedStyle(() => {
     if (childrenWidth.value === 0 || cancelWidth.value === 0) {
-      return {};
+      return { opacity: 1 };
     }
 
-    return { width: btnWrapperWidth.value };
+    return {
+      opacity: 1,
+      width: btnWrapperWidth.value,
+    };
+  });
+
+  const searchInputStyle = useAnimatedStyle(() => {
+    if (
+      containerWidth.value === 0 ||
+      childrenWidth.value === 0 ||
+      cancelWidth.value === 0
+    ) {
+      return { flex: 1 };
+    }
+
+    return {
+      flex: 0,
+      width: Math.max(
+        0,
+        containerWidth.value -
+          horizontalPadding * 2 -
+          headerGap -
+          btnWrapperWidth.value,
+      ),
+    };
   });
 
   return (
-    <View style={s.container}>
-      <Animated.View
-        style={s.searchInputWrapper}
-        layout={LinearTransition.springify().damping(25).stiffness(260)}
-      >
+    <View style={s.container} onLayout={handleContainerLayout}>
+      <Animated.View style={[s.searchInputWrapper, searchInputStyle]}>
         <SearchInput
           ref={inputRef}
           value={searchValue}
@@ -113,13 +154,14 @@ const ProductHeader = ({
 const s = StyleSheet.create({
   container: {
     flexDirection: "row",
-    gap: 16,
-    paddingHorizontal: 16,
+    gap: headerGap,
+    paddingHorizontal: horizontalPadding,
     paddingVertical: 8,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.surface,
+    overflow: "visible",
+    zIndex: 1,
   },
   searchInputWrapper: {
-    flex: 1,
     minWidth: 0,
     height: 40,
   },
@@ -137,7 +179,6 @@ const s = StyleSheet.create({
     opacity: 0,
     pointerEvents: "none",
     flexDirection: "row",
-    gap: 6,
     alignItems: "center",
   },
 });

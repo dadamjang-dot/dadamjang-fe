@@ -1,26 +1,46 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
-import { getCategories, getPersonalizedFeed, getProduct, getProducts } from './api';
-import { catalogQueryKeys } from './query-keys';
+import {
+  getCategories,
+  getCatalogFilterOptions,
+  getPersonalizedFeed,
+  getProduct,
+  getProducts,
+} from "./api";
+import { catalogQueryKeys } from "./query-keys";
 
-import type { ProductSort } from './types';
+import type { ProductFilter, ProductSort } from "./types";
 
 export const usePersonalizedFeed = () =>
   useInfiniteQuery({
     queryKey: catalogQueryKeys.feed(),
-    queryFn: ({ pageParam }) => getPersonalizedFeed({ after: pageParam, first: 20 }),
+    queryFn: ({ pageParam }) =>
+      getPersonalizedFeed({ after: pageParam, first: 20 }),
     initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.nextCursor : undefined),
+    getNextPageParam: (lastPage) =>
+      lastPage.hasNextPage ? lastPage.nextCursor : undefined,
     staleTime: 60_000,
   });
 
-export const useProductSearch = (query: string, categoryId?: string, sort: ProductSort = 'LATEST') =>
+export const useProductSearch = (
+  query: string,
+  categoryId?: string,
+  sort: ProductSort = "LATEST",
+) =>
+  useCatalogProducts(
+    { query, categoryId, sort },
+    query.trim().length > 0 || Boolean(categoryId),
+  );
+
+export const useCatalogProducts = (filter: ProductFilter, enabled = true) =>
   useInfiniteQuery({
-    queryKey: catalogQueryKeys.products(query, categoryId, sort),
-    queryFn: ({ pageParam }) => getProducts({ query, categoryId, sort, after: pageParam, first: 20 }),
+    queryKey: catalogQueryKeys.products(filter),
+    queryFn: ({ pageParam }) =>
+      getProducts({ ...filter, after: pageParam, first: 20 }),
     initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.nextCursor : undefined),
-    enabled: query.trim().length > 0 || Boolean(categoryId),
+    getNextPageParam: (lastPage) =>
+      lastPage.hasNextPage ? (lastPage.nextCursor ?? undefined) : undefined,
+    enabled,
   });
 
 export const useProduct = (productId: string) =>
@@ -30,4 +50,11 @@ export const useProduct = (productId: string) =>
     enabled: Boolean(productId),
   });
 
-export const useCategories = () => useQuery({ queryKey: catalogQueryKeys.categories(), queryFn: getCategories });
+export const useCategories = () =>
+  useQuery({ queryKey: catalogQueryKeys.categories(), queryFn: getCategories });
+
+export const useCatalogFilterOptions = () =>
+  useQuery({
+    queryKey: catalogQueryKeys.filterOptions(),
+    queryFn: getCatalogFilterOptions,
+  });

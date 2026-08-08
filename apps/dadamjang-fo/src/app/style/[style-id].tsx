@@ -1,11 +1,13 @@
-import { useLocalSearchParams } from 'expo-router';
-import { View } from 'react-native';
-import { StyleSheet } from 'react-native-unistyles';
+import { useLocalSearchParams } from "expo-router";
+import { View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 
-import { useStylePost } from '@/features/style';
+import { useStylePost } from "@/features/style";
 
 const StylePostScreen = () => {
-  const { 'style-id': styleId } = useLocalSearchParams<{ 'style-id': string }>();
+  const { "style-id": styleId } = useLocalSearchParams<{
+    "style-id": string;
+  }>();
   useStylePost(styleId);
 
   return <View style={s.container} />;

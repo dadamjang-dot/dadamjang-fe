@@ -1,4 +1,4 @@
-import type { ProductFilter } from '@/features/catalog';
+import type { ProductFilter } from "@/features/catalog";
 
 export type ProductPriceSummary = {
   productId: string;
@@ -12,6 +12,7 @@ export type ProductPriceSummary = {
 
 export type ProductPriceSummaryConnection = {
   nodes: ProductPriceSummary[];
+  totalCount: number;
   nextCursor: string | null;
   hasNextPage: boolean;
 };

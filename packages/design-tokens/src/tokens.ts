@@ -1,11 +1,11 @@
 export const colors = {
   primary: '#111111',
-  primarySoft: '#F4F4F4',
+  primarySoft: '#fdfdfd',
   ink: '#111111',
   muted: '#8A8A8A',
   surface: '#FFFFFF',
-  canvas: '#FAFAFA',
-  line: '#E5E5E5',
+  canvas: '#fefefe',
+  line: '#cccc',
   danger: '#E5484D',
   partner: '#2563EB',
 } as const;

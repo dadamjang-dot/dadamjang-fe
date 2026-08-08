@@ -5,7 +5,7 @@ import { colors } from "@dadamjang/design-tokens";
 const TabLayout = () => (
   <NativeTabs
     backgroundColor={colors.surface}
-    blurEffect="systemChromeMaterialLight"
+    blurEffect="none"
     disableTransparentOnScrollEdge
     iconColor={{
       default: colors.muted,

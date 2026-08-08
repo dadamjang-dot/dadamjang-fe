@@ -1,3 +1,3 @@
 export const cartQueryKeys = {
-  detail: () => ['cart'] as const,
+  detail: () => ["cart"] as const,
 };

@@ -2,7 +2,11 @@ import { useCallback, useState } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
-import { ActionButton, ProductHeader, SearchContent } from "@/shared/components";
+import {
+  ActionButton,
+  ProductHeader,
+  SearchContent,
+} from "@/shared/components";
 import { colors } from "@dadamjang/design-tokens";
 import type { ProductLayoutProps } from "./product-layout.types";
 

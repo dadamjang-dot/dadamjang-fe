@@ -1,6 +1,10 @@
-import { graphqlRequest } from '@dadamjang/graphql-client';
+import { graphqlRequest } from "@dadamjang/graphql-client";
 
-import type { ProductPriceEvidence, ProductPriceSummaryConnection, ProductPriceSummaryFilter } from './types';
+import type {
+  ProductPriceEvidence,
+  ProductPriceSummaryConnection,
+  ProductPriceSummaryFilter,
+} from "./types";
 
 const productPriceSummaryFields = `
   productId
@@ -25,10 +29,13 @@ const productPriceEvidenceFields = `
 export const getProductPriceSummaries = async (
   filter: ProductPriceSummaryFilter,
 ): Promise<ProductPriceSummaryConnection> => {
-  const data = await graphqlRequest<{ productPriceSummaries: ProductPriceSummaryConnection }>(
+  const data = await graphqlRequest<{
+    productPriceSummaries: ProductPriceSummaryConnection;
+  }>(
     `query ProductPriceSummaries($filter: ProductFilterInput) {
       productPriceSummaries(filter: $filter) {
         nodes { ${productPriceSummaryFields} }
+        totalCount
         nextCursor
         hasNextPage
       }
@@ -40,7 +47,9 @@ export const getProductPriceSummaries = async (
 };
 
 export const getComparisonPriceSummaries = async () => {
-  const data = await graphqlRequest<{ comparisonPriceSummaries: ProductPriceSummaryConnection['nodes'] }>(
+  const data = await graphqlRequest<{
+    comparisonPriceSummaries: ProductPriceSummaryConnection["nodes"];
+  }>(
     `query ComparisonPriceSummaries {
       comparisonPriceSummaries { ${productPriceSummaryFields} }
     }`,
@@ -49,8 +58,13 @@ export const getComparisonPriceSummaries = async () => {
   return data.comparisonPriceSummaries;
 };
 
-export const getProductPriceEvidence = async (productId: string, priceRevision: string) => {
-  const data = await graphqlRequest<{ productPriceEvidence: ProductPriceEvidence }>(
+export const getProductPriceEvidence = async (
+  productId: string,
+  priceRevision: string,
+) => {
+  const data = await graphqlRequest<{
+    productPriceEvidence: ProductPriceEvidence;
+  }>(
     `query ProductPriceEvidence($productId: String!, $priceRevision: String) {
       productPriceEvidence(productId: $productId, priceRevision: $priceRevision) {
         ${productPriceEvidenceFields}

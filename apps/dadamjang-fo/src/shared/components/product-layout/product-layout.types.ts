@@ -5,8 +5,7 @@ type SingleButtonTwoActions = [[Action, Action]];
 type TwoButtonsSingleAction = [[Action], [Action]];
 
 export type ProductLayoutHeaderActionsType =
-  | SingleButtonTwoActions
-  | TwoButtonsSingleAction;
+  SingleButtonTwoActions | TwoButtonsSingleAction;
 export interface ProductLayoutProps {
   headerActions: ProductLayoutHeaderActionsType;
   children: ReactNode;
