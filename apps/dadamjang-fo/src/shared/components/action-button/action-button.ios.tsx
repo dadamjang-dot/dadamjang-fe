@@ -16,7 +16,10 @@ interface ActionButtonContentProps {
   iconOnly?: boolean;
 }
 
-export const ActionButtonContent = ({ action, iconOnly }: ActionButtonContentProps) => {
+export const ActionButtonContent = ({
+  action,
+  iconOnly,
+}: ActionButtonContentProps) => {
   const isIconOnly = Boolean(iconOnly && action.icon && !action.label);
 
   return (
@@ -27,7 +30,11 @@ export const ActionButtonContent = ({ action, iconOnly }: ActionButtonContentPro
       style={[s.action, isIconOnly ? s.iconAction : s.labelAction]}
     >
       {action.icon ? (
-        <SymbolView name={action.icon as SFSymbol} size={24} tintColor={colors.primary} />
+        <SymbolView
+          name={action.icon as SFSymbol}
+          size={24}
+          tintColor={colors.primary}
+        />
       ) : action.label ? (
         <Text style={s.label}>{action.label}</Text>
       ) : null}
@@ -47,6 +54,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
         effect="clear"
         interactive
         style={isIconOnly ? s.iconSurface : s.labelSurface}
+        tintColor={colors.canvas}
       >
         <ActionButtonContent action={action} iconOnly={iconOnly} />
         <View pointerEvents="none" style={s.surfaceBorder} />
@@ -55,7 +63,12 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
   }
 
   return (
-    <LiquidGlassView effect="clear" interactive style={s.groupSurface}>
+    <LiquidGlassView
+      effect="clear"
+      tintColor={colors.canvas}
+      interactive
+      style={s.groupSurface}
+    >
       <View style={s.groupContent}>
         {actions.map((action, index) => (
           <ActionButtonContent

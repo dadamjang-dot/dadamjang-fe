@@ -1,4 +1,7 @@
-import { LiquidGlassContainerView, LiquidGlassView } from "@callstack/liquid-glass";
+import {
+  LiquidGlassContainerView,
+  LiquidGlassView,
+} from "@callstack/liquid-glass";
 import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import Animated, {
@@ -10,7 +13,11 @@ import Animated, {
   Extrapolation,
 } from "react-native-reanimated";
 
-import { ActionButton, ProductHeader, SearchContent } from "@/shared/components";
+import {
+  ActionButton,
+  ProductHeader,
+  SearchContent,
+} from "@/shared/components";
 import { ActionButtonContent } from "@/shared/components/action-button/action-button.ios";
 import { colors } from "@dadamjang/design-tokens";
 import type { ProductLayoutProps } from "./product-layout.types";
@@ -20,7 +27,8 @@ const singleButtonWidthPhaseEnd = firstButtonPhaseEnd;
 const singleButtonIconPhaseStart = singleButtonWidthPhaseEnd + 0.15;
 const singleButtonIconPhaseEnd = singleButtonIconPhaseStart + 0.15;
 const searchTransitionDuration = 280;
-const AnimatedLiquidGlassView = Animated.createAnimatedComponent(LiquidGlassView);
+const AnimatedLiquidGlassView =
+  Animated.createAnimatedComponent(LiquidGlassView);
 
 const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   const [isSearching, setIsSearching] = useState(false);
@@ -41,14 +49,14 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
     (event: LayoutChangeEvent) => {
       childrenWidth.value = event.nativeEvent.layout.width;
     },
-    [childrenWidth]
+    [childrenWidth],
   );
 
   const handleCancelLayout = useCallback(
     (event: LayoutChangeEvent) => {
       cancelWidth.value = event.nativeEvent.layout.width;
     },
-    [cancelWidth]
+    [cancelWidth],
   );
 
   useEffect(() => {
@@ -69,7 +77,7 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
         progress.value,
         [0, singleButtonWidthPhaseEnd],
         [childrenWidth.value, cancelWidth.value],
-        Extrapolation.CLAMP
+        Extrapolation.CLAMP,
       ),
     };
   });
@@ -79,7 +87,7 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
       progress.value,
       [singleButtonIconPhaseStart, singleButtonIconPhaseEnd],
       [1, 0],
-      Extrapolation.CLAMP
+      Extrapolation.CLAMP,
     ),
     transform: [
       {
@@ -92,7 +100,7 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
             singleButtonIconPhaseEnd,
           ],
           [1, 0.9, 0.9, 0.85],
-          Extrapolation.CLAMP
+          Extrapolation.CLAMP,
         ),
       },
     ],
@@ -104,7 +112,7 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
       progress.value,
       [singleButtonIconPhaseEnd, 1],
       [0, 1],
-      Extrapolation.CLAMP
+      Extrapolation.CLAMP,
     ),
     transform: [
       {
@@ -112,7 +120,7 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
           progress.value,
           [singleButtonIconPhaseEnd, 1],
           [0.85, 1],
-          Extrapolation.CLAMP
+          Extrapolation.CLAMP,
         ),
       },
     ],
@@ -129,7 +137,7 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
             progress.value,
             [0, firstButtonPhaseEnd],
             [0, moveDist > 0 ? moveDist : 0],
-            Extrapolation.CLAMP
+            Extrapolation.CLAMP,
           ),
         },
         {
@@ -137,11 +145,16 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
             progress.value,
             [0, firstButtonPhaseEnd],
             [1, 0.85],
-            Extrapolation.CLAMP
+            Extrapolation.CLAMP,
           ),
         },
       ],
-      opacity: interpolate(progress.value, [0, firstButtonPhaseEnd], [1, 0], Extrapolation.CLAMP),
+      opacity: interpolate(
+        progress.value,
+        [0, firstButtonPhaseEnd],
+        [1, 0],
+        Extrapolation.CLAMP,
+      ),
       display: progress.value >= firstButtonPhaseEnd ? "none" : "flex",
     };
   });
@@ -155,7 +168,7 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
       progress.value,
       [firstButtonPhaseEnd, firstButtonPhaseEnd + 0.2],
       [1, 0],
-      Extrapolation.CLAMP
+      Extrapolation.CLAMP,
     ),
     transform: [
       {
@@ -163,7 +176,7 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
           progress.value,
           [firstButtonPhaseEnd, firstButtonPhaseEnd + 0.2],
           [1, 0.85],
-          Extrapolation.CLAMP
+          Extrapolation.CLAMP,
         ),
       },
     ],
@@ -175,7 +188,7 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
       progress.value,
       [firstButtonPhaseEnd + 0.2, 1],
       [0, 1],
-      Extrapolation.CLAMP
+      Extrapolation.CLAMP,
     ),
     transform: [
       {
@@ -183,7 +196,7 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
           progress.value,
           [firstButtonPhaseEnd + 0.2, 1],
           [0.85, 1],
-          Extrapolation.CLAMP
+          Extrapolation.CLAMP,
         ),
       },
     ],
@@ -191,11 +204,12 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   }));
 
   const buttonGroup = isTwoBtnCase ? (
-    <LiquidGlassContainerView spacing={6} style={actionStyles.twoBtnRow}>
+    <LiquidGlassContainerView spacing={0} style={actionStyles.twoBtnRow}>
       <AnimatedLiquidGlassView
         effect="clear"
         interactive
         style={[actionStyles.iconGlassButton, firstBtnStyle]}
+        tintColor={colors.canvas}
       >
         <ActionButtonContent action={headerActions[0][0]} iconOnly />
         <View pointerEvents="none" style={actionStyles.surfaceBorder} />
@@ -204,14 +218,23 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
         effect="clear"
         interactive
         style={[actionStyles.expandingGlassButton, secondBtnStyle]}
+        tintColor={colors.canvas}
       >
         <Animated.View
-          style={[actionStyles.absoluteFill, actionStyles.centerContent, secondBtnIconStyle]}
+          style={[
+            actionStyles.absoluteFill,
+            actionStyles.centerContent,
+            secondBtnIconStyle,
+          ]}
         >
           <ActionButtonContent action={headerActions[1][0]} iconOnly />
         </Animated.View>
         <Animated.View
-          style={[actionStyles.absoluteFill, actionStyles.rightContent, secondBtnCancelStyle]}
+          style={[
+            actionStyles.absoluteFill,
+            actionStyles.rightContent,
+            secondBtnCancelStyle,
+          ]}
         >
           <ActionButtonContent
             action={{ label: "취소", onPress: handleCancelSearch }}
@@ -226,7 +249,13 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
       interactive
       style={[actionStyles.expandingGlassButton, singleBtnContainerStyle]}
     >
-      <Animated.View style={[actionStyles.absoluteFill, actionStyles.centerContent, singleIconStyle]}>
+      <Animated.View
+        style={[
+          actionStyles.absoluteFill,
+          actionStyles.centerContent,
+          singleIconStyle,
+        ]}
+      >
         <View style={actionStyles.singleButtonContent}>
           {headerActions[0].map((action, index) => (
             <ActionButtonContent
@@ -237,8 +266,16 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
           ))}
         </View>
       </Animated.View>
-      <Animated.View style={[actionStyles.absoluteFill, actionStyles.rightContent, singleCancelStyle]}>
-        <ActionButtonContent action={{ label: "취소", onPress: handleCancelSearch }} />
+      <Animated.View
+        style={[
+          actionStyles.absoluteFill,
+          actionStyles.rightContent,
+          singleCancelStyle,
+        ]}
+      >
+        <ActionButtonContent
+          action={{ label: "취소", onPress: handleCancelSearch }}
+        />
       </Animated.View>
       <View pointerEvents="none" style={actionStyles.surfaceBorder} />
     </AnimatedLiquidGlassView>
@@ -286,7 +323,7 @@ const actionStyles = StyleSheet.create({
   twoBtnRow: {
     height: 40,
     flexDirection: "row",
-    gap: 6,
+    gap: 8,
     alignItems: "center",
     justifyContent: "flex-end",
   },
