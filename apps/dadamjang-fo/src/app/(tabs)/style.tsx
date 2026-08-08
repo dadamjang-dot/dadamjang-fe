@@ -2,17 +2,17 @@ import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import {
   ProductLayout,
-  ProductLayoutHeaderActionsType,
 } from "@/shared/components";
+import { Action } from "@dadamjang/mobile";
 
 const StyleScreen = () => {
-  const headerActions: ProductLayoutHeaderActionsType = [
-    [{ icon: "plus", onPress: () => {} }],
-    [{ icon: "cart", onPress: () => {} }],
+  const headerActions: Action[] = [
+    { icon: "plus", onPress: () => {} },
+    { icon: "cart", onPress: () => {} },
   ];
 
   return (
-    <ProductLayout headerActions={headerActions}>
+    <ProductLayout headerActions={headerActions} variant="circularPair">
       <View style={s.content} />
     </ProductLayout>
   );

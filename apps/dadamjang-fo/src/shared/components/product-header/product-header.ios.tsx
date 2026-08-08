@@ -7,19 +7,14 @@ import {
 } from "react-native";
 import Animated, {
   useSharedValue,
-  useAnimatedStyle,
-  useDerivedValue,
-  interpolate,
   Easing,
   withTiming,
-  Extrapolation,
 } from "react-native-reanimated";
 
 import { ActionButton, SearchInput } from "@/shared/components";
 import { colors } from "@dadamjang/design-tokens";
+import { useHeaderAnimation } from "./header-animation.ios";
 
-const horizontalPadding = 16;
-const headerGap = 16;
 const searchTransitionDuration = 280;
 
 export interface ProductHeaderProps {
@@ -85,46 +80,13 @@ const ProductHeader = ({
     });
   }, [isSearching, progress]);
 
-  const btnWrapperWidth = useDerivedValue(() => {
-    return interpolate(
-      progress.value,
-      [actionTransitionPhaseEnd, 1],
-      [childrenWidth.value, cancelWidth.value],
-      Extrapolation.CLAMP,
-    );
-  });
-
-  const btnWrapperStyle = useAnimatedStyle(() => {
-    if (childrenWidth.value === 0 || cancelWidth.value === 0) {
-      return { opacity: 1 };
-    }
-
-    return {
-      opacity: 1,
-      width: btnWrapperWidth.value,
-    };
-  });
-
-  const searchInputStyle = useAnimatedStyle(() => {
-    if (
-      containerWidth.value === 0 ||
-      childrenWidth.value === 0 ||
-      cancelWidth.value === 0
-    ) {
-      return { flex: 1 };
-    }
-
-    return {
-      flex: 0,
-      width: Math.max(
-        0,
-        containerWidth.value -
-          horizontalPadding * 2 -
-          headerGap -
-          btnWrapperWidth.value,
-      ),
-    };
-  });
+  const { btnWrapperStyle, searchInputStyle } = useHeaderAnimation(
+    progress,
+    containerWidth,
+    childrenWidth,
+    cancelWidth,
+    actionTransitionPhaseEnd,
+  );
 
   return (
     <View style={s.container} onLayout={handleContainerLayout}>
@@ -137,7 +99,6 @@ const ProductHeader = ({
           onFocus={onSearchFocus}
         />
       </Animated.View>
-
       <Animated.View style={[s.btnWrapper, btnWrapperStyle]}>
         <View style={s.measureLayer} onLayout={handleChildrenLayout}>
           {children}
@@ -154,8 +115,8 @@ const ProductHeader = ({
 const s = StyleSheet.create({
   container: {
     flexDirection: "row",
-    gap: headerGap,
-    paddingHorizontal: horizontalPadding,
+    gap: 16,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: colors.surface,
     overflow: "visible",

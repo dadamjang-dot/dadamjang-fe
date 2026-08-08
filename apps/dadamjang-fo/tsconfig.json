@@ -11,6 +11,9 @@
       "@dadamjang/domain": ["../../packages/domain/src/index.ts"],
       "@dadamjang/graphql-client": [
         "../../packages/graphql-client/src/index.ts"
+      ],
+      "@dadamjang/mobile": [
+        "../../packages/mobile/src/index.ts"
       ]
     }
   },

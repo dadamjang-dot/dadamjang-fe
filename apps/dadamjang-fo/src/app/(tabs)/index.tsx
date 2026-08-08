@@ -2,19 +2,17 @@ import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import {
   ProductLayout,
-  ProductLayoutHeaderActionsType,
 } from "@/shared/components";
+import { Action } from "@dadamjang/mobile";
 
 const HomeScreen = () => {
-  const headerActions: ProductLayoutHeaderActionsType = [
-    [
-      { icon: "bell", onPress: () => {} },
-      { icon: "cart", onPress: () => {} },
-    ],
+  const headerActions: Action[] = [
+    { icon: "bell", onPress: () => {} },
+    { icon: "cart", onPress: () => {} },
   ];
 
   return (
-    <ProductLayout headerActions={headerActions}>
+    <ProductLayout headerActions={headerActions} variant="capsule">
       <View style={s.content} />
     </ProductLayout>
   );
