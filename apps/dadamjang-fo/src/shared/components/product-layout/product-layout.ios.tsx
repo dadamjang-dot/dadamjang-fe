@@ -16,9 +16,6 @@ import {
   useCapsuleAnimation,
 } from "./layout-animation.ios";
 
-const AnimatedLiquidGlassView =
-  Animated.createAnimatedComponent(LiquidGlassView);
-
 const actionTransitionPhaseEnd = 0.25;
 const searchTransitionDuration = 280;
 
@@ -41,14 +38,18 @@ const ProductLayout = ({
 
   const handleChildrenLayout = useCallback(
     (event: LayoutChangeEvent) => {
-      childrenWidth.value = event.nativeEvent.layout.width;
+      if (childrenWidth.value === 0 && event.nativeEvent.layout.width > 0) {
+        childrenWidth.value = event.nativeEvent.layout.width;
+      }
     },
     [childrenWidth],
   );
 
   const handleCancelLayout = useCallback(
     (event: LayoutChangeEvent) => {
-      cancelWidth.value = event.nativeEvent.layout.width;
+      if (cancelWidth.value === 0 && event.nativeEvent.layout.width > 0) {
+        cancelWidth.value = event.nativeEvent.layout.width;
+      }
     },
     [cancelWidth],
   );
@@ -60,19 +61,10 @@ const ProductLayout = ({
     });
   }, [isSearching, progress]);
 
-  const circularPairAnimation = useCircularPairAnimation(
-    progress,
-    childrenWidth,
-    cancelWidth,
-  );
-  const capsuleAnimation = useCapsuleAnimation(
-    progress,
-    childrenWidth,
-    cancelWidth,
-  );
-
   const { groupAnim, cancelAnim } =
-    variant === "circularPair" ? circularPairAnimation : capsuleAnimation;
+    variant === "circularPair"
+      ? useCircularPairAnimation(progress, childrenWidth, cancelWidth)
+      : useCapsuleAnimation(progress, childrenWidth, cancelWidth);
 
   const buttonGroup = (
     <View style={s.buttonRow}>
@@ -81,17 +73,19 @@ const ProductLayout = ({
         variant={variant}
         animations={groupAnim}
       />
-      <AnimatedLiquidGlassView
-        effect="clear"
-        interactive
-        style={[s.cancelButton, cancelAnim]}
-        tintColor={colors.canvas}
-      >
-        <ActionButtonContent
-          action={{ label: "취소", onPress: handleCancelSearch }}
-        />
-        <View pointerEvents="none" style={s.surfaceBorder} />
-      </AnimatedLiquidGlassView>
+      <Animated.View style={cancelAnim}>
+        <LiquidGlassView
+          effect="clear"
+          interactive
+          style={s.cancelButton}
+          tintColor={colors.canvas}
+        >
+          <ActionButtonContent
+            action={{ label: "취소", onPress: handleCancelSearch }}
+          />
+          <View pointerEvents="none" style={s.surfaceBorder} />
+        </LiquidGlassView>
+      </Animated.View>
     </View>
   );
 
@@ -106,9 +100,7 @@ const ProductLayout = ({
         searchValue={searchValue}
       >
         <View onLayout={handleChildrenLayout} style={s.measureOuter}>
-          {headerActions.map((actions, index) => (
-            <ActionButtonContent key={index} action={actions} iconOnly />
-          ))}
+          <ActionButtonGroup actions={headerActions} variant={variant} />
         </View>
         <View onLayout={handleCancelLayout} style={s.measureOuter}>
           <ActionButtonContent action={{ label: "취소", onPress: () => {} }} />

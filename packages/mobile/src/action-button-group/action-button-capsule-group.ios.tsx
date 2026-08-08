@@ -6,31 +6,30 @@ import { colors } from "@dadamjang/design-tokens";
 import { ActionButtonContent } from "../action-button/action-button.ios";
 import type { ActionButtonCapsuleGroupProps } from "./action-button-group.types";
 
-const AnimatedLiquidGlassView =
-  Animated.createAnimatedComponent(LiquidGlassView);
-
 const ActionButtonCapsuleGroup = ({
   actions,
   animations,
 }: ActionButtonCapsuleGroupProps) => {
   return (
-    <AnimatedLiquidGlassView
-      effect="clear"
-      interactive
-      style={[s.capsuleGlassButton, animations?.[0]]}
-      tintColor={colors.canvas}
-    >
-      <View style={s.capsuleContent}>
-        {actions.map((action, index) => (
-          <ActionButtonContent
-            key={action.label ?? action.icon ?? index}
-            action={action}
-            iconOnly
-          />
-        ))}
-      </View>
-      <View pointerEvents="none" style={s.surfaceBorder} />
-    </AnimatedLiquidGlassView>
+    <Animated.View style={animations?.[0]}>
+      <LiquidGlassView
+        effect="clear"
+        interactive
+        style={s.capsuleGlassButton}
+        tintColor={colors.canvas}
+      >
+        <View style={s.capsuleContent}>
+          {actions.map((action, index) => (
+            <ActionButtonContent
+              key={action.label ?? action.icon ?? index}
+              action={action}
+              iconOnly
+            />
+          ))}
+        </View>
+        <View pointerEvents="none" style={s.surfaceBorder} />
+      </LiquidGlassView>
+    </Animated.View>
   );
 };
 

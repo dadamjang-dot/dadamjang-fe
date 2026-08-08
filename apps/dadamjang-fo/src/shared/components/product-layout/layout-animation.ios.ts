@@ -1,14 +1,8 @@
 import { useAnimatedStyle, interpolate, Extrapolation } from "react-native-reanimated";
-import type { SharedValue, AnimatedStyle } from "react-native-reanimated";
-import type { ViewStyle } from "react-native";
+import type { SharedValue } from "react-native-reanimated";
 import type { ActionButtonGroupAnimation } from "@dadamjang/mobile";
 
-const firstButtonPhaseEnd = 0.25;
-const singleButtonWidthPhaseEnd = firstButtonPhaseEnd;
-const singleButtonIconPhaseStart = singleButtonWidthPhaseEnd + 0.15;
-const singleButtonIconPhaseEnd = singleButtonIconPhaseStart + 0.15;
-
-const emptyStyle = {} as AnimatedStyle<ViewStyle>;
+const phaseEnd = 0.25;
 
 export const useCircularPairAnimation = (
   progress: SharedValue<number>,
@@ -22,7 +16,7 @@ export const useCircularPairAnimation = (
         {
           translateX: interpolate(
             progress.value,
-            [0, firstButtonPhaseEnd],
+            [0, phaseEnd],
             [0, moveDist > 0 ? moveDist : 0],
             Extrapolation.CLAMP,
           ),
@@ -30,43 +24,52 @@ export const useCircularPairAnimation = (
         {
           scale: interpolate(
             progress.value,
-            [0, firstButtonPhaseEnd],
+            [0, phaseEnd],
             [1, 0.85],
             Extrapolation.CLAMP,
           ),
         },
       ],
-      opacity: interpolate(
-        progress.value,
-        [0, firstButtonPhaseEnd],
-        [1, 0],
-        Extrapolation.CLAMP,
-      ),
-      display: progress.value >= firstButtonPhaseEnd ? "none" : "flex",
+      opacity: interpolate(progress.value, [0, phaseEnd], [1, 0], Extrapolation.CLAMP),
+      display: progress.value >= phaseEnd ? "none" : "flex",
     };
   });
 
-  const cancelBtnStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      progress.value,
-      [firstButtonPhaseEnd, 1],
-      [0, 1],
-      Extrapolation.CLAMP,
-    ),
+  const secondBtnStyle = useAnimatedStyle(() => ({
     transform: [
       {
         scale: interpolate(
           progress.value,
-          [firstButtonPhaseEnd, 1],
+          [0, phaseEnd],
+          [1, 0.85],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+    opacity: interpolate(progress.value, [0, phaseEnd], [1, 0], Extrapolation.CLAMP),
+    display: progress.value >= phaseEnd ? "none" : "flex",
+  }));
+
+  const cancelBtnStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [phaseEnd, 1], [0, 1], Extrapolation.CLAMP),
+    transform: [
+      {
+        scale: interpolate(
+          progress.value,
+          [phaseEnd, 1],
           [0.85, 1],
           Extrapolation.CLAMP,
         ),
       },
     ],
-    display: progress.value <= firstButtonPhaseEnd ? "none" : "flex",
+    display: progress.value <= phaseEnd ? "none" : "flex",
   }));
 
-  const groupAnim: [ActionButtonGroupAnimation, ActionButtonGroupAnimation?] = [firstBtnStyle, emptyStyle];
+  const groupAnim: [ActionButtonGroupAnimation, ActionButtonGroupAnimation?] = [
+    firstBtnStyle,
+    secondBtnStyle,
+  ];
+
   return { groupAnim, cancelAnim: cancelBtnStyle };
 };
 
@@ -75,41 +78,54 @@ export const useCapsuleAnimation = (
   childrenWidth: SharedValue<number>,
   cancelWidth: SharedValue<number>,
 ) => {
-  const containerStyle = useAnimatedStyle(() => {
+  const capsuleStyle = useAnimatedStyle(() => {
     if (childrenWidth.value === 0 || cancelWidth.value === 0) {
-      return { opacity: 1 };
+      return {
+        opacity: interpolate(progress.value, [0, phaseEnd], [1, 0], Extrapolation.CLAMP),
+        display: progress.value >= phaseEnd ? "none" : "flex",
+      };
     }
+
     return {
-      opacity: 1,
       width: interpolate(
         progress.value,
-        [0, singleButtonWidthPhaseEnd],
+        [0, phaseEnd],
         [childrenWidth.value, cancelWidth.value],
         Extrapolation.CLAMP,
       ),
+      opacity: interpolate(progress.value, [0, phaseEnd], [1, 0], Extrapolation.CLAMP),
+      transform: [
+        {
+          scale: interpolate(
+            progress.value,
+            [0, phaseEnd],
+            [1, 0.85],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
+      display: progress.value >= phaseEnd ? "none" : "flex",
     };
   });
 
   const cancelBtnStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      progress.value,
-      [singleButtonIconPhaseEnd, 1],
-      [0, 1],
-      Extrapolation.CLAMP,
-    ),
+    opacity: interpolate(progress.value, [phaseEnd, 1], [0, 1], Extrapolation.CLAMP),
     transform: [
       {
         scale: interpolate(
           progress.value,
-          [singleButtonIconPhaseEnd, 1],
+          [phaseEnd, 1],
           [0.85, 1],
           Extrapolation.CLAMP,
         ),
       },
     ],
-    display: progress.value <= singleButtonIconPhaseEnd ? "none" : "flex",
+    display: progress.value <= phaseEnd ? "none" : "flex",
   }));
 
-  const groupAnim: [ActionButtonGroupAnimation, ActionButtonGroupAnimation?] = [containerStyle];
+  const groupAnim: [ActionButtonGroupAnimation, ActionButtonGroupAnimation?] = [
+    capsuleStyle,
+  ];
+
   return { groupAnim, cancelAnim: cancelBtnStyle };
 };

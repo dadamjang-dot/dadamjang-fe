@@ -6,34 +6,35 @@ import { colors } from "@dadamjang/design-tokens";
 import { ActionButtonContent } from "../action-button/action-button.ios";
 import type { ActionButtonCircularPairGroupProps } from "./action-button-group.types";
 
-const AnimatedLiquidGlassView =
-  Animated.createAnimatedComponent(LiquidGlassView);
-
 const ActionButtonCircularPairGroup = ({
   actions,
   animations,
 }: ActionButtonCircularPairGroupProps) => {
   return (
     <LiquidGlassContainerView style={s.row}>
-      <AnimatedLiquidGlassView
-        effect="clear"
-        interactive
-        style={[s.iconGlassButton, animations?.[0]]}
-        tintColor={colors.canvas}
-      >
-        <ActionButtonContent action={actions[0]} iconOnly />
-        <View pointerEvents="none" style={s.surfaceBorder} />
-      </AnimatedLiquidGlassView>
+      <Animated.View style={animations?.[0]}>
+        <LiquidGlassView
+          effect="clear"
+          interactive
+          style={s.iconGlassButton}
+          tintColor={colors.canvas}
+        >
+          <ActionButtonContent action={actions[0]} iconOnly />
+          <View pointerEvents="none" style={s.surfaceBorder} />
+        </LiquidGlassView>
+      </Animated.View>
 
-      <AnimatedLiquidGlassView
-        effect="clear"
-        interactive
-        style={[s.iconGlassButton, animations?.[1]]}
-        tintColor={colors.canvas}
-      >
-        <ActionButtonContent action={actions[1]} iconOnly />
-        <View pointerEvents="none" style={s.surfaceBorder} />
-      </AnimatedLiquidGlassView>
+      <Animated.View style={animations?.[1]}>
+        <LiquidGlassView
+          effect="clear"
+          interactive
+          style={s.iconGlassButton}
+          tintColor={colors.canvas}
+        >
+          <ActionButtonContent action={actions[1]} iconOnly />
+          <View pointerEvents="none" style={s.surfaceBorder} />
+        </LiquidGlassView>
+      </Animated.View>
     </LiquidGlassContainerView>
   );
 };
