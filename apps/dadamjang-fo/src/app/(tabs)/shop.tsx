@@ -5,7 +5,6 @@ import { StyleSheet } from "react-native-unistyles";
 
 import {
   ProductLayout,
-  ProductLayoutHeaderActionsType,
 } from "@/shared/components";
 import {
   ShopCategoryBar,
@@ -19,6 +18,7 @@ import {
   useShopFilters,
 } from "@/features/catalog";
 import { useProductPriceSummaries } from "@/features/price-evidence";
+import { Action } from "@dadamjang/mobile";
 
 const ShopScreen = () => {
   const router = useRouter();
@@ -37,15 +37,13 @@ const ShopScreen = () => {
     router.push({ pathname: "/shop-filter-sheet", params: { mode } });
   };
 
-  const headerActions: ProductLayoutHeaderActionsType = [
-    [
-      { icon: "line.3.horizontal", onPress: () => {} },
-      { icon: "cart", onPress: () => {} },
-    ],
+  const headerActions: Action[] = [
+    { icon: "line.3.horizontal", onPress: () => {} },
+    { icon: "cart", onPress: () => {} },
   ];
 
   return (
-    <ProductLayout headerActions={headerActions}>
+    <ProductLayout headerActions={headerActions} variant="capsule">
       <View style={s.content}>
         <ShopCategoryBar
           categories={categories}

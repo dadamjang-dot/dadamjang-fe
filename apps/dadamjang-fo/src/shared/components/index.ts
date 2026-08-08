@@ -1,4 +1,4 @@
-export { ActionButton } from "./action-button";
+export { ActionButton } from "@dadamjang/mobile";
 export { ProductHeader } from "./product-header";
 export * from "./product-layout";
 export { SearchContent } from "./search-content";

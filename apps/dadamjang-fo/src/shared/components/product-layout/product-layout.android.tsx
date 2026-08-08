@@ -10,7 +10,7 @@ import {
 import { colors } from "@dadamjang/design-tokens";
 import type { ProductLayoutProps } from "./product-layout.types";
 
-const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
+const ProductLayout = ({ headerActions, variant: _variant, children }: ProductLayoutProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
@@ -28,8 +28,8 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
         searchValue={searchValue}
         onSearchValueChange={setSearchValue}
       >
-        {headerActions?.map((actions, i) => (
-          <ActionButton key={i} actions={actions} iconOnly />
+        {headerActions.map((_, i) => (
+          <ActionButton key={i} actions={headerActions} iconOnly />
         ))}
       </ProductHeader>
 

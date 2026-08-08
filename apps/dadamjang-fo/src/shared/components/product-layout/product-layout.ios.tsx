@@ -1,36 +1,29 @@
-import {
-  LiquidGlassContainerView,
-  LiquidGlassView,
-} from "@callstack/liquid-glass";
 import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import Animated, {
-  useAnimatedStyle,
   useSharedValue,
-  interpolate,
   Easing,
   withTiming,
-  Extrapolation,
 } from "react-native-reanimated";
+import { LiquidGlassView } from "@callstack/liquid-glass";
 
-import {
-  ActionButton,
-  ProductHeader,
-  SearchContent,
-} from "@/shared/components";
-import { ActionButtonContent } from "@/shared/components/action-button/action-button.ios";
+import { ProductHeader, SearchContent } from "@/shared/components";
+import { ActionButtonGroup, ActionButtonContent } from "@dadamjang/mobile";
 import { colors } from "@dadamjang/design-tokens";
 import type { ProductLayoutProps } from "./product-layout.types";
+import {
+  useCircularPairAnimation,
+  useCapsuleAnimation,
+} from "./layout-animation.ios";
 
-const firstButtonPhaseEnd = 0.25;
-const singleButtonWidthPhaseEnd = firstButtonPhaseEnd;
-const singleButtonIconPhaseStart = singleButtonWidthPhaseEnd + 0.15;
-const singleButtonIconPhaseEnd = singleButtonIconPhaseStart + 0.15;
+const actionTransitionPhaseEnd = 0.25;
 const searchTransitionDuration = 280;
-const AnimatedLiquidGlassView =
-  Animated.createAnimatedComponent(LiquidGlassView);
 
-const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
+const ProductLayout = ({
+  headerActions,
+  variant,
+  children,
+}: ProductLayoutProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
@@ -43,18 +36,20 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   const childrenWidth = useSharedValue(0);
   const cancelWidth = useSharedValue(0);
 
-  const isTwoBtnCase = headerActions.length === 2;
-
   const handleChildrenLayout = useCallback(
     (event: LayoutChangeEvent) => {
-      childrenWidth.value = event.nativeEvent.layout.width;
+      if (childrenWidth.value === 0 && event.nativeEvent.layout.width > 0) {
+        childrenWidth.value = event.nativeEvent.layout.width;
+      }
     },
     [childrenWidth],
   );
 
   const handleCancelLayout = useCallback(
     (event: LayoutChangeEvent) => {
-      cancelWidth.value = event.nativeEvent.layout.width;
+      if (cancelWidth.value === 0 && event.nativeEvent.layout.width > 0) {
+        cancelWidth.value = event.nativeEvent.layout.width;
+      }
     },
     [cancelWidth],
   );
@@ -66,240 +61,59 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
     });
   }, [isSearching, progress]);
 
-  const singleBtnContainerStyle = useAnimatedStyle(() => {
-    if (childrenWidth.value === 0 || cancelWidth.value === 0) {
-      return { opacity: 1 };
-    }
+  const circularPairAnim = useCircularPairAnimation(
+    progress,
+    childrenWidth,
+    cancelWidth,
+  );
+  const capsuleAnim = useCapsuleAnimation(
+    progress,
+    childrenWidth,
+    cancelWidth,
+  );
 
-    return {
-      opacity: 1,
-      width: interpolate(
-        progress.value,
-        [0, singleButtonWidthPhaseEnd],
-        [childrenWidth.value, cancelWidth.value],
-        Extrapolation.CLAMP,
-      ),
-    };
-  });
+  const { groupAnim, cancelAnim } =
+    variant === "circularPair" ? circularPairAnim : capsuleAnim;
 
-  const singleIconStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      progress.value,
-      [singleButtonIconPhaseStart, singleButtonIconPhaseEnd],
-      [1, 0],
-      Extrapolation.CLAMP,
-    ),
-    transform: [
-      {
-        scale: interpolate(
-          progress.value,
-          [
-            0,
-            singleButtonWidthPhaseEnd,
-            singleButtonIconPhaseStart,
-            singleButtonIconPhaseEnd,
-          ],
-          [1, 0.9, 0.9, 0.85],
-          Extrapolation.CLAMP,
-        ),
-      },
-    ],
-    display: progress.value >= singleButtonIconPhaseEnd ? "none" : "flex",
-  }));
-
-  const singleCancelStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      progress.value,
-      [singleButtonIconPhaseEnd, 1],
-      [0, 1],
-      Extrapolation.CLAMP,
-    ),
-    transform: [
-      {
-        scale: interpolate(
-          progress.value,
-          [singleButtonIconPhaseEnd, 1],
-          [0.85, 1],
-          Extrapolation.CLAMP,
-        ),
-      },
-    ],
-    display: progress.value <= singleButtonIconPhaseEnd ? "none" : "flex",
-  }));
-
-  const firstBtnStyle = useAnimatedStyle(() => {
-    const moveDist = childrenWidth.value - cancelWidth.value;
-
-    return {
-      transform: [
-        {
-          translateX: interpolate(
-            progress.value,
-            [0, firstButtonPhaseEnd],
-            [0, moveDist > 0 ? moveDist : 0],
-            Extrapolation.CLAMP,
-          ),
-        },
-        {
-          scale: interpolate(
-            progress.value,
-            [0, firstButtonPhaseEnd],
-            [1, 0.85],
-            Extrapolation.CLAMP,
-          ),
-        },
-      ],
-      opacity: interpolate(
-        progress.value,
-        [0, firstButtonPhaseEnd],
-        [1, 0],
-        Extrapolation.CLAMP,
-      ),
-      display: progress.value >= firstButtonPhaseEnd ? "none" : "flex",
-    };
-  });
-
-  const secondBtnStyle = useAnimatedStyle(() => ({
-    width: progress.value < firstButtonPhaseEnd ? 40 : cancelWidth.value,
-  }));
-
-  const secondBtnIconStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      progress.value,
-      [firstButtonPhaseEnd, firstButtonPhaseEnd + 0.2],
-      [1, 0],
-      Extrapolation.CLAMP,
-    ),
-    transform: [
-      {
-        scale: interpolate(
-          progress.value,
-          [firstButtonPhaseEnd, firstButtonPhaseEnd + 0.2],
-          [1, 0.85],
-          Extrapolation.CLAMP,
-        ),
-      },
-    ],
-    display: progress.value === 1 ? "none" : "flex",
-  }));
-
-  const secondBtnCancelStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      progress.value,
-      [firstButtonPhaseEnd + 0.2, 1],
-      [0, 1],
-      Extrapolation.CLAMP,
-    ),
-    transform: [
-      {
-        scale: interpolate(
-          progress.value,
-          [firstButtonPhaseEnd + 0.2, 1],
-          [0.85, 1],
-          Extrapolation.CLAMP,
-        ),
-      },
-    ],
-    display: progress.value <= firstButtonPhaseEnd ? "none" : "flex",
-  }));
-
-  const buttonGroup = isTwoBtnCase ? (
-    <LiquidGlassContainerView spacing={0} style={actionStyles.twoBtnRow}>
-      <AnimatedLiquidGlassView
-        effect="clear"
-        interactive
-        style={[actionStyles.iconGlassButton, firstBtnStyle]}
-        tintColor={colors.canvas}
-      >
-        <ActionButtonContent action={headerActions[0][0]} iconOnly />
-        <View pointerEvents="none" style={actionStyles.surfaceBorder} />
-      </AnimatedLiquidGlassView>
-      <AnimatedLiquidGlassView
-        effect="clear"
-        interactive
-        style={[actionStyles.expandingGlassButton, secondBtnStyle]}
-        tintColor={colors.canvas}
-      >
-        <Animated.View
-          style={[
-            actionStyles.absoluteFill,
-            actionStyles.centerContent,
-            secondBtnIconStyle,
-          ]}
-        >
-          <ActionButtonContent action={headerActions[1][0]} iconOnly />
-        </Animated.View>
-        <Animated.View
-          style={[
-            actionStyles.absoluteFill,
-            actionStyles.rightContent,
-            secondBtnCancelStyle,
-          ]}
+  const buttonGroup = (
+    <View style={s.buttonRow}>
+      <ActionButtonGroup
+        actions={headerActions}
+        variant={variant}
+        animations={groupAnim}
+      />
+      <Animated.View style={cancelAnim}>
+        <LiquidGlassView
+          effect="clear"
+          interactive
+          style={s.cancelButton}
+          tintColor={colors.canvas}
         >
           <ActionButtonContent
             action={{ label: "취소", onPress: handleCancelSearch }}
           />
-        </Animated.View>
-        <View pointerEvents="none" style={actionStyles.surfaceBorder} />
-      </AnimatedLiquidGlassView>
-    </LiquidGlassContainerView>
-  ) : (
-    <AnimatedLiquidGlassView
-      effect="clear"
-      interactive
-      style={[actionStyles.expandingGlassButton, singleBtnContainerStyle]}
-    >
-      <Animated.View
-        style={[
-          actionStyles.absoluteFill,
-          actionStyles.centerContent,
-          singleIconStyle,
-        ]}
-      >
-        <View style={actionStyles.singleButtonContent}>
-          {headerActions[0].map((action, index) => (
-            <ActionButtonContent
-              key={action.label ?? action.icon ?? index}
-              action={action}
-              iconOnly
-            />
-          ))}
-        </View>
+          <View pointerEvents="none" style={s.surfaceBorder} />
+        </LiquidGlassView>
       </Animated.View>
-      <Animated.View
-        style={[
-          actionStyles.absoluteFill,
-          actionStyles.rightContent,
-          singleCancelStyle,
-        ]}
-      >
-        <ActionButtonContent
-          action={{ label: "취소", onPress: handleCancelSearch }}
-        />
-      </Animated.View>
-      <View pointerEvents="none" style={actionStyles.surfaceBorder} />
-    </AnimatedLiquidGlassView>
+    </View>
   );
 
   return (
     <View style={s.container}>
       <ProductHeader
-        actionTransitionPhaseEnd={
-          isTwoBtnCase ? firstButtonPhaseEnd : singleButtonWidthPhaseEnd
-        }
+        progress={progress}
+        actionTransitionPhaseEnd={actionTransitionPhaseEnd}
         isSearching={isSearching}
         onSearchFocus={() => setIsSearching(true)}
         onSearchCancel={handleCancelSearch}
         onSearchValueChange={setSearchValue}
         searchValue={searchValue}
       >
-        <View onLayout={handleChildrenLayout} style={actionStyles.measureOuter}>
-          {headerActions.map((actions, index) => (
-            <ActionButton key={index} actions={actions} iconOnly />
-          ))}
+        <View onLayout={handleChildrenLayout} style={s.measureOuter}>
+          <ActionButtonGroup actions={headerActions} variant={variant} />
         </View>
-        <View onLayout={handleCancelLayout} style={actionStyles.measureOuter}>
-          <ActionButton actions={[{ label: "취소", onPress: () => {} }]} />
+        <View onLayout={handleCancelLayout} style={s.measureOuter}>
+          <ActionButtonContent action={{ label: "취소", onPress: () => {} }} />
         </View>
         {buttonGroup}
       </ProductHeader>
@@ -309,7 +123,16 @@ const ProductLayout = ({ headerActions, children }: ProductLayoutProps) => {
   );
 };
 
-const actionStyles = StyleSheet.create({
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.surface },
+  buttonRow: {
+    height: 40,
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    flexShrink: 0,
+  },
   measureOuter: {
     position: "absolute",
     top: -9999,
@@ -320,31 +143,9 @@ const actionStyles = StyleSheet.create({
     gap: 6,
     alignItems: "center",
   },
-  twoBtnRow: {
-    height: 40,
-    flexDirection: "row",
-    gap: 8,
-    alignItems: "center",
-    justifyContent: "flex-end",
-  },
-  iconGlassButton: {
-    width: 40,
+  cancelButton: {
     height: 40,
     borderRadius: 20,
-    flexShrink: 0,
-  },
-  expandingGlassButton: {
-    height: 40,
-    borderRadius: 20,
-    position: "relative",
-    flexShrink: 0,
-  },
-  absoluteFill: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
   },
   surfaceBorder: {
     position: "absolute",
@@ -356,21 +157,6 @@ const actionStyles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 20,
   },
-  centerContent: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rightContent: {
-    alignItems: "flex-end",
-    justifyContent: "center",
-  },
-  singleButtonContent: {
-    flexDirection: "row",
-  },
-});
-
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
 });
 
 export default ProductLayout;

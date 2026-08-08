@@ -1,0 +1,68 @@
+import { LiquidGlassContainerView, LiquidGlassView } from "@callstack/liquid-glass";
+import { StyleSheet, View } from "react-native";
+import Animated from "react-native-reanimated";
+
+import { colors } from "@dadamjang/design-tokens";
+import { ActionButtonContent } from "../action-button/action-button.ios";
+import type { ActionButtonCircularPairGroupProps } from "./action-button-group.types";
+
+const ActionButtonCircularPairGroup = ({
+  actions,
+  animations,
+}: ActionButtonCircularPairGroupProps) => {
+  return (
+    <LiquidGlassContainerView style={s.row}>
+      <Animated.View style={animations?.[0]}>
+        <LiquidGlassView
+          effect="clear"
+          interactive
+          style={s.iconGlassButton}
+          tintColor={colors.canvas}
+        >
+          <ActionButtonContent action={actions[0]} iconOnly />
+          <View pointerEvents="none" style={s.surfaceBorder} />
+        </LiquidGlassView>
+      </Animated.View>
+
+      <Animated.View style={animations?.[1]}>
+        <LiquidGlassView
+          effect="clear"
+          interactive
+          style={s.iconGlassButton}
+          tintColor={colors.canvas}
+        >
+          <ActionButtonContent action={actions[1]} iconOnly />
+          <View pointerEvents="none" style={s.surfaceBorder} />
+        </LiquidGlassView>
+      </Animated.View>
+    </LiquidGlassContainerView>
+  );
+};
+
+const s = StyleSheet.create({
+  row: {
+    height: 40,
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  iconGlassButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    flexShrink: 0,
+  },
+  surfaceBorder: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 20,
+  },
+});
+
+export default ActionButtonCircularPairGroup;
