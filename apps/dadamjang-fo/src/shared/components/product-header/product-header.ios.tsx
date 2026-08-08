@@ -59,11 +59,11 @@ const ProductHeader = ({
 
   const handleChildrenLayout = useCallback(
     (e: LayoutChangeEvent) => {
-      if (!isSearching) {
+      if (childrenWidth.value === 0 && e.nativeEvent.layout.width > 0) {
         childrenWidth.value = e.nativeEvent.layout.width;
       }
     },
-    [childrenWidth, isSearching]
+    [childrenWidth]
   );
 
   const handleCancelLayout = useCallback(
