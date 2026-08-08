@@ -9,6 +9,7 @@ import Animated, {
   useSharedValue,
   Easing,
   withTiming,
+  type SharedValue,
 } from "react-native-reanimated";
 
 import { ActionButton, SearchInput } from "@/shared/components";
@@ -25,6 +26,7 @@ export interface ProductHeaderProps {
   searchValue?: string;
   onSearchValueChange?: (text: string) => void;
   actionTransitionPhaseEnd?: number;
+  progress?: SharedValue<number>;
 }
 
 const ProductHeader = ({
@@ -35,6 +37,7 @@ const ProductHeader = ({
   searchValue,
   onSearchValueChange,
   actionTransitionPhaseEnd = 0,
+  progress: customProgress,
 }: ProductHeaderProps) => {
   const inputRef = useRef<TextInput>(null);
 
@@ -42,7 +45,8 @@ const ProductHeader = ({
   const childrenWidth = useSharedValue(0);
   const cancelWidth = useSharedValue(0);
 
-  const progress = useSharedValue(0);
+  const internalProgress = useSharedValue(0);
+  const progress = customProgress ?? internalProgress;
 
   useEffect(() => {
     if (!isSearching) {
@@ -68,7 +72,9 @@ const ProductHeader = ({
 
   const handleCancelLayout = useCallback(
     (e: LayoutChangeEvent) => {
-      cancelWidth.value = e.nativeEvent.layout.width;
+      if (cancelWidth.value === 0 && e.nativeEvent.layout.width > 0) {
+        cancelWidth.value = e.nativeEvent.layout.width;
+      }
     },
     [cancelWidth],
   );

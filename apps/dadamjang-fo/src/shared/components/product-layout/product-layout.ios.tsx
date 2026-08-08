@@ -61,10 +61,19 @@ const ProductLayout = ({
     });
   }, [isSearching, progress]);
 
+  const circularPairAnim = useCircularPairAnimation(
+    progress,
+    childrenWidth,
+    cancelWidth,
+  );
+  const capsuleAnim = useCapsuleAnimation(
+    progress,
+    childrenWidth,
+    cancelWidth,
+  );
+
   const { groupAnim, cancelAnim } =
-    variant === "circularPair"
-      ? useCircularPairAnimation(progress, childrenWidth, cancelWidth)
-      : useCapsuleAnimation(progress, childrenWidth, cancelWidth);
+    variant === "circularPair" ? circularPairAnim : capsuleAnim;
 
   const buttonGroup = (
     <View style={s.buttonRow}>
@@ -92,6 +101,7 @@ const ProductLayout = ({
   return (
     <View style={s.container}>
       <ProductHeader
+        progress={progress}
         actionTransitionPhaseEnd={actionTransitionPhaseEnd}
         isSearching={isSearching}
         onSearchFocus={() => setIsSearching(true)}
