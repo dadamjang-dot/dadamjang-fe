@@ -8,6 +8,7 @@ import { signIn } from "@/features/auth/api";
 const mockNavigation: { path?: string } = {};
 
 jest.mock("expo-router", () => ({
+  useLocalSearchParams: () => ({}),
   useRouter: () => ({
     replace: (path: string) => {
       mockNavigation.path = path;

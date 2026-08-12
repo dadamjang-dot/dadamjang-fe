@@ -51,6 +51,13 @@ const RootLayout = () => (
                 headerShown: false,
               }}
             />
+            <Stack.Screen
+              name="style-compose"
+              options={{
+                presentation: "fullScreenModal",
+                headerShown: false,
+              }}
+            />
           </Stack>
         </SafeAreaView>
       </ShopFiltersProvider>

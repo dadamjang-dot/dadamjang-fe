@@ -81,6 +81,40 @@
 - **States**: default, active, pressed
 - **Accessibility**: button role과 selected state 제공
 
+### StyleCategoryBar
+
+- **Structure**: `전체 / 랭킹 / 스니커즈 / 의류 / 잡화` 48px line tab
+- **States**: default, selected, pressed
+- **Accessibility**: selected state를 VoiceOver에 노출
+- **Layout**: horizontal scroll, 화면 좌우 16px 여백
+
+### InlineSortBar
+
+- **Structure**: `추천순 / 인기순 / 최신순` 오른쪽 정렬 inline controls
+- **States**: default, selected, pressed
+- **Rule**: 랭킹 탭에서는 숨기고 인기순으로 고정
+
+### StylePostCard
+
+- **Structure**: 커버, 작성자, 본문 요약, 해시태그, 연결 상품 수, 좋아요
+- **Layout**: 2열 row, 상품 카드와 동일한 16px 좌우 여백과 12px 이미지 radius
+- **States**: default, pressed, liked, unliked, ranking number
+- **Accessibility**: 카드 본문과 좋아요를 별도 버튼으로 제공하고 selected state를 노출
+
+### StyleComposer
+
+- **Structure**: 카테고리, 구매 상품 form sheet, 이미지 picker, 본문, `@브랜드`, 해시태그 chip, 등록
+- **States**: empty, selected, uploading, submitting, validation error
+- **Rules**: 구매 상품 1~5개, 이미지 1~5장, 본문 1~1000자, 해시태그 0~10개
+- **Accessibility**: 이미지 삭제, 상품 선택, 좋아요 상태를 명시적인 label과 selected state로 제공
+
+### Storybook harness
+
+- `StyleCategoryBar`: 전체, 랭킹, 카테고리 선택 상태
+- `InlineSortBar`: 추천순, 인기순, 최신순 선택 상태
+- `StylePostCard`: 기본, 랭킹, liked 상태
+- `StyleComposer`: 빈 상태, 상품·이미지·태그 선택, 검증 오류 상태
+
 ## 6. Motion & Interaction
 
 - 상품 본문과 좋아요 버튼은 서로 독립적인 Pressable이다.

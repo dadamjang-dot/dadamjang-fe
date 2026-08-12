@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
@@ -9,6 +9,7 @@ import { useSignIn } from "@/features/auth";
 
 const SigninScreen = () => {
   const router = useRouter();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const signIn = useSignIn();
   const [userid, setUserid] = useState("");
   const [password, setPassword] = useState("");
@@ -26,7 +27,18 @@ const SigninScreen = () => {
       { userid: normalizedUserid, password },
       {
         onError: () => setMessage("로그인에 실패했어요."),
-        onSuccess: () => router.replace("/"),
+        onSuccess: () => {
+          if (returnTo === "/style-compose") {
+            router.replace("/style-compose");
+          } else if (returnTo?.startsWith("/style/")) {
+            router.replace({
+              pathname: "/style/[style-id]",
+              params: { "style-id": returnTo.slice("/style/".length) },
+            });
+          } else {
+            router.replace("/");
+          }
+        },
       },
     );
   };

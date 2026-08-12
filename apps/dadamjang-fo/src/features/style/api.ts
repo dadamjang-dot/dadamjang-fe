@@ -1,44 +1,123 @@
-import type { StylePost } from "./types";
+import { graphqlRequest } from "@dadamjang/graphql-client";
 
-const mockPosts: StylePost[] = [
-  {
-    id: "post-1",
-    imageUrl:
-      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&auto=format&fit=crop&q=60",
-    author: "fashionshine",
-    caption: "오늘의 아웃핏! 시크한 블랙과 편안한 핏으로 매칭핬어요.",
-    likes: 120,
-    isPartner: false,
-  },
-  {
-    id: "post-2",
-    imageUrl:
-      "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=600&auto=format&fit=crop&q=60",
-    author: "daily_look",
-    caption: "주말 쇼핑 데이 🛍️ 다담장에서 추천받은 아이템 정말 마음에 드네요.",
-    likes: 85,
-    isPartner: false,
-  },
-  {
-    id: "post-3",
-    imageUrl:
-      "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=600&auto=format&fit=crop&q=60",
-    author: "style_master",
-    caption: "여름 바이브 가득한 리넨 원피스 코디 ✨",
-    likes: 240,
-    isPartner: false,
-  },
-  {
-    id: "post-4",
-    imageUrl:
-      "https://images.unsplash.com/photo-1550614000-4b9519e02a48?w=600&auto=format&fit=crop&q=60",
-    author: "official_partner",
-    caption: "다담장 공식 파트너가 추천하는 여름 쇼핑 스타일링.",
-    likes: 512,
-    isPartner: true,
-  },
-];
+import type {
+  CreateStylePostInput,
+  PurchasedStyleProduct,
+  StylePostConnection,
+  StylePostFilter,
+  StylePostImageAsset,
+  StylePost,
+} from "./types";
 
-export const getStylePosts = async (): Promise<StylePost[]> => {
-  return Promise.resolve(mockPosts);
+const stylePostFields = `
+  stylePostId authorId title content category imageUrls thumbnailUrl hashtags isPartner likeCount isLiked createdAt updatedAt
+  author { userId userid }
+  brandTags { brandId name }
+  products { productId title imageUrls brandId brandName categoryId }
+`;
+
+export const getStylePosts = async ({
+  filter,
+  after,
+  first = 20,
+}: {
+  filter: StylePostFilter;
+  after?: string;
+  first?: number;
+}): Promise<StylePostConnection> => {
+  const data = await graphqlRequest<{ stylePosts: StylePostConnection }>(
+    `query StylePosts($filter: StylePostFilterInput, $first: Int, $after: String) {
+      stylePosts(filter: $filter, first: $first, after: $after) {
+        nodes { ${stylePostFields} }
+        nextCursor
+        hasNextPage
+      }
+    }`,
+    { filter, first, after },
+  );
+  return data.stylePosts;
+};
+
+export const getStylePost = async (stylePostId: string): Promise<StylePost> => {
+  const data = await graphqlRequest<{ stylePost: StylePost }>(
+    `query StylePost($stylePostId: String!) {
+      stylePost(stylePostId: $stylePostId) { ${stylePostFields} }
+    }`,
+    { stylePostId },
+  );
+  return data.stylePost;
+};
+
+export const getPurchasedStyleProducts = async (): Promise<PurchasedStyleProduct[]> => {
+  const data = await graphqlRequest<{ purchasedStyleProducts: PurchasedStyleProduct[] }>(
+    `query PurchasedStyleProducts {
+      purchasedStyleProducts { productId title imageUrls brandId brandName categoryId lastPurchasedAt }
+    }`,
+  );
+  return data.purchasedStyleProducts;
+};
+
+type ImageUploadTarget = {
+  key: string;
+  uploadUrl: string;
+  imageUrl: string;
+};
+
+const imageContentType = (asset: StylePostImageAsset) =>
+  asset.mimeType?.toLowerCase() ??
+  (asset.fileName?.toLowerCase().endsWith(".heic") || asset.fileName?.toLowerCase().endsWith(".heif")
+    ? "image/heic"
+    : "image/jpeg");
+
+const imageFilename = (asset: StylePostImageAsset, index: number) => asset.fileName ?? `style-post-${index}.jpg`;
+
+export const uploadStylePostImage = async (asset: StylePostImageAsset, index: number): Promise<string> => {
+  const contentType = imageContentType(asset);
+  const filename = imageFilename(asset, index);
+  const fileResponse = await fetch(asset.uri);
+  if (!fileResponse.ok) throw new Error("이미지 파일을 불러오지 못했어요.");
+  const file = await fileResponse.blob();
+  const data = await graphqlRequest<{ createStylePostImageUpload: ImageUploadTarget }>(
+    `mutation CreateStylePostImageUpload($input: CreateStylePostImageUploadInput!) {
+      createStylePostImageUpload(input: $input) { key uploadUrl imageUrl }
+    }`,
+    { input: { filename, contentType, fileSize: asset.fileSize ?? file.size } },
+  );
+  const response = await fetch(data.createStylePostImageUpload.uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: file,
+  });
+  if (!response.ok) throw new Error("이미지 업로드에 실패했어요.");
+  return data.createStylePostImageUpload.key;
+};
+
+export const createStylePost = async (input: CreateStylePostInput): Promise<StylePost> => {
+  const data = await graphqlRequest<{ createStylePost: StylePost }>(
+    `mutation CreateStylePost($input: CreateStylePostInput!) {
+      createStylePost(input: $input) { ${stylePostFields} }
+    }`,
+    { input },
+  );
+  return data.createStylePost;
+};
+
+export const likeStylePost = async (stylePostId: string): Promise<StylePost> => {
+  const data = await graphqlRequest<{ likeStylePost: StylePost }>(
+    `mutation LikeStylePost($stylePostId: String!) {
+      likeStylePost(stylePostId: $stylePostId) { ${stylePostFields} }
+    }`,
+    { stylePostId },
+  );
+  return data.likeStylePost;
+};
+
+export const unlikeStylePost = async (stylePostId: string): Promise<StylePost> => {
+  const data = await graphqlRequest<{ unlikeStylePost: StylePost }>(
+    `mutation UnlikeStylePost($stylePostId: String!) {
+      unlikeStylePost(stylePostId: $stylePostId) { ${stylePostFields} }
+    }`,
+    { stylePostId },
+  );
+  return data.unlikeStylePost;
 };

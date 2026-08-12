@@ -1,25 +1,67 @@
-import { View } from "react-native";
-import { StyleSheet } from "react-native-unistyles";
-import {
-  ProductLayout,
-} from "@/shared/components";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+
 import { Action } from "@dadamjang/mobile";
 
+import { useCurrentUser } from "@/features/auth";
+import {
+  StyleCategoryBar,
+  StylePostGrid,
+  StyleSortBar,
+  type StyleCategoryKey,
+} from "@/features/style/components";
+import { getStyleFeedFilter, useStylePosts, useToggleStylePostLike } from "@/features/style";
+import type { StylePostSort } from "@/features/style";
+import { ProductLayout } from "@/shared/components";
+
 const StyleScreen = () => {
+  const router = useRouter();
+  const currentUser = useCurrentUser();
+  const [selectedCategory, setSelectedCategory] = useState<StyleCategoryKey>("ALL");
+  const [selectedSort, setSelectedSort] = useState<StylePostSort>("RECOMMENDED");
+  const isRanking = selectedCategory === "RANKING";
+  const feedFilter = getStyleFeedFilter(selectedCategory, selectedSort);
+  const postsQuery = useStylePosts(feedFilter.category, feedFilter.sort);
+  const likeMutation = useToggleStylePostLike();
+  const posts = postsQuery.data?.pages.flatMap((page) => page.nodes) ?? [];
+
+  const requireSignIn = (returnTo: string) => {
+    if (!currentUser.data) {
+      router.push({ pathname: "/auth/signin", params: { returnTo } });
+      return false;
+    }
+    return true;
+  };
+
+  const handleCreatePress = () => {
+    if (requireSignIn("/style-compose")) router.push("/style-compose");
+  };
+
   const headerActions: Action[] = [
-    { icon: "plus", onPress: () => {} },
-    { icon: "cart", onPress: () => {} },
+    { icon: "plus", onPress: handleCreatePress },
+    { icon: "cart", onPress: () => router.push("/cart") },
   ];
 
   return (
     <ProductLayout headerActions={headerActions} variant="circularPair">
-      <View style={s.content} />
+      <StylePostGrid
+        categoryBar={<StyleCategoryBar onSelect={setSelectedCategory} selectedCategory={selectedCategory} />}
+        hasNextPage={Boolean(postsQuery.hasNextPage)}
+        isError={postsQuery.isError}
+        isFetchingNextPage={postsQuery.isFetchingNextPage}
+        isLoading={postsQuery.isLoading}
+        onLoadMore={() => postsQuery.fetchNextPage()}
+        onPostPress={(stylePostId) => router.push(`/style/${stylePostId}`)}
+        onRetry={() => postsQuery.refetch()}
+        onToggleLike={(stylePostId, nextLiked) => {
+          if (requireSignIn(`/style/${stylePostId}`)) likeMutation.mutate({ stylePostId, nextLiked });
+        }}
+        posts={posts}
+        showRank={isRanking}
+        sortBar={isRanking ? undefined : <StyleSortBar onSelect={setSelectedSort} sort={selectedSort} />}
+      />
     </ProductLayout>
   );
 };
-
-const s = StyleSheet.create({
-  content: { flex: 1 },
-});
 
 export default StyleScreen;
