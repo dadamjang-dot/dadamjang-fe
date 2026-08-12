@@ -17,6 +17,7 @@ env:
 jobs:
   reset-api:
     if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
+    environment: mobile-e2e
     permissions:
       id-token: write
     runs-on: ubuntu-latest
@@ -26,7 +27,7 @@ jobs:
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.E2E_AWS_ROLE_ARN }}
+          role-to-assume: ${{ vars.E2E_AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - run: |
           aws ecs update-service --cluster "$E2E_ECS_CLUSTER" --service "$E2E_ECS_SERVICE" --desired-count 1
@@ -36,12 +37,13 @@ jobs:
           E2E_ECS_SERVICE: ${{ vars.AWS_ECS_SERVICE }}
       - id: reset
         run: |
+          overrides=$(jq -cn --arg userid "$E2E_USER_ID" --arg password "$E2E_USER_PASSWORD" '{containerOverrides:[{name:"api",command:["pnpm","e2e:reset"],environment:[{name:"NODE_ENV",value:"e2e"},{name:"POSTGRES_DATABASE",value:"dadamjang_e2e"},{name:"E2E_USER_ID",value:$userid},{name:"E2E_USER_PASSWORD",value:$password}]}]}')
           task_arn=$(aws ecs run-task \
             --cluster "$E2E_ECS_CLUSTER" \
             --task-definition "$E2E_ECS_TASK_DEFINITION" \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[$E2E_ECS_SUBNET_IDS],securityGroups=[$E2E_ECS_SECURITY_GROUP_IDS],assignPublicIp=DISABLED}" \
-            --overrides '{"containerOverrides":[{"name":"api","command":["pnpm","e2e:reset"],"environment":[{"name":"NODE_ENV","value":"e2e"},{"name":"POSTGRES_DATABASE","value":"dadamjang_e2e"}]}]}' \
+            --overrides "$overrides" \
             --query 'tasks[0].taskArn' --output text)
           aws ecs wait tasks-stopped --cluster "$E2E_ECS_CLUSTER" --tasks "$task_arn"
           test "$(aws ecs describe-tasks --cluster "$E2E_ECS_CLUSTER" --tasks "$task_arn" --query 'tasks[0].containers[0].exitCode' --output text)" = "0"
@@ -50,12 +52,15 @@ jobs:
           E2E_ECS_TASK_DEFINITION: ${{ vars.AWS_ECS_TASK_DEFINITION }}
           E2E_ECS_SUBNET_IDS: ${{ vars.AWS_PRIVATE_SUBNET_IDS }}
           E2E_ECS_SECURITY_GROUP_IDS: ${{ vars.AWS_API_SECURITY_GROUP_ID }}
+          E2E_USER_ID: ${{ secrets.E2E_USER_ID }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
       - id: ready
         run: echo "enabled=true" >> "$GITHUB_OUTPUT"
 
   ios-smoke:
     if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
     needs: reset-api
+    environment: mobile-e2e
     runs-on: macos-15
     timeout-minutes: 60
     defaults:
@@ -112,6 +117,7 @@ jobs:
   android-smoke:
     if: github.event.pull_request.head.repo.full_name == github.repository && !github.event.pull_request.draft
     needs: reset-api
+    environment: mobile-e2e
     runs-on: ubuntu-latest
     timeout-minutes: 60
     defaults:
@@ -166,6 +172,7 @@ jobs:
   teardown-api:
     if: always() && needs.reset-api.result != 'skipped' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     needs: [reset-api, ios-smoke, android-smoke]
+    environment: mobile-e2e
     permissions:
       id-token: write
     runs-on: ubuntu-latest
@@ -173,7 +180,7 @@ jobs:
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.E2E_AWS_ROLE_ARN }}
+          role-to-assume: ${{ vars.E2E_AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - run: aws ecs update-service --cluster "$E2E_ECS_CLUSTER" --service "$E2E_ECS_SERVICE" --desired-count 0
         env:

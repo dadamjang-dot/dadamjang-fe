@@ -7,8 +7,8 @@ import {
   defaultShopFilters,
   useShopFilters,
 } from "@/features/catalog/shop-filters";
-import ProductCard from "@/features/shop/components/product-card";
 import ProductSortSheet from "@/features/shop/components/product-sort-sheet";
+import { ProductCard } from "@/shared/components/product-card";
 
 const FilterHarness = () => {
   const { filters, draftFilters, startDraft, updateDraft, applyDraft } =
@@ -58,20 +58,13 @@ describe("shop interactions", () => {
         <View>
           <Text testID="product.destination">{destination}</Text>
           <ProductCard
+            name="테스트 상품"
             isLiked={false}
             onPress={() => setDestination("product-1")}
             onToggleLike={() => undefined}
-            product={{
-              basePrice: 10_000,
-              finalPrice: 8_000,
-              isExpressDelivery: false,
-              isOnSale: true,
-              lowestPriceEvidenceSummary: "",
-              name: "테스트 상품",
-              priceRevision: "revision-1",
-              productId: "product-1",
-              thumbnail: null,
-            }}
+            originalPrice={10_000}
+            price={8_000}
+            productId="product-1"
           />
         </View>
       );
