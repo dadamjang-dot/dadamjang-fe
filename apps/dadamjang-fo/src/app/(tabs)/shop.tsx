@@ -36,7 +36,7 @@ const ShopScreen = () => {
     startDraft();
     router.push({
       pathname: "/shop-filter-sheet",
-      params: { mode, totalCount: String(totalCount) },
+      params: { mode },
     });
   };
 

@@ -1,16 +1,18 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Pressable, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 
 import {
+  toProductFilter,
   useCatalogFilterOptions,
   useShopFilters,
   type CatalogFilterOption,
   type ShopFilterMode,
 } from "@/features/catalog";
+import { useProductPriceSummaries } from "@/features/price-evidence";
 import {
   ProductFilterSheet,
   ShopFilterBar,
@@ -277,13 +279,15 @@ const FilterContent = ({ mode }: { mode: FilterMode }) => {
 
 const ShopFilterSheetRoute = () => {
   const router = useRouter();
-  const { mode, totalCount: totalCountParam } = useLocalSearchParams<{
-    mode?: string;
-    totalCount?: string;
-  }>();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
   const filterMode = isFilterMode(mode) ? mode : "category";
-  const totalCount = Number(totalCountParam) || 0;
   const { startDraft, updateDraft, applyDraft, draftFilters } = useShopFilters();
+  const draftProductFilter = useMemo(
+    () => toProductFilter(draftFilters),
+    [draftFilters],
+  );
+  const draftProductsQuery = useProductPriceSummaries(draftProductFilter);
+  const totalCount = draftProductsQuery.data?.pages[0]?.totalCount ?? 0;
 
   useEffect(() => {
     startDraft();
