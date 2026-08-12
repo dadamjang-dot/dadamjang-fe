@@ -6,6 +6,7 @@ module.exports = ({ config }) => ({
   ...config,
   name: "다담장",
   slug: "dadamjang-fo",
+  owner: "cyjoon",
   version: "1.0.0",
   orientation: "portrait",
   userInterfaceStyle: "light",
