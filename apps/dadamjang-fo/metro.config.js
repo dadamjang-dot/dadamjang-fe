@@ -1,4 +1,5 @@
 const { getSentryExpoConfig } = require("@sentry/react-native/metro");
+const withStorybook = require("@storybook/react-native/metro/withStorybook");
 const path = require("path");
 
 const config = getSentryExpoConfig(__dirname);
@@ -12,4 +13,6 @@ config.resolver.nodeModulesPaths = [
 
 config.resolver.unstable_enablePackageExports = false;
 
-module.exports = config;
+module.exports = withStorybook(config, {
+  configPath: path.resolve(__dirname, ".rnstorybook"),
+});

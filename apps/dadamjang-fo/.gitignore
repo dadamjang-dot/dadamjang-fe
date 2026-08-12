@@ -22,3 +22,4 @@ android/app/build/
 *.orig.*
 .env.local
 expo-env.d.ts
+.rnstorybook/storybook.requires.ts

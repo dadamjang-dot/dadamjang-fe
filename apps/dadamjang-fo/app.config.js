@@ -1,10 +1,8 @@
-import "tsx/cjs";
-
-import withIosBuildSettings from "./plugins/with-ios-build-settings";
+const withIosBuildSettings = require("./plugins/with-ios-build-settings.cjs");
 
 const DEPLOYMENT_TARGET = "16.4";
 
-const appConfig = ({ config }: { config: Record<string, unknown> }) => ({
+module.exports = ({ config }) => ({
   ...config,
   name: "다담장",
   slug: "dadamjang-fo",
@@ -64,10 +62,13 @@ const appConfig = ({ config }: { config: Record<string, unknown> }) => ({
       },
     ],
   ],
+  extra: {
+    eas: {
+      projectId: "095bcf9d-2bf8-4274-bb83-838d70c4f608",
+    },
+  },
   experiments: {
     typedRoutes: true,
     reactCompiler: true,
   },
 });
-
-export default appConfig;
