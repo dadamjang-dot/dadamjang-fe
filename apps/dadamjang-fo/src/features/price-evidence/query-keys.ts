@@ -3,6 +3,7 @@ import type { ProductPriceSummaryFilter } from "./types";
 const filterKey = (filter: ProductPriceSummaryFilter) => ({
   query: filter.query?.trim() ?? "",
   categoryId: filter.categoryId ?? null,
+  categoryIds: [...(filter.categoryIds ?? [])].sort(),
   brandIds: [...(filter.brandIds ?? [])].sort(),
   colorIds: [...(filter.colorIds ?? [])].sort(),
   sizeIds: [...(filter.sizeIds ?? [])].sort(),

@@ -1,32 +1,64 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Image } from "expo-image";
+import { ScrollView, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 
 import type { ShopFilterMode, ShopFilters } from "@/features/catalog";
+import { Button } from "@/shared/components";
 
 type ShopFilterBarProps = {
   filters: ShopFilters;
-  onOpenFilter: (mode: ShopFilterMode) => void;
-  onToggleSale: (value: boolean) => void;
-  onToggleExpress: (value: boolean) => void;
+  onOpenFilter: (mode: Exclude<ShopFilterMode, "sort">) => void;
+  onToggleSale?: (value: boolean) => void;
+  onToggleExpress?: (value: boolean) => void;
+  selectedMode?: ShopFilterMode;
+  variant?: "mini";
 };
 
 type FilterChipProps = {
   label: string;
   active?: boolean;
   onPress: () => void;
+  mini?: boolean;
+  showDisclosure?: boolean;
+  testID: string;
 };
 
-const FilterChip = ({ label, active, onPress }: FilterChipProps) => (
-  <Pressable
-    accessibilityRole="button"
+const FilterChip = ({
+  label,
+  active,
+  onPress,
+  mini,
+  showDisclosure,
+  testID,
+}: FilterChipProps) => (
+  <Button
     accessibilityState={{ selected: active }}
     onPress={onPress}
-    style={[s.chip, active && s.activeChip]}
+    style={[
+      s.chip,
+      mini && s.miniChip,
+      !mini && active && s.activeChip,
+      mini && active && s.miniActiveChip,
+    ]}
+    testID={testID}
+    variant="bare"
   >
-    <Text style={[s.chipLabel, active && s.activeChipLabel]}>{label}</Text>
-  </Pressable>
+    <Text
+      style={[
+        s.chipLabel,
+        mini && s.miniChipLabel,
+        !mini && active && s.activeChipLabel,
+        mini && active && s.miniActiveChipLabel,
+      ]}
+    >
+      {label}
+    </Text>
+    {showDisclosure ? (
+      <Image source="sf:chevron.down" style={s.disclosureIcon} />
+    ) : null}
+  </Button>
 );
 
 const ShopFilterBar = ({
@@ -34,86 +66,157 @@ const ShopFilterBar = ({
   onOpenFilter,
   onToggleSale,
   onToggleExpress,
-}: ShopFilterBarProps) => (
-  <View style={s.container}>
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={s.chips}
-      contentInsetAdjustmentBehavior="automatic"
-    >
-      <FilterChip
-        label="슈퍼세일"
-        active={filters.saleOnly}
-        onPress={() => onToggleSale(!filters.saleOnly)}
-      />
-      <FilterChip
-        label="바로배송"
-        active={filters.expressOnly}
-        onPress={() => onToggleExpress(!filters.expressOnly)}
-      />
+  selectedMode,
+  variant,
+}: ShopFilterBarProps) => {
+  const isMini = variant === "mini";
+  const chips = (
+    <>
+      {!isMini && onToggleSale && onToggleExpress ? (
+        <>
+          <FilterChip
+            label="슈퍼세일"
+            active={filters.saleOnly}
+            onPress={() => onToggleSale(!filters.saleOnly)}
+            testID="e2e.filter.toggle.sale"
+          />
+          <FilterChip
+            label="바로배송"
+            active={filters.expressOnly}
+            onPress={() => onToggleExpress(!filters.expressOnly)}
+            testID="e2e.filter.toggle.express"
+          />
+        </>
+      ) : null}
       <FilterChip
         label="카테고리"
-        active={
-          filters.categorySource === "filter" && Boolean(filters.categoryId)
-        }
+        mini={isMini}
+        showDisclosure={!isMini}
+        active={isMini && selectedMode === "category"}
         onPress={() => onOpenFilter("category")}
+        testID="e2e.filter.open.category"
       />
       <FilterChip
         label="브랜드"
-        active={filters.brandIds.length > 0}
+        mini={isMini}
+        showDisclosure={!isMini}
+        active={isMini && selectedMode === "brand"}
         onPress={() => onOpenFilter("brand")}
+        testID="e2e.filter.open.brand"
       />
       <FilterChip
         label="색상"
-        active={filters.colorIds.length > 0}
+        mini={isMini}
+        showDisclosure={!isMini}
+        active={isMini && selectedMode === "color"}
         onPress={() => onOpenFilter("color")}
+        testID="e2e.filter.open.color"
       />
       <FilterChip
         label="사이즈"
-        active={filters.sizeIds.length > 0}
+        mini={isMini}
+        showDisclosure={!isMini}
+        active={isMini && selectedMode === "size"}
         onPress={() => onOpenFilter("size")}
+        testID="e2e.filter.open.size"
       />
       <FilterChip
         label="가격대"
-        active={
-          filters.minPrice !== undefined || filters.maxPrice !== undefined
-        }
+        mini={isMini}
+        showDisclosure={!isMini}
+        active={isMini && selectedMode === "price"}
         onPress={() => onOpenFilter("price")}
+        testID="e2e.filter.open.price"
       />
-    </ScrollView>
-  </View>
-);
+    </>
+  );
+
+  return (
+    <View style={[s.container, isMini && s.miniContainer]}>
+      {isMini ? (
+        <View style={s.miniTabs}>{chips}</View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.chips}
+          contentInsetAdjustmentBehavior="automatic"
+        >
+          {chips}
+        </ScrollView>
+      )}
+    </View>
+  );
+};
 
 const s = StyleSheet.create({
   container: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
     backgroundColor: colors.surface,
+    paddingTop: 12,
+  },
+  miniContainer: {
+    paddingTop: 24,
+  },
+  miniTabs: {
+    height: 40,
+    flexDirection: "row",
+    paddingHorizontal: 12,
   },
   chips: {
     gap: 8,
     paddingHorizontal: 16,
     paddingTop: 4,
-    paddingBottom: 12,
+    paddingBottom: 6,
   },
   chip: {
     minHeight: 34,
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "center",
+    gap: 4,
     paddingHorizontal: 13,
     borderRadius: 17,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.surface,
   },
+  miniChip: {
+    flex: 1,
+    height: 40,
+    minHeight: 0,
+    marginHorizontal: 4,
+    paddingHorizontal: 4,
+    borderRadius: 0,
+    borderWidth: 0,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+    backgroundColor: colors.surface,
+  },
+  disclosureIcon: {
+    width: 10,
+    height: 10,
+    tintColor: colors.muted,
+  },
   activeChip: {
     borderColor: colors.primary,
     backgroundColor: colors.primary,
+  },
+  miniActiveChip: {
+    marginBottom: -1,
+    zIndex: 1,
+    borderBottomColor: colors.ink,
   },
   chipLabel: {
     color: colors.ink,
     fontSize: 13,
     fontWeight: "600",
+  },
+  miniChipLabel: {
+    color: colors.muted,
+    fontSize: 14,
+  },
+  miniActiveChipLabel: {
+    color: colors.ink,
   },
   activeChipLabel: {
     color: colors.surface,

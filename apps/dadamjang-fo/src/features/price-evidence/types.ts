@@ -8,6 +8,8 @@ export type ProductPriceSummary = {
   finalPrice: number;
   priceRevision: string;
   lowestPriceEvidenceSummary: string;
+  isOnSale: boolean;
+  isExpressDelivery: boolean;
 };
 
 export type ProductPriceSummaryConnection = {

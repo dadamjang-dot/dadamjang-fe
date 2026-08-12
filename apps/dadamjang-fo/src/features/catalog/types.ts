@@ -50,6 +50,7 @@ export type ProductSort =
 
 export type ProductFilter = {
   categoryId?: string;
+  categoryIds?: string[];
   query?: string;
   brandIds?: string[];
   colorIds?: string[];

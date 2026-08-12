@@ -15,6 +15,7 @@ export type ShopCategorySource = "navigation" | "filter";
 
 export type ShopFilters = {
   categoryId?: string;
+  categoryIds: string[];
   categorySource?: ShopCategorySource;
   brandIds: string[];
   colorIds: string[];
@@ -37,6 +38,7 @@ type ShopFiltersContextValue = {
 };
 
 export const defaultShopFilters: ShopFilters = {
+  categoryIds: [],
   brandIds: [],
   colorIds: [],
   sizeIds: [],
@@ -47,22 +49,28 @@ export const defaultShopFilters: ShopFilters = {
 
 export const normalizeShopFilters = (filters: ShopFilters): ShopFilters => ({
   ...filters,
+  categoryIds: [...(filters.categoryIds ?? [])].sort(),
   brandIds: [...filters.brandIds].sort(),
   colorIds: [...filters.colorIds].sort(),
   sizeIds: [...filters.sizeIds].sort(),
 });
 
-export const toProductFilter = (filters: ShopFilters): ProductFilter => ({
-  categoryId: filters.categoryId,
-  brandIds: filters.brandIds.length > 0 ? filters.brandIds : undefined,
-  colorIds: filters.colorIds.length > 0 ? filters.colorIds : undefined,
-  sizeIds: filters.sizeIds.length > 0 ? filters.sizeIds : undefined,
-  saleOnly: filters.saleOnly || undefined,
-  expressOnly: filters.expressOnly || undefined,
-  minPrice: filters.minPrice,
-  maxPrice: filters.maxPrice,
-  sort: filters.sort,
-});
+export const toProductFilter = (filters: ShopFilters): ProductFilter => {
+  const categoryIds = filters.categoryIds ?? [];
+
+  return {
+    categoryId: categoryIds.length === 0 ? filters.categoryId : undefined,
+    categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
+    brandIds: filters.brandIds.length > 0 ? filters.brandIds : undefined,
+    colorIds: filters.colorIds.length > 0 ? filters.colorIds : undefined,
+    sizeIds: filters.sizeIds.length > 0 ? filters.sizeIds : undefined,
+    saleOnly: filters.saleOnly || undefined,
+    expressOnly: filters.expressOnly || undefined,
+    minPrice: filters.minPrice,
+    maxPrice: filters.maxPrice,
+    sort: filters.sort,
+  };
+};
 
 const ShopFiltersContext = createContext<ShopFiltersContextValue | undefined>(
   undefined,

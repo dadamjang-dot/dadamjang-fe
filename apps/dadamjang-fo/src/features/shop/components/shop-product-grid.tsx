@@ -1,18 +1,17 @@
-import { Image } from "expo-image";
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
+import { type ReactElement, useMemo } from "react";
+import { LegendList } from "@legendapp/list/react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 
 import type { ProductPriceSummary } from "@/features/price-evidence";
+import { Button, ProductCard } from "@/shared/components";
 
 type ShopProductGridProps = {
+  categoryBar: ReactElement;
+  filterBar: ReactElement;
+  sortBar: ReactElement;
   products: ProductPriceSummary[];
   isLoading: boolean;
   isError: boolean;
@@ -21,44 +20,16 @@ type ShopProductGridProps = {
   onRetry: () => void;
   onLoadMore: () => void;
   onProductPress: (productId: string) => void;
+  likedProductIds: ReadonlySet<string>;
+  onToggleLike: (productId: string, nextLiked: boolean) => void;
 };
 
-const formatPrice = (price: number) => `${price.toLocaleString("ko-KR")}원`;
-
-const ProductCard = ({
-  product,
-  onPress,
-}: {
-  product: ProductPriceSummary;
-  onPress: () => void;
-}) => {
-  const imageUrl = product.thumbnail;
-
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={s.card}>
-      <View style={s.imageWrapper}>
-        {imageUrl ? (
-          <Image
-            contentFit="cover"
-            source={{ uri: imageUrl }}
-            style={s.image}
-          />
-        ) : (
-          <View style={s.imagePlaceholder} />
-        )}
-      </View>
-      <Text numberOfLines={2} style={s.title}>
-        {product.name}
-      </Text>
-      <View style={s.priceRow}>
-        <Text style={s.price}>{formatPrice(product.finalPrice)}</Text>
-        {product.basePrice > product.finalPrice ? (
-          <Text style={s.originalPrice}>{formatPrice(product.basePrice)}</Text>
-        ) : null}
-      </View>
-    </Pressable>
-  );
-};
+type ShopProductGridRow =
+  | { type: "category" }
+  | { type: "filter" }
+  | { type: "sort" }
+  | { type: "state" }
+  | { type: "products"; products: ProductPriceSummary[] };
 
 const GridState = ({
   isError,
@@ -74,18 +45,26 @@ const GridState = ({
         : "필터를 바꾸면 다른 상품을 확인할 수 있어요."}
     </Text>
     {isError ? (
-      <Pressable
-        accessibilityRole="button"
+      <Button
+        label="다시 시도"
         onPress={onRetry}
         style={s.retryButton}
-      >
-        <Text style={s.retryLabel}>다시 시도</Text>
-      </Pressable>
+      />
     ) : null}
   </View>
 );
 
+const LoadingState = () => (
+  <View style={s.state}>
+    <ActivityIndicator color={colors.primary} />
+    <Text style={s.stateDescription}>상품을 불러오는 중이에요.</Text>
+  </View>
+);
+
 const ShopProductGrid = ({
+  categoryBar,
+  filterBar,
+  sortBar,
   products,
   isLoading,
   isError,
@@ -94,43 +73,94 @@ const ShopProductGrid = ({
   onRetry,
   onLoadMore,
   onProductPress,
+  likedProductIds,
+  onToggleLike,
 }: ShopProductGridProps) => {
-  if (isLoading) {
-    return (
-      <View style={s.state}>
-        <ActivityIndicator color={colors.primary} />
-        <Text style={s.stateDescription}>상품을 불러오는 중이에요.</Text>
-      </View>
-    );
-  }
+  const rows = useMemo<ShopProductGridRow[]>(() => {
+    const controls: ShopProductGridRow[] = [
+      { type: "category" },
+      { type: "filter" },
+      { type: "sort" },
+    ];
 
-  if (isError || products.length === 0) {
-    return <GridState isError={isError} onRetry={onRetry} />;
-  }
+    if (isLoading || isError || products.length === 0) {
+      return [...controls, { type: "state" }];
+    }
+
+    return [
+      ...controls,
+      ...Array.from(
+        { length: Math.ceil(products.length / 2) },
+        (_, index): ShopProductGridRow => ({
+          type: "products",
+          products: products.slice(index * 2, index * 2 + 2),
+        }),
+      ),
+    ];
+  }, [isError, isLoading, products]);
 
   return (
-    <FlatList
+    <LegendList
       accessibilityLabel="상품 목록"
-      columnWrapperStyle={s.column}
       contentContainerStyle={s.listContent}
       contentInsetAdjustmentBehavior="automatic"
-      data={products}
-      keyExtractor={(product) => product.productId}
-      numColumns={2}
+      data={rows}
+      extraData={[categoryBar, filterBar, likedProductIds, sortBar]}
+      getItemType={(item) => item.type}
+      keyExtractor={(item, index) =>
+        item.type === "products"
+          ? item.products.map((product) => product.productId).join("-")
+          : `${item.type}-${index}`
+      }
       onEndReached={hasNextPage && !isFetchingNextPage ? onLoadMore : undefined}
       onEndReachedThreshold={0.6}
-      renderItem={({ item }) => (
-        <ProductCard
-          product={item}
-          onPress={() => onProductPress(item.productId)}
-        />
-      )}
+      renderItem={({ item }) => {
+        switch (item.type) {
+          case "category":
+            return categoryBar;
+          case "filter":
+            return filterBar;
+          case "sort":
+            return sortBar;
+          case "state":
+            return isLoading ? (
+              <LoadingState />
+            ) : (
+              <GridState isError={isError} onRetry={onRetry} />
+            );
+          case "products":
+            return (
+              <View style={s.productRow}>
+                {item.products.map((product) => (
+                  <View key={product.productId} style={s.productCell}>
+                    <ProductCard
+                      imageUrl={product.thumbnail}
+                      isExpressDelivery={product.isExpressDelivery}
+                      isLiked={likedProductIds.has(product.productId)}
+                      isOnSale={product.isOnSale}
+                      name={product.name}
+                      originalPrice={product.basePrice}
+                      price={product.finalPrice}
+                      productId={product.productId}
+                      onPress={() => onProductPress(product.productId)}
+                      onToggleLike={(nextLiked) =>
+                        onToggleLike(product.productId, nextLiked)
+                      }
+                    />
+                  </View>
+                ))}
+              </View>
+            );
+        }
+      }}
       ListFooterComponent={
         isFetchingNextPage ? (
           <ActivityIndicator color={colors.primary} style={s.footer} />
         ) : null
       }
+      recycleItems
       showsVerticalScrollIndicator={false}
+      stickyHeaderIndices={[0]}
       style={s.list}
     />
   );
@@ -141,60 +171,23 @@ const s = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    gap: 16,
-    paddingHorizontal: 16,
-    paddingTop: 8,
     paddingBottom: 24,
   },
-  column: {
-    gap: 12,
-  },
-  card: {
-    flex: 1,
-    minWidth: 0,
-    gap: 8,
-  },
-  imageWrapper: {
-    aspectRatio: 0.78,
-    overflow: "hidden",
-    borderRadius: 12,
-    backgroundColor: colors.primarySoft,
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
-  imagePlaceholder: {
-    flex: 1,
-    backgroundColor: colors.primarySoft,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 14,
-    lineHeight: 19,
-  },
-  priceRow: {
+  productRow: {
     flexDirection: "row",
-    alignItems: "baseline",
-    gap: 6,
+    justifyContent: "space-between",
+    paddingTop: 16,
+    paddingHorizontal: 16,
   },
-  price: {
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: "700",
-    fontVariant: ["tabular-nums"],
-  },
-  originalPrice: {
-    color: colors.muted,
-    fontSize: 12,
-    textDecorationLine: "line-through",
-    fontVariant: ["tabular-nums"],
+  productCell: {
+    width: "48%",
+    minWidth: 0,
   },
   footer: {
     paddingVertical: 12,
   },
   state: {
-    flex: 1,
+    minHeight: 280,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
@@ -217,11 +210,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 20,
     backgroundColor: colors.primary,
-  },
-  retryLabel: {
-    color: colors.surface,
-    fontSize: 14,
-    fontWeight: "700",
   },
 });
 

@@ -10,6 +10,8 @@ const productPriceSummaryFields = `
   productId
   name
   thumbnail
+  isOnSale
+  isExpressDelivery
   basePrice
   finalPrice
   priceRevision

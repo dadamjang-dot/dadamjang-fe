@@ -1,9 +1,10 @@
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 
 import type { ProductSort } from "@/features/catalog";
+import { Button } from "@/shared/components";
 
 type ShopSortBarProps = {
   totalCount: number;
@@ -22,14 +23,14 @@ const sortLabels: Record<ProductSort, string> = {
 const ShopSortBar = ({ totalCount, sort, onOpenSort }: ShopSortBarProps) => (
   <View style={s.container}>
     <Text style={s.count}>{totalCount.toLocaleString("ko-KR")}개</Text>
-    <Pressable
-      accessibilityRole="button"
+    <Button
       onPress={onOpenSort}
       style={s.sortButton}
+      variant="bare"
     >
       <Text style={s.sortLabel}>{sortLabels[sort]}</Text>
       <Text style={s.chevron}>⌄</Text>
-    </Pressable>
+    </Button>
   </View>
 );
 
@@ -40,6 +41,8 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
     backgroundColor: colors.surface,
   },
   count: {

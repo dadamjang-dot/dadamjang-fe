@@ -6,6 +6,7 @@ export const colors = {
   surface: '#FFFFFF',
   canvas: '#fefefe',
   line: '#cccc',
+  accent: '#F05A47',
   danger: '#E5484D',
   partner: '#2563EB',
 } as const;

@@ -3,14 +3,25 @@ const expoConfig = require("eslint-config-expo/flat");
 
 module.exports = defineConfig([
   {
-    ignores: [".expo/**", "dist/**", "node_modules/**"],
+    ignores: [
+      ".expo/**",
+      ".rnstorybook/storybook.requires.ts",
+      "dist/**",
+      "node_modules/**",
+    ],
   },
   expoConfig,
   {
     rules: {
       "import/no-unresolved": [
         "error",
-        { ignore: ["^@/.*", "^@dadamjang/.*"] },
+        {
+          ignore: [
+            "^@/.*",
+            "^@dadamjang/.*",
+            "^\\./storybook\\.requires$",
+          ],
+        },
       ],
     },
   },

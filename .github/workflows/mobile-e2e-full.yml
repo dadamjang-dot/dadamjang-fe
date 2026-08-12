@@ -1,0 +1,131 @@
+name: Mobile E2E full
+
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-e2e
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-northeast-2
+
+jobs:
+  reset-api:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    environment: mobile-e2e
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.E2E_AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - run: |
+          aws ecs update-service --cluster "$E2E_ECS_CLUSTER" --service "$E2E_ECS_SERVICE" --desired-count 1
+          aws ecs wait services-stable --cluster "$E2E_ECS_CLUSTER" --services "$E2E_ECS_SERVICE"
+        env:
+          E2E_ECS_CLUSTER: ${{ vars.AWS_ECS_CLUSTER }}
+          E2E_ECS_SERVICE: ${{ vars.AWS_ECS_SERVICE }}
+      - run: |
+          overrides=$(jq -cn --arg userid "$E2E_USER_ID" --arg password "$E2E_USER_PASSWORD" '{containerOverrides:[{name:"api",command:["pnpm","e2e:reset"],environment:[{name:"NODE_ENV",value:"e2e"},{name:"POSTGRES_DATABASE",value:"dadamjang_e2e"},{name:"E2E_USER_ID",value:$userid},{name:"E2E_USER_PASSWORD",value:$password}]}]}')
+          task_arn=$(aws ecs run-task \
+            --cluster "$E2E_ECS_CLUSTER" \
+            --task-definition "$E2E_ECS_TASK_DEFINITION" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$E2E_ECS_SUBNET_IDS],securityGroups=[$E2E_ECS_SECURITY_GROUP_IDS],assignPublicIp=DISABLED}" \
+            --overrides "$overrides" \
+            --query 'tasks[0].taskArn' --output text)
+          aws ecs wait tasks-stopped --cluster "$E2E_ECS_CLUSTER" --tasks "$task_arn"
+          test "$(aws ecs describe-tasks --cluster "$E2E_ECS_CLUSTER" --tasks "$task_arn" --query 'tasks[0].containers[0].exitCode' --output text)" = "0"
+        env:
+          E2E_ECS_CLUSTER: ${{ vars.AWS_ECS_CLUSTER }}
+          E2E_ECS_TASK_DEFINITION: ${{ vars.AWS_ECS_TASK_DEFINITION }}
+          E2E_ECS_SUBNET_IDS: ${{ vars.AWS_PRIVATE_SUBNET_IDS }}
+          E2E_ECS_SECURITY_GROUP_IDS: ${{ vars.AWS_API_SECURITY_GROUP_ID }}
+          E2E_USER_ID: ${{ secrets.E2E_USER_ID }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+
+  ios-full:
+    needs: reset-api
+    environment: mobile-e2e
+    runs-on: macos-15
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: apps/dadamjang-fo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - uses: mobile-dev-inc/action-maestro@v1
+      - run: pnpm install --frozen-lockfile
+        working-directory: .
+      - run: eas build --platform ios --profile e2e --non-interactive --wait --json > eas-build.json
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_API_URL: ${{ vars.E2E_API_URL }}
+      - run: |
+          mkdir -p .maestro-artifacts/app .maestro-artifacts/debug .maestro-artifacts/screenshots
+          curl -fsSL "$(jq -r '.[0].artifacts.buildUrl' eas-build.json)" -o .maestro-artifacts/app.tar.gz
+          tar -xzf .maestro-artifacts/app.tar.gz -C .maestro-artifacts/app
+          xcrun simctl boot "iPhone 16" || true
+          open -a Simulator
+          xcrun simctl bootstatus booted -b
+          xcrun simctl install booted "$(find .maestro-artifacts/app -name '*.app' -type d | head -1)"
+          xcrun simctl io booted recordVideo .maestro-artifacts/video.mp4 &
+          video_pid=$!
+          finish_video() {
+            if [ -n "${video_pid:-}" ]; then
+              kill -INT "$video_pid" 2>/dev/null || true
+              wait "$video_pid" 2>/dev/null || true
+              video_pid=
+            fi
+          }
+          trap finish_video EXIT
+          trap 'exit 130' INT TERM
+          maestro test --format junit --output .maestro-artifacts/junit.xml --test-output-dir .maestro-artifacts/screenshots --debug-output .maestro-artifacts/debug .maestro/ios-full.yaml
+        env:
+          E2E_PRODUCT_ID: ${{ vars.E2E_PRODUCT_ID }}
+          E2E_SKU_ID: ${{ vars.E2E_SKU_ID }}
+          E2E_USER_ID: ${{ secrets.E2E_USER_ID }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-full-maestro
+          path: apps/dadamjang-fo/.maestro-artifacts
+
+  teardown-api:
+    if: always() && needs.reset-api.result != 'skipped' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    needs: [reset-api, ios-full]
+    environment: mobile-e2e
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.E2E_AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - run: aws ecs update-service --cluster "$E2E_ECS_CLUSTER" --service "$E2E_ECS_SERVICE" --desired-count 0
+        env:
+          E2E_ECS_CLUSTER: ${{ vars.AWS_ECS_CLUSTER }}
+          E2E_ECS_SERVICE: ${{ vars.AWS_ECS_SERVICE }}

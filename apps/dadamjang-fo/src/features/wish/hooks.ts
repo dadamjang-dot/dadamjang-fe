@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { addWish, getWishlist, removeWish } from "./api";
 
-export const useWishlist = () =>
-  useQuery({ queryKey: ["wishlist"], queryFn: getWishlist });
+export const useWishlist = (enabled = true) =>
+  useQuery({ enabled, queryKey: ["wishlist"], queryFn: getWishlist });
 
 export const useWishActions = () => {
   const queryClient = useQueryClient();
