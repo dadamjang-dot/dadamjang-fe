@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { type ReactElement, useMemo } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -13,6 +14,9 @@ import { colors } from "@dadamjang/design-tokens";
 import type { ProductPriceSummary } from "@/features/price-evidence";
 
 type ShopProductGridProps = {
+  categoryBar: ReactElement;
+  filterBar: ReactElement;
+  sortBar: ReactElement;
   products: ProductPriceSummary[];
   isLoading: boolean;
   isError: boolean;
@@ -22,6 +26,12 @@ type ShopProductGridProps = {
   onLoadMore: () => void;
   onProductPress: (productId: string) => void;
 };
+
+type ShopProductGridRow =
+  | { type: "filter" }
+  | { type: "sort" }
+  | { type: "state" }
+  | { type: "products"; products: ProductPriceSummary[] };
 
 const formatPrice = (price: number) => `${price.toLocaleString("ko-KR")}원`;
 
@@ -85,7 +95,17 @@ const GridState = ({
   </View>
 );
 
+const LoadingState = () => (
+  <View style={s.state}>
+    <ActivityIndicator color={colors.primary} />
+    <Text style={s.stateDescription}>상품을 불러오는 중이에요.</Text>
+  </View>
+);
+
 const ShopProductGrid = ({
+  categoryBar,
+  filterBar,
+  sortBar,
   products,
   isLoading,
   isError,
@@ -95,42 +115,65 @@ const ShopProductGrid = ({
   onLoadMore,
   onProductPress,
 }: ShopProductGridProps) => {
-  if (isLoading) {
-    return (
-      <View style={s.state}>
-        <ActivityIndicator color={colors.primary} />
-        <Text style={s.stateDescription}>상품을 불러오는 중이에요.</Text>
-      </View>
-    );
-  }
+  const rows = useMemo<ShopProductGridRow[]>(() => {
+    const controls: ShopProductGridRow[] = [{ type: "filter" }, { type: "sort" }];
 
-  if (isError || products.length === 0) {
-    return <GridState isError={isError} onRetry={onRetry} />;
-  }
+    if (isLoading || isError || products.length === 0) {
+      return [...controls, { type: "state" }];
+    }
+
+    return [
+      ...controls,
+      ...Array.from(
+        { length: Math.ceil(products.length / 2) },
+        (_, index): ShopProductGridRow => ({
+          type: "products",
+          products: products.slice(index * 2, index * 2 + 2),
+        }),
+      ),
+    ];
+  }, [isError, isLoading, products]);
 
   return (
     <FlatList
       accessibilityLabel="상품 목록"
-      columnWrapperStyle={s.column}
       contentContainerStyle={s.listContent}
       contentInsetAdjustmentBehavior="automatic"
-      data={products}
-      keyExtractor={(product) => product.productId}
-      numColumns={2}
+      data={rows}
+      keyExtractor={(item, index) =>
+        item.type === "products"
+          ? item.products.map((product) => product.productId).join("-")
+          : `${item.type}-${index}`
+      }
       onEndReached={hasNextPage && !isFetchingNextPage ? onLoadMore : undefined}
       onEndReachedThreshold={0.6}
-      renderItem={({ item }) => (
-        <ProductCard
-          product={item}
-          onPress={() => onProductPress(item.productId)}
-        />
-      )}
+      renderItem={({ item }) => {
+        if (item.type === "filter") return filterBar;
+        if (item.type === "sort") return sortBar;
+        if (item.type === "state") {
+          return isLoading ? <LoadingState /> : <GridState isError={isError} onRetry={onRetry} />;
+        }
+
+        return (
+          <View style={s.productRow}>
+            {item.products.map((product) => (
+              <ProductCard
+                key={product.productId}
+                product={product}
+                onPress={() => onProductPress(product.productId)}
+              />
+            ))}
+          </View>
+        );
+      }}
+      ListHeaderComponent={categoryBar}
       ListFooterComponent={
         isFetchingNextPage ? (
           <ActivityIndicator color={colors.primary} style={s.footer} />
         ) : null
       }
       showsVerticalScrollIndicator={false}
+      stickyHeaderIndices={[0]}
       style={s.list}
     />
   );
@@ -141,16 +184,16 @@ const s = StyleSheet.create({
     flex: 1,
   },
   listContent: {
-    gap: 16,
-    paddingHorizontal: 16,
-    paddingTop: 8,
     paddingBottom: 24,
   },
-  column: {
-    gap: 12,
+  productRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingTop: 16,
+    paddingHorizontal: 16,
   },
   card: {
-    flex: 1,
+    width: "48%",
     minWidth: 0,
     gap: 8,
   },
@@ -194,7 +237,7 @@ const s = StyleSheet.create({
     paddingVertical: 12,
   },
   state: {
-    flex: 1,
+    minHeight: 280,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,

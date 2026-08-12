@@ -40,6 +40,8 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
     backgroundColor: colors.surface,
   },
   count: {

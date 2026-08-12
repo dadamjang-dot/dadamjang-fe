@@ -31,10 +31,13 @@ const ShopScreen = () => {
   const totalCount = productsQuery.data?.pages[0]?.totalCount ?? 0;
 
   const openFilter = (
-    mode: "category" | "brand" | "color" | "size" | "price" | "sort",
+    mode: "category" | "brand" | "color" | "size" | "price",
   ) => {
     startDraft();
-    router.push({ pathname: "/shop-filter-sheet", params: { mode } });
+    router.push({
+      pathname: "/shop-filter-sheet",
+      params: { mode, totalCount: String(totalCount) },
+    });
   };
 
   const headerActions: Action[] = [
@@ -45,28 +48,30 @@ const ShopScreen = () => {
   return (
     <ProductLayout headerActions={headerActions} variant="capsule">
       <View style={s.content}>
-        <ShopCategoryBar
-          categories={categories}
-          selectedCategoryId={filters.categoryId}
-          onSelectCategory={(categoryId) =>
-            updateFilters({
-              categoryId,
-              categorySource: categoryId ? "navigation" : undefined,
-            })
-          }
-        />
-        <ShopFilterBar
-          filters={filters}
-          onOpenFilter={openFilter}
-          onToggleExpress={(expressOnly) => updateFilters({ expressOnly })}
-          onToggleSale={(saleOnly) => updateFilters({ saleOnly })}
-        />
-        <ShopSortBar
-          sort={filters.sort}
-          totalCount={totalCount}
-          onOpenSort={() => openFilter("sort")}
-        />
         <ShopProductGrid
+          categoryBar={
+            <ShopCategoryBar
+              categories={categories}
+              selectedCategoryId={filters.categoryId}
+              onSelectCategory={(categoryId) =>
+                updateFilters({
+                  categoryId,
+                  categoryIds: [],
+                  categorySource: categoryId ? "navigation" : undefined,
+                })
+              }
+            />
+          }
+          filterBar={
+            <ShopFilterBar
+              filters={filters}
+              onOpenFilter={openFilter}
+              onToggleExpress={(expressOnly) =>
+                updateFilters({ expressOnly })
+              }
+              onToggleSale={(saleOnly) => updateFilters({ saleOnly })}
+            />
+          }
           hasNextPage={Boolean(productsQuery.hasNextPage)}
           isError={productsQuery.isError}
           isFetchingNextPage={productsQuery.isFetchingNextPage}
@@ -75,6 +80,13 @@ const ShopScreen = () => {
           onProductPress={(productId) => router.push(`/product/${productId}`)}
           onRetry={() => productsQuery.refetch()}
           products={products}
+          sortBar={
+            <ShopSortBar
+              sort={filters.sort}
+              totalCount={totalCount}
+              onOpenSort={() => router.push("/shop-sort-sheet")}
+            />
+          }
         />
       </View>
     </ProductLayout>

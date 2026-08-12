@@ -34,7 +34,19 @@ const RootLayout = () => (
               options={{
                 presentation:
                   process.env.EXPO_OS === "ios" ? "formSheet" : "modal",
-                sheetAllowedDetents: [0.5, 1],
+                sheetAllowedDetents: [0.5],
+                sheetExpandsWhenScrolledToEdge: false,
+                sheetGrabberVisible: true,
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="shop-sort-sheet"
+              options={{
+                presentation:
+                  process.env.EXPO_OS === "ios" ? "formSheet" : "modal",
+                sheetAllowedDetents: [0.5],
+                sheetExpandsWhenScrolledToEdge: false,
                 sheetGrabberVisible: true,
                 headerShown: false,
               }}

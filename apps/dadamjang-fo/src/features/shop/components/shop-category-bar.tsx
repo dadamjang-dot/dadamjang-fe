@@ -19,6 +19,7 @@ const ShopCategoryBar = ({
   <ScrollView
     horizontal
     showsHorizontalScrollIndicator={false}
+    style={s.container}
     contentContainerStyle={s.content}
     contentInsetAdjustmentBehavior="automatic"
   >
@@ -57,20 +58,30 @@ const ShopCategoryBar = ({
 );
 
 const s = StyleSheet.create({
+  container: {
+    height: 48,
+    flexGrow: 0,
+    flexShrink: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+    backgroundColor: colors.surface,
+  },
   content: {
-    gap: 8,
+    minWidth: "100%",
+    alignItems: "stretch",
+    gap: 0,
     paddingHorizontal: 16,
-    paddingVertical: 12,
   },
   item: {
-    minHeight: 36,
+    height: 48,
     justifyContent: "center",
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    backgroundColor: colors.primarySoft,
+    marginHorizontal: 4,
+    paddingHorizontal: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
   },
   selectedItem: {
-    backgroundColor: colors.primary,
+    borderBottomColor: colors.ink,
   },
   label: {
     color: colors.muted,
@@ -78,7 +89,7 @@ const s = StyleSheet.create({
     fontWeight: "600",
   },
   selectedLabel: {
-    color: colors.surface,
+    color: colors.ink,
   },
 });
 
