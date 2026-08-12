@@ -22,6 +22,7 @@ const AuthScreen = () => {
           <Pressable
             onPress={() => router.push("/auth/signin")}
             style={s.primaryButton}
+            testID="e2e.auth.open-signin"
           >
             <Text style={s.primaryButtonText}>로그인</Text>
           </Pressable>
@@ -29,6 +30,7 @@ const AuthScreen = () => {
           <Pressable
             onPress={() => router.push("/auth/signup")}
             style={s.secondaryButton}
+            testID="e2e.auth.open-signup"
           >
             <Text style={s.secondaryButtonText}>회원가입</Text>
           </Pressable>

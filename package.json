@@ -5,6 +5,9 @@
   "scripts": {
     "fo:typecheck": "pnpm --dir apps/dadamjang-fo typecheck",
     "fo:lint": "pnpm --dir apps/dadamjang-fo lint",
+    "fo:test": "pnpm --dir apps/dadamjang-fo test",
+    "fo:test:unit": "pnpm --dir apps/dadamjang-fo test:unit",
+    "fo:test:integration": "pnpm --dir apps/dadamjang-fo test:integration",
     "fo:ios": "pnpm --dir apps/dadamjang-fo ios",
     "fo:build:development": "pnpm --dir apps/dadamjang-fo build:development",
     "fo:build:preview": "pnpm --dir apps/dadamjang-fo build:preview",

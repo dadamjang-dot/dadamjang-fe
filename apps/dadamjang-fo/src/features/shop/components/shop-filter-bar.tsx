@@ -21,6 +21,7 @@ type FilterChipProps = {
   onPress: () => void;
   mini?: boolean;
   showDisclosure?: boolean;
+  testID: string;
 };
 
 const FilterChip = ({
@@ -29,6 +30,7 @@ const FilterChip = ({
   onPress,
   mini,
   showDisclosure,
+  testID,
 }: FilterChipProps) => (
   <Pressable
     accessibilityRole="button"
@@ -40,6 +42,7 @@ const FilterChip = ({
       !mini && active && s.activeChip,
       mini && active && s.miniActiveChip,
     ]}
+    testID={testID}
   >
     <Text
       style={[
@@ -74,11 +77,13 @@ const ShopFilterBar = ({
             label="슈퍼세일"
             active={filters.saleOnly}
             onPress={() => onToggleSale(!filters.saleOnly)}
+            testID="e2e.filter.toggle.sale"
           />
           <FilterChip
             label="바로배송"
             active={filters.expressOnly}
             onPress={() => onToggleExpress(!filters.expressOnly)}
+            testID="e2e.filter.toggle.express"
           />
         </>
       ) : null}
@@ -88,6 +93,7 @@ const ShopFilterBar = ({
         showDisclosure={!isMini}
         active={isMini && selectedMode === "category"}
         onPress={() => onOpenFilter("category")}
+        testID="e2e.filter.open.category"
       />
       <FilterChip
         label="브랜드"
@@ -95,6 +101,7 @@ const ShopFilterBar = ({
         showDisclosure={!isMini}
         active={isMini && selectedMode === "brand"}
         onPress={() => onOpenFilter("brand")}
+        testID="e2e.filter.open.brand"
       />
       <FilterChip
         label="색상"
@@ -102,6 +109,7 @@ const ShopFilterBar = ({
         showDisclosure={!isMini}
         active={isMini && selectedMode === "color"}
         onPress={() => onOpenFilter("color")}
+        testID="e2e.filter.open.color"
       />
       <FilterChip
         label="사이즈"
@@ -109,6 +117,7 @@ const ShopFilterBar = ({
         showDisclosure={!isMini}
         active={isMini && selectedMode === "size"}
         onPress={() => onOpenFilter("size")}
+        testID="e2e.filter.open.size"
       />
       <FilterChip
         label="가격대"
@@ -116,6 +125,7 @@ const ShopFilterBar = ({
         showDisclosure={!isMini}
         active={isMini && selectedMode === "price"}
         onPress={() => onOpenFilter("price")}
+        testID="e2e.filter.open.price"
       />
     </>
   );
