@@ -34,7 +34,7 @@ const CartScreen = () => {
       <ScrollView contentContainerStyle={s.content}>
         {cart.data.items.length === 0 ? <Text style={s.state}>장바구니가 비어 있어요.</Text> : null}
         {cart.data.items.map((item) => (
-          <View key={item.cartItemId} style={s.item}>
+          <View key={item.cartItemId} style={s.item} testID={`e2e.cart.item.${item.sku.skuId}`}>
             <Text style={s.itemTitle}>{item.product.title}</Text>
             <Text style={s.itemMeta}>{item.sku.optionName}</Text>
             <View style={s.quantityRow}>

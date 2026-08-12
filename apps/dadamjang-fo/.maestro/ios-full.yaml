@@ -47,3 +47,5 @@ name: iOS authenticated commerce journey
     id: e2e.checkout.failure
 - assertVisible:
     id: e2e.cart.screen
+- assertVisible:
+    id: e2e.cart.item.${E2E_SKU_ID}
