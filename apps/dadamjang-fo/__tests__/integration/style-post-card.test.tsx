@@ -1,0 +1,33 @@
+import { fireEvent, render, screen } from "@testing-library/react-native";
+
+import StylePostCard from "@/features/style/components/style-post-card";
+
+describe("style post card interactions", () => {
+  it("opens the post separately from toggling its like", () => {
+    const onPress = jest.fn();
+    const onToggleLike = jest.fn();
+
+    render(
+      <StylePostCard
+        author="buyer"
+        content="오늘의 스타일"
+        hashtags={["daily_look"]}
+        imageUrl="https://example.com/style.jpg"
+        isLiked={false}
+        likeCount={2}
+        onPress={onPress}
+        onToggleLike={onToggleLike}
+        productCount={1}
+        stylePostId="style-1"
+      />,
+    );
+
+    fireEvent.press(screen.getByLabelText("buyer 스타일 게시물 이미지"));
+    fireEvent.press(screen.getByLabelText("buyer 스타일 게시물 본문"));
+    fireEvent.press(screen.getByLabelText("좋아요"));
+
+    expect(onPress).toHaveBeenCalledTimes(2);
+    expect(onPress).toHaveBeenCalledWith("style-1");
+    expect(onToggleLike).toHaveBeenCalledWith("style-1", true);
+  });
+});

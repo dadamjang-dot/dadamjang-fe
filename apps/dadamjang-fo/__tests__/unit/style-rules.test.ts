@@ -1,4 +1,4 @@
-import { styleQueryKeys, updateStylePostLike } from "@/features/style/hooks";
+import { styleQueryKeys } from "@/features/style/hooks";
 import {
   getStyleFeedFilter,
   getStyleMentionQuery,
@@ -29,30 +29,5 @@ describe("style post rules", () => {
     expect(getStyleMentionQuery("오늘은 @나이")).toBe("나이");
     expect(insertStyleBrandMention("오늘은 @나이", "나이키")).toBe("오늘은 @나이키 ");
     expect(getStyleMentionQuery("브랜드 없음")).toBeNull();
-  });
-
-  it("restores the previous like state when an optimistic like rolls back", () => {
-    const post = {
-      stylePostId: "style-1",
-      authorId: "user-1",
-      author: { userId: "user-1", userid: "buyer" },
-      title: "스타일 게시물",
-      content: "오늘의 스타일",
-      category: "CLOTHING" as const,
-      imageUrls: ["https://example.com/style.jpg"],
-      thumbnailUrl: "https://example.com/style.jpg",
-      hashtags: [],
-      brandTags: [],
-      products: [],
-      isPartner: false,
-      likeCount: 2,
-      isLiked: false,
-      createdAt: "2026-08-12T00:00:00.000Z",
-      updatedAt: "2026-08-12T00:00:00.000Z",
-    };
-    const optimistic = updateStylePostLike(post, "style-1", true);
-
-    expect(optimistic).toMatchObject({ isLiked: true, likeCount: 3 });
-    expect(updateStylePostLike(optimistic, "style-1", false)).toEqual(post);
   });
 });

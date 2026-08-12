@@ -54,7 +54,7 @@ export const useCreateStylePost = () => {
   });
 };
 
-export const updateStylePostLike = (post: StylePost, stylePostId: string, nextLiked: boolean) =>
+const updateStylePostLike = (post: StylePost, stylePostId: string, nextLiked: boolean) =>
   post.stylePostId === stylePostId
     ? { ...post, isLiked: nextLiked, likeCount: Math.max(0, post.likeCount + (nextLiked ? 1 : -1)) }
     : post;

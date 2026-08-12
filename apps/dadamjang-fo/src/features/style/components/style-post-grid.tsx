@@ -115,7 +115,7 @@ const s = StyleSheet.create({
   list: { flex: 1 },
   listContent: { paddingBottom: 24 },
   postRow: { flexDirection: "row", justifyContent: "space-between", gap: 16, paddingHorizontal: 16, paddingTop: 16 },
-  postCell: { width: "48%", minWidth: 0 },
+  postCell: { flex: 1, minWidth: 0 },
   footer: { paddingVertical: 12 },
   state: { minHeight: 280, alignItems: "center", justifyContent: "center", gap: 8, padding: 24 },
   stateTitle: { color: colors.ink, fontSize: 16, fontWeight: "700", textAlign: "center" },

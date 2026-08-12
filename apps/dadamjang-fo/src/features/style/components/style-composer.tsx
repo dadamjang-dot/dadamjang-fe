@@ -38,6 +38,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
   const [isProductPickerOpen, setIsProductPickerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string>();
+  const [idempotencyKey] = useState(() => Crypto.randomUUID());
 
   const mentionProducts = useMemo(() => {
     const query = getStyleMentionQuery(body);
@@ -131,7 +132,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
         content,
         hashtags,
         brandTagIds,
-        idempotencyKey: Crypto.randomUUID(),
+        idempotencyKey,
       });
       onClose();
     } catch (error) {
