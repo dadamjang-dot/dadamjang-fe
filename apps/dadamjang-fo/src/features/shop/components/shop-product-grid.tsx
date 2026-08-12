@@ -1,4 +1,3 @@
-import { Image } from "expo-image";
 import { type ReactElement, useMemo } from "react";
 import {
   ActivityIndicator,
@@ -13,6 +12,8 @@ import { colors } from "@dadamjang/design-tokens";
 
 import type { ProductPriceSummary } from "@/features/price-evidence";
 
+import ProductCard from "./product-card";
+
 type ShopProductGridProps = {
   categoryBar: ReactElement;
   filterBar: ReactElement;
@@ -25,6 +26,8 @@ type ShopProductGridProps = {
   onRetry: () => void;
   onLoadMore: () => void;
   onProductPress: (productId: string) => void;
+  likedProductIds: ReadonlySet<string>;
+  onToggleLike: (productId: string, nextLiked: boolean) => void;
 };
 
 type ShopProductGridRow =
@@ -32,43 +35,6 @@ type ShopProductGridRow =
   | { type: "sort" }
   | { type: "state" }
   | { type: "products"; products: ProductPriceSummary[] };
-
-const formatPrice = (price: number) => `${price.toLocaleString("ko-KR")}원`;
-
-const ProductCard = ({
-  product,
-  onPress,
-}: {
-  product: ProductPriceSummary;
-  onPress: () => void;
-}) => {
-  const imageUrl = product.thumbnail;
-
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={s.card}>
-      <View style={s.imageWrapper}>
-        {imageUrl ? (
-          <Image
-            contentFit="cover"
-            source={{ uri: imageUrl }}
-            style={s.image}
-          />
-        ) : (
-          <View style={s.imagePlaceholder} />
-        )}
-      </View>
-      <Text numberOfLines={2} style={s.title}>
-        {product.name}
-      </Text>
-      <View style={s.priceRow}>
-        <Text style={s.price}>{formatPrice(product.finalPrice)}</Text>
-        {product.basePrice > product.finalPrice ? (
-          <Text style={s.originalPrice}>{formatPrice(product.basePrice)}</Text>
-        ) : null}
-      </View>
-    </Pressable>
-  );
-};
 
 const GridState = ({
   isError,
@@ -114,9 +80,14 @@ const ShopProductGrid = ({
   onRetry,
   onLoadMore,
   onProductPress,
+  likedProductIds,
+  onToggleLike,
 }: ShopProductGridProps) => {
   const rows = useMemo<ShopProductGridRow[]>(() => {
-    const controls: ShopProductGridRow[] = [{ type: "filter" }, { type: "sort" }];
+    const controls: ShopProductGridRow[] = [
+      { type: "filter" },
+      { type: "sort" },
+    ];
 
     if (isLoading || isError || products.length === 0) {
       return [...controls, { type: "state" }];
@@ -140,6 +111,7 @@ const ShopProductGrid = ({
       contentContainerStyle={s.listContent}
       contentInsetAdjustmentBehavior="automatic"
       data={rows}
+      extraData={likedProductIds}
       keyExtractor={(item, index) =>
         item.type === "products"
           ? item.products.map((product) => product.productId).join("-")
@@ -151,16 +123,22 @@ const ShopProductGrid = ({
         if (item.type === "filter") return filterBar;
         if (item.type === "sort") return sortBar;
         if (item.type === "state") {
-          return isLoading ? <LoadingState /> : <GridState isError={isError} onRetry={onRetry} />;
+          return isLoading ? (
+            <LoadingState />
+          ) : (
+            <GridState isError={isError} onRetry={onRetry} />
+          );
         }
 
         return (
           <View style={s.productRow}>
             {item.products.map((product) => (
               <ProductCard
+                isLiked={likedProductIds.has(product.productId)}
                 key={product.productId}
                 product={product}
                 onPress={() => onProductPress(product.productId)}
+                onToggleLike={onToggleLike}
               />
             ))}
           </View>
@@ -191,47 +169,6 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     paddingTop: 16,
     paddingHorizontal: 16,
-  },
-  card: {
-    width: "48%",
-    minWidth: 0,
-    gap: 8,
-  },
-  imageWrapper: {
-    aspectRatio: 0.78,
-    overflow: "hidden",
-    borderRadius: 12,
-    backgroundColor: colors.primarySoft,
-  },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
-  imagePlaceholder: {
-    flex: 1,
-    backgroundColor: colors.primarySoft,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: 14,
-    lineHeight: 19,
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 6,
-  },
-  price: {
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: "700",
-    fontVariant: ["tabular-nums"],
-  },
-  originalPrice: {
-    color: colors.muted,
-    fontSize: 12,
-    textDecorationLine: "line-through",
-    fontVariant: ["tabular-nums"],
   },
   footer: {
     paddingVertical: 12,
