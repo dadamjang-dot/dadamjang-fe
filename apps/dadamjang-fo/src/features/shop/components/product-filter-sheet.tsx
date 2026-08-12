@@ -35,6 +35,7 @@ const ProductFilterSheet = ({
         accessibilityRole="button"
         onPress={onReset}
         style={s.resetButton}
+        testID="e2e.filter.reset"
       >
         <Text style={s.resetLabel}>초기화</Text>
       </Pressable>
@@ -42,6 +43,7 @@ const ProductFilterSheet = ({
         accessibilityRole="button"
         onPress={onViewProducts}
         style={s.viewButton}
+        testID="e2e.filter.apply"
       >
         <Text style={s.viewLabel}>{totalCount.toLocaleString("ko-KR")}개 상품보기</Text>
       </Pressable>

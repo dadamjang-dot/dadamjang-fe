@@ -32,6 +32,7 @@ const ProductSortSheet = ({ selectedSort, onSelect }: ProductSortSheetProps) => 
           key={option.id}
           onPress={() => onSelect(option.id)}
           style={s.optionRow}
+          testID={`e2e.filter.sort.${option.id.toLowerCase()}`}
         >
           <Text style={s.optionLabel}>{option.label}</Text>
           <View style={[s.check, option.id === selectedSort && s.selectedCheck]}>

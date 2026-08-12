@@ -4,7 +4,7 @@
     "strict": true,
     "moduleResolution": "bundler",
     "moduleSuffixes": [".ios", ".android", ".native", ""],
-    "types": ["node"],
+    "types": ["node", "jest"],
     "paths": {
       "@/*": ["./src/*"],
       "@dadamjang/design-tokens": ["../../packages/design-tokens/src/index.ts"],

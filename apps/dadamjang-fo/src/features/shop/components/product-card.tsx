@@ -29,6 +29,7 @@ const ProductCard = ({
         accessibilityRole="button"
         onPress={onPress}
         style={({ pressed }) => [s.productButton, pressed && s.pressedCard]}
+        testID={`e2e.product.open.${product.productId}`}
       >
         <View style={s.imageWrapper}>
           {imageUrl ? (
@@ -74,6 +75,7 @@ const ProductCard = ({
           isLiked && s.likedButton,
           pressed && s.pressedLikeButton,
         ]}
+        testID={`e2e.wish.${isLiked ? "remove" : "add"}.${product.productId}`}
       >
         <Image
           source={isLiked ? "sf:heart.fill" : "sf:heart"}
