@@ -1,7 +1,7 @@
 import { type ReactElement, useMemo } from "react";
+import { LegendList } from "@legendapp/list/react-native";
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
   Text,
   View,
@@ -31,6 +31,7 @@ type ShopProductGridProps = {
 };
 
 type ShopProductGridRow =
+  | { type: "category" }
   | { type: "filter" }
   | { type: "sort" }
   | { type: "state" }
@@ -85,6 +86,7 @@ const ShopProductGrid = ({
 }: ShopProductGridProps) => {
   const rows = useMemo<ShopProductGridRow[]>(() => {
     const controls: ShopProductGridRow[] = [
+      { type: "category" },
       { type: "filter" },
       { type: "sort" },
     ];
@@ -106,12 +108,13 @@ const ShopProductGrid = ({
   }, [isError, isLoading, products]);
 
   return (
-    <FlatList
+    <LegendList
       accessibilityLabel="상품 목록"
       contentContainerStyle={s.listContent}
       contentInsetAdjustmentBehavior="automatic"
       data={rows}
-      extraData={likedProductIds}
+      extraData={[categoryBar, filterBar, likedProductIds, sortBar]}
+      getItemType={(item) => item.type}
       keyExtractor={(item, index) =>
         item.type === "products"
           ? item.products.map((product) => product.productId).join("-")
@@ -120,36 +123,41 @@ const ShopProductGrid = ({
       onEndReached={hasNextPage && !isFetchingNextPage ? onLoadMore : undefined}
       onEndReachedThreshold={0.6}
       renderItem={({ item }) => {
-        if (item.type === "filter") return filterBar;
-        if (item.type === "sort") return sortBar;
-        if (item.type === "state") {
-          return isLoading ? (
-            <LoadingState />
-          ) : (
-            <GridState isError={isError} onRetry={onRetry} />
-          );
+        switch (item.type) {
+          case "category":
+            return categoryBar;
+          case "filter":
+            return filterBar;
+          case "sort":
+            return sortBar;
+          case "state":
+            return isLoading ? (
+              <LoadingState />
+            ) : (
+              <GridState isError={isError} onRetry={onRetry} />
+            );
+          case "products":
+            return (
+              <View style={s.productRow}>
+                {item.products.map((product) => (
+                  <ProductCard
+                    isLiked={likedProductIds.has(product.productId)}
+                    key={product.productId}
+                    product={product}
+                    onPress={() => onProductPress(product.productId)}
+                    onToggleLike={onToggleLike}
+                  />
+                ))}
+              </View>
+            );
         }
-
-        return (
-          <View style={s.productRow}>
-            {item.products.map((product) => (
-              <ProductCard
-                isLiked={likedProductIds.has(product.productId)}
-                key={product.productId}
-                product={product}
-                onPress={() => onProductPress(product.productId)}
-                onToggleLike={onToggleLike}
-              />
-            ))}
-          </View>
-        );
       }}
-      ListHeaderComponent={categoryBar}
       ListFooterComponent={
         isFetchingNextPage ? (
           <ActivityIndicator color={colors.primary} style={s.footer} />
         ) : null
       }
+      recycleItems
       showsVerticalScrollIndicator={false}
       stickyHeaderIndices={[0]}
       style={s.list}
