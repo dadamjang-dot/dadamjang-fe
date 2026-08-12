@@ -1,9 +1,10 @@
-import { Pressable, ScrollView, Text } from "react-native";
+import { ScrollView, Text } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 
 import type { Category } from "@/features/catalog";
+import { Button } from "@/shared/components";
 
 type ShopCategoryBarProps = {
   categories: Category[];
@@ -23,35 +24,35 @@ const ShopCategoryBar = ({
     contentContainerStyle={s.content}
     contentInsetAdjustmentBehavior="automatic"
   >
-    <Pressable
-      accessibilityRole="button"
+    <Button
       accessibilityState={{ selected: selectedCategoryId === undefined }}
       onPress={() => onSelectCategory(undefined)}
       style={[s.item, selectedCategoryId === undefined && s.selectedItem]}
+      variant="bare"
     >
       <Text
         style={[s.label, selectedCategoryId === undefined && s.selectedLabel]}
       >
         전체
       </Text>
-    </Pressable>
+    </Button>
     {categories
       .filter((category) => category.parentId === null)
       .map((category) => {
         const isSelected = category.categoryId === selectedCategoryId;
 
         return (
-          <Pressable
+          <Button
             key={category.categoryId}
-            accessibilityRole="button"
             accessibilityState={{ selected: isSelected }}
             onPress={() => onSelectCategory(category.categoryId)}
             style={[s.item, isSelected && s.selectedItem]}
+            variant="bare"
           >
             <Text style={[s.label, isSelected && s.selectedLabel]}>
               {category.name}
             </Text>
-          </Pressable>
+          </Button>
         );
       })}
   </ScrollView>

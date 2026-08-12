@@ -1,9 +1,10 @@
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 
 import type { ProductSort } from "@/features/catalog";
+import { Button } from "@/shared/components/button";
 
 const sortOptions: { id: ProductSort; label: string }[] = [
   { id: "RECOMMENDED", label: "추천순" },
@@ -26,19 +27,20 @@ const ProductSortSheet = ({ selectedSort, onSelect }: ProductSortSheetProps) => 
   >
     <View style={s.options}>
       {sortOptions.map((option) => (
-        <Pressable
+        <Button
           accessibilityRole="checkbox"
           accessibilityState={{ checked: option.id === selectedSort }}
           key={option.id}
           onPress={() => onSelect(option.id)}
           style={s.optionRow}
           testID={`e2e.filter.sort.${option.id.toLowerCase()}`}
+          variant="bare"
         >
           <Text style={s.optionLabel}>{option.label}</Text>
           <View style={[s.check, option.id === selectedSort && s.selectedCheck]}>
             {option.id === selectedSort ? <Text style={s.checkLabel}>✓</Text> : null}
           </View>
-        </Pressable>
+        </Button>
       ))}
     </View>
   </ScrollView>

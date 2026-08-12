@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import { router } from "expo-router";
-import { BackHandler, Pressable, Text, View } from "react-native";
+import { BackHandler, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
+
+import { Button } from "@/shared/components";
 
 const AuthScreen = () => {
   useEffect(() => {
@@ -19,21 +21,20 @@ const AuthScreen = () => {
         <Text style={s.subtitle}>로그인해서 주문과 위시템을 관리해요.</Text>
 
         <View style={s.actions}>
-          <Pressable
+          <Button
+            label="로그인"
             onPress={() => router.push("/auth/signin")}
             style={s.primaryButton}
             testID="e2e.auth.open-signin"
-          >
-            <Text style={s.primaryButtonText}>로그인</Text>
-          </Pressable>
+          />
 
-          <Pressable
+          <Button
+            label="회원가입"
             onPress={() => router.push("/auth/signup")}
             style={s.secondaryButton}
             testID="e2e.auth.open-signup"
-          >
-            <Text style={s.secondaryButtonText}>회원가입</Text>
-          </Pressable>
+            variant="secondary"
+          />
         </View>
       </View>
     </View>
@@ -66,25 +67,12 @@ const s = StyleSheet.create({
     marginTop: 20,
   },
   primaryButton: {
-    backgroundColor: "#000",
     borderRadius: 999,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  primaryButtonText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "800",
   },
   secondaryButton: {
     backgroundColor: "#f0f0f0",
     borderRadius: 999,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    fontSize: 15,
-    fontWeight: "800",
+    borderWidth: 0,
   },
 });
 

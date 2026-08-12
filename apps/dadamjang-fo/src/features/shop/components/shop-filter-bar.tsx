@@ -1,10 +1,11 @@
 import { Image } from "expo-image";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 
 import type { ShopFilterMode, ShopFilters } from "@/features/catalog";
+import { Button } from "@/shared/components";
 
 type ShopFilterBarProps = {
   filters: ShopFilters;
@@ -32,8 +33,7 @@ const FilterChip = ({
   showDisclosure,
   testID,
 }: FilterChipProps) => (
-  <Pressable
-    accessibilityRole="button"
+  <Button
     accessibilityState={{ selected: active }}
     onPress={onPress}
     style={[
@@ -43,6 +43,7 @@ const FilterChip = ({
       mini && active && s.miniActiveChip,
     ]}
     testID={testID}
+    variant="bare"
   >
     <Text
       style={[
@@ -57,7 +58,7 @@ const FilterChip = ({
     {showDisclosure ? (
       <Image source="sf:chevron.down" style={s.disclosureIcon} />
     ) : null}
-  </Pressable>
+  </Button>
 );
 
 const ShopFilterBar = ({

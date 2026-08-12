@@ -1,18 +1,12 @@
 import { type ReactElement, useMemo } from "react";
 import { LegendList } from "@legendapp/list/react-native";
-import {
-  ActivityIndicator,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 
 import type { ProductPriceSummary } from "@/features/price-evidence";
-
-import ProductCard from "./product-card";
+import { Button, ProductCard } from "@/shared/components";
 
 type ShopProductGridProps = {
   categoryBar: ReactElement;
@@ -51,13 +45,11 @@ const GridState = ({
         : "필터를 바꾸면 다른 상품을 확인할 수 있어요."}
     </Text>
     {isError ? (
-      <Pressable
-        accessibilityRole="button"
+      <Button
+        label="다시 시도"
         onPress={onRetry}
         style={s.retryButton}
-      >
-        <Text style={s.retryLabel}>다시 시도</Text>
-      </Pressable>
+      />
     ) : null}
   </View>
 );
@@ -140,13 +132,22 @@ const ShopProductGrid = ({
             return (
               <View style={s.productRow}>
                 {item.products.map((product) => (
-                  <ProductCard
-                    isLiked={likedProductIds.has(product.productId)}
-                    key={product.productId}
-                    product={product}
-                    onPress={() => onProductPress(product.productId)}
-                    onToggleLike={onToggleLike}
-                  />
+                  <View key={product.productId} style={s.productCell}>
+                    <ProductCard
+                      imageUrl={product.thumbnail}
+                      isExpressDelivery={product.isExpressDelivery}
+                      isLiked={likedProductIds.has(product.productId)}
+                      isOnSale={product.isOnSale}
+                      name={product.name}
+                      originalPrice={product.basePrice}
+                      price={product.finalPrice}
+                      productId={product.productId}
+                      onPress={() => onProductPress(product.productId)}
+                      onToggleLike={(nextLiked) =>
+                        onToggleLike(product.productId, nextLiked)
+                      }
+                    />
+                  </View>
                 ))}
               </View>
             );
@@ -178,6 +179,10 @@ const s = StyleSheet.create({
     paddingTop: 16,
     paddingHorizontal: 16,
   },
+  productCell: {
+    width: "48%",
+    minWidth: 0,
+  },
   footer: {
     paddingVertical: 12,
   },
@@ -205,11 +210,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 20,
     backgroundColor: colors.primary,
-  },
-  retryLabel: {
-    color: colors.surface,
-    fontSize: 14,
-    fontWeight: "700",
   },
 });
 

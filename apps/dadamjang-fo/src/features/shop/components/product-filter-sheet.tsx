@@ -1,8 +1,10 @@
 import { type ReactNode } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
+
+import { Button } from "@/shared/components";
 
 type ProductFilterSheetProps = {
   filterBar: ReactNode;
@@ -31,22 +33,19 @@ const ProductFilterSheet = ({
       <View style={s.contentBody}>{children}</View>
     </ScrollView>
     <View style={s.footer}>
-      <Pressable
-        accessibilityRole="button"
+      <Button
+        label="초기화"
         onPress={onReset}
         style={s.resetButton}
         testID="e2e.filter.reset"
-      >
-        <Text style={s.resetLabel}>초기화</Text>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
+        variant="secondary"
+      />
+      <Button
+        label={`${totalCount.toLocaleString("ko-KR")}개 상품보기`}
         onPress={onViewProducts}
         style={s.viewButton}
         testID="e2e.filter.apply"
-      >
-        <Text style={s.viewLabel}>{totalCount.toLocaleString("ko-KR")}개 상품보기</Text>
-      </Pressable>
+      />
     </View>
   </View>
 );
@@ -90,11 +89,6 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
   },
-  resetLabel: {
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: "700",
-  },
   viewButton: {
     flex: 1,
     minHeight: 48,
@@ -102,11 +96,6 @@ const s = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 6,
     backgroundColor: colors.primary,
-  },
-  viewLabel: {
-    color: colors.surface,
-    fontSize: 15,
-    fontWeight: "700",
   },
 });
 

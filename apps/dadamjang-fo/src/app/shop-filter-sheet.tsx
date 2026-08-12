@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
@@ -13,6 +13,7 @@ import {
   type ShopFilterMode,
 } from "@/features/catalog";
 import { useProductPriceSummaries } from "@/features/price-evidence";
+import { Button } from "@/shared/components";
 import {
   ProductFilterSheet,
   ShopFilterBar,
@@ -74,18 +75,19 @@ const FilterOptionRow = ({
   selected: boolean;
   onPress: () => void;
 }) => (
-  <Pressable
+  <Button
     accessibilityRole="checkbox"
     accessibilityLabel={label}
     accessibilityState={{ checked: selected }}
     onPress={onPress}
     style={s.optionRow}
+    variant="bare"
   >
     <Text style={s.optionLabel}>{label}</Text>
     <View style={[s.check, selected && s.selectedCheck]}>
       {selected ? <Text style={s.checkLabel}>✓</Text> : null}
     </View>
-  </Pressable>
+  </Button>
 );
 
 const CategoryOptionLabel = ({
@@ -97,12 +99,12 @@ const CategoryOptionLabel = ({
   selected: boolean;
   onPress: () => void;
 }) => (
-  <Pressable
-    accessibilityRole="button"
+  <Button
     accessibilityLabel={label}
     accessibilityState={{ selected }}
     onPress={onPress}
     style={[s.categoryOption, selected && s.selectedCategoryOption]}
+    variant="bare"
   >
     <Text
       style={[
@@ -112,7 +114,7 @@ const CategoryOptionLabel = ({
     >
       {label}
     </Text>
-  </Pressable>
+  </Button>
 );
 
 const toggleValue = (values: string[], value: string) =>
@@ -159,13 +161,11 @@ const FilterContent = ({ mode }: { mode: FilterMode }) => {
       return (
         <View style={s.statusGroup}>
           <Text style={s.status}>카테고리를 불러오지 못했어요.</Text>
-          <Pressable
-            accessibilityRole="button"
+          <Button
+            label="다시 시도"
             onPress={() => refetchOptions()}
             style={s.retryButton}
-          >
-            <Text style={s.retryLabel}>다시 시도</Text>
-          </Pressable>
+          />
         </View>
       );
     }
@@ -208,13 +208,11 @@ const FilterContent = ({ mode }: { mode: FilterMode }) => {
       return (
         <View style={s.statusGroup}>
           <Text style={s.status}>필터 옵션을 불러오지 못했어요.</Text>
-          <Pressable
-            accessibilityRole="button"
+          <Button
+            label="다시 시도"
             onPress={() => refetchOptions()}
             style={s.retryButton}
-          >
-            <Text style={s.retryLabel}>다시 시도</Text>
-          </Pressable>
+          />
         </View>
       );
     }
@@ -413,11 +411,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 20,
     backgroundColor: colors.primary,
-  },
-  retryLabel: {
-    color: colors.surface,
-    fontSize: 14,
-    fontWeight: "700",
   },
 });
 
