@@ -63,7 +63,7 @@ const StylePostGrid = ({
       accessibilityLabel="스타일 게시물 목록"
       contentContainerStyle={s.listContent}
       data={rows}
-      extraData={[categoryBar, sortBar, posts]}
+      extraData={[categoryBar, sortBar, posts, showRank]}
       getItemType={(item) => item.type}
       keyExtractor={(item, index) => item.type === "posts" ? item.posts.map((post) => post.stylePostId).join("-") : `${item.type}-${index}`}
       onEndReached={hasNextPage && !isFetchingNextPage ? onLoadMore : undefined}
