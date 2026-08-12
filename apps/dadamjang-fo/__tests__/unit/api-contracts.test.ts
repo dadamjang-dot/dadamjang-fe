@@ -4,6 +4,7 @@ import { signIn } from "@/features/auth/api";
 import { checkoutCart, upsertCartItem } from "@/features/cart/api";
 import { getProducts } from "@/features/catalog/api";
 import { getOrder } from "@/features/order/api";
+import { createStylePost, getStylePosts } from "@/features/style/api";
 import { addWish } from "@/features/wish/api";
 
 type CapturedRequest = {
@@ -52,7 +53,7 @@ describe("feature API contracts", () => {
     await expect(signIn("buyer", "password")).resolves.toEqual(tokens);
     expect(mockRequests[0]?.query).toContain("mutation Signin");
     expect(mockRequests[0]?.variables).toEqual({
-      input: { password: "password", portal: "FO", userid: "buyer" },
+      input: { password: "password", portal: "Fo", userid: "buyer" },
     });
     expect(mockRequests[0]?.headers).toEqual({ "x-device-id": "device-1" });
     expect(mockStoredTokens).toEqual([tokens]);
@@ -94,5 +95,44 @@ describe("feature API contracts", () => {
       { input: { forcePaymentFailure: true, idempotencyKey: "checkout-1" } },
       { orderId: "order-1" },
     ]);
+  });
+
+  it("sends style feed filters and structured style post input", async () => {
+    const connection = { hasNextPage: true, nextCursor: "cursor-2", nodes: [] };
+    const post = { stylePostId: "style-1" };
+    mockResponses.push({ stylePosts: connection }, { createStylePost: post });
+
+    await expect(
+      getStylePosts({ filter: { category: "CLOTHING", sort: "LATEST" }, after: "cursor-1", first: 20 }),
+    ).resolves.toEqual(connection);
+    await expect(
+      createStylePost({
+        category: "CLOTHING",
+        productIds: ["product-1"],
+        imageKeys: ["style-posts/user-1/image.jpg"],
+        content: "오늘의 스타일",
+        hashtags: ["daily"],
+        brandTagIds: ["brand-1"],
+        idempotencyKey: "request-1",
+      }),
+    ).resolves.toEqual(post);
+
+    expect(mockRequests[0]?.query).toContain("query StylePosts");
+    expect(mockRequests[0]?.variables).toEqual({
+      filter: { category: "CLOTHING", sort: "LATEST" },
+      after: "cursor-1",
+      first: 20,
+    });
+    expect(mockRequests[1]?.variables).toEqual({
+      input: {
+        brandTagIds: ["brand-1"],
+        category: "CLOTHING",
+        content: "오늘의 스타일",
+        hashtags: ["daily"],
+        idempotencyKey: "request-1",
+        imageKeys: ["style-posts/user-1/image.jpg"],
+        productIds: ["product-1"],
+      },
+    });
   });
 });

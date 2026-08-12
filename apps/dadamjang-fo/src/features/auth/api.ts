@@ -23,7 +23,7 @@ export const signIn = async (userid: string, password: string) => {
   const deviceId = await getDeviceId();
   const data = await graphqlRequest<{ signin: TokenPayload }>(
     "mutation Signin($input: SigninAuthInput!) { signin(input: $input) { accessToken refreshToken role } }",
-    { input: { userid, password, portal: "FO" } },
+    { input: { userid, password, portal: "Fo" } },
     { "x-device-id": deviceId },
   );
   await setAuthTokens(data.signin);

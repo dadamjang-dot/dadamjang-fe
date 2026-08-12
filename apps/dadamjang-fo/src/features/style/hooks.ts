@@ -1,55 +1,107 @@
-import { useState, useEffect } from "react";
-import { getStylePosts } from "./api";
-import type { StylePost } from "./types";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query";
 
-export const useStylePost = (id: string) => {
-  const { posts, loading, toggleLike } = useStylePosts();
-  const post = posts.find((p) => p.id === id);
-  return { post, loading, toggleLike };
+import {
+  createStylePost,
+  getPurchasedStyleProducts,
+  getStylePost,
+  getStylePosts,
+  likeStylePost,
+  unlikeStylePost,
+} from "./api";
+import type { StylePost, StylePostCategory, StylePostConnection, StylePostSort } from "./types";
+
+export const styleQueryKeys = {
+  postsRoot: () => ["style-posts"] as const,
+  posts: (category: StylePostCategory | undefined, sort: StylePostSort) =>
+    ["style-posts", { category: category ?? null, sort }] as const,
+  post: (stylePostId: string) => ["style-post", stylePostId] as const,
+  purchasedProducts: () => ["purchased-style-products"] as const,
 };
 
-export const useStylePosts = () => {
-  const [posts, setPosts] = useState<StylePost[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+export const useStylePosts = (category?: StylePostCategory, sort: StylePostSort = "RECOMMENDED") =>
+  useInfiniteQuery({
+    queryKey: styleQueryKeys.posts(category, sort),
+    queryFn: ({ pageParam }) => getStylePosts({ filter: { category, sort }, after: pageParam, first: 20 }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.nextCursor ?? undefined : undefined),
+  });
 
-  useEffect(() => {
-    let active = true;
-    getStylePosts()
-      .then((data) => {
-        if (active) {
-          setPosts(data);
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (active) setLoading(false);
+export const useStylePost = (stylePostId: string) =>
+  useQuery({
+    queryKey: styleQueryKeys.post(stylePostId),
+    queryFn: () => getStylePost(stylePostId),
+    enabled: Boolean(stylePostId),
+  });
+
+export const usePurchasedStyleProducts = (enabled = true) =>
+  useQuery({
+    queryKey: styleQueryKeys.purchasedProducts(),
+    queryFn: getPurchasedStyleProducts,
+    enabled,
+  });
+
+export const useCreateStylePost = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createStylePost,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: styleQueryKeys.postsRoot() }),
+  });
+};
+
+const updateStylePostLike = (post: StylePost, stylePostId: string, nextLiked: boolean) =>
+  post.stylePostId === stylePostId
+    ? { ...post, isLiked: nextLiked, likeCount: Math.max(0, post.likeCount + (nextLiked ? 1 : -1)) }
+    : post;
+
+const updateFeedData = (
+  data: InfiniteData<StylePostConnection> | undefined,
+  stylePostId: string,
+  nextLiked: boolean,
+) =>
+  data
+    ? {
+        ...data,
+        pages: data.pages.map((page) => ({
+          ...page,
+          nodes: page.nodes.map((post) => updateStylePostLike(post, stylePostId, nextLiked)),
+        })),
+      }
+    : data;
+
+export const useToggleStylePostLike = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ stylePostId, nextLiked }: { stylePostId: string; nextLiked: boolean }) =>
+      nextLiked ? likeStylePost(stylePostId) : unlikeStylePost(stylePostId),
+    onMutate: async ({ stylePostId, nextLiked }) => {
+      await queryClient.cancelQueries({ queryKey: styleQueryKeys.postsRoot() });
+      await queryClient.cancelQueries({ queryKey: ["style-post"] });
+      const previousFeeds = queryClient.getQueriesData<InfiniteData<StylePostConnection>>({
+        queryKey: styleQueryKeys.postsRoot(),
       });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const addPost = (caption: string, imageUrl?: string) => {
-    const newPost: StylePost = {
-      id: `post-${Date.now()}`,
-      imageUrl:
-        imageUrl ||
-        "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&auto=format&fit=crop&q=60",
-      author: "me_dadamjang",
-      caption,
-      likes: 0,
-      isPartner: false,
-    };
-    setPosts((prev) => [newPost, ...prev]);
-  };
-
-  const toggleLike = (id: string) => {
-    setPosts((prev) =>
-      prev.map((post) =>
-        post.id === id ? { ...post, likes: post.likes + 1 } : post,
-      ),
-    );
-  };
-
-  return { posts, loading, addPost, toggleLike };
+      const previousPost = queryClient.getQueryData<StylePost>(styleQueryKeys.post(stylePostId));
+      queryClient.setQueriesData<InfiniteData<StylePostConnection>>(
+        { queryKey: styleQueryKeys.postsRoot() },
+        (data) => updateFeedData(data, stylePostId, nextLiked),
+      );
+      queryClient.setQueryData<StylePost>(styleQueryKeys.post(stylePostId), (post) =>
+        post ? updateStylePostLike(post, stylePostId, nextLiked) : post,
+      );
+      return { previousFeeds, previousPost };
+    },
+    onError: (_error, variables, context) => {
+      context?.previousFeeds.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
+      if (context?.previousPost) queryClient.setQueryData(styleQueryKeys.post(variables.stylePostId), context.previousPost);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: styleQueryKeys.postsRoot() });
+      queryClient.invalidateQueries({ queryKey: ["style-post"] });
+    },
+  });
 };
