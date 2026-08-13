@@ -32,10 +32,10 @@ describe("domain rules", () => {
 
   it("characterizes order, product, and partner status transitions", () => {
     expect(isOrderCancelable("PAID")).toBe(true);
-    expect(isOrderCancelable("SHIPPED")).toBe(false);
-    expect(canRequestRefund("DELIVERED")).toBe(true);
-    expect(isProductSellable("ACTIVE")).toBe(true);
-    expect(isProductSellable("SOLD_OUT")).toBe(false);
+    expect(isOrderCancelable("FULFILLING")).toBe(false);
+    expect(canRequestRefund("COMPLETED")).toBe(false);
+    expect(isProductSellable("PUBLISHED")).toBe(true);
+    expect(isProductSellable("DRAFT")).toBe(false);
     expect(canSellAsPartner("APPROVED")).toBe(true);
     expect(canSellAsPartner("SUSPENDED")).toBe(false);
   });

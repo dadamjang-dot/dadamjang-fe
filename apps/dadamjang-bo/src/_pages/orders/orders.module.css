@@ -1,0 +1,36 @@
+.backLink {
+  color: var(--admin-muted);
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summaryItem {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--admin-line);
+  border-radius: var(--admin-radius-md);
+  background: var(--admin-surface);
+}
+
+.summaryItem span {
+  color: var(--admin-muted);
+  font-size: 12px;
+}
+
+.summaryItem strong {
+  font-size: 18px;
+}
+
+@media (max-width: 900px) {
+  .summary {
+    grid-template-columns: 1fr;
+  }
+}

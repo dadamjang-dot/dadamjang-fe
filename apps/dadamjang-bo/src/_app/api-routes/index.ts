@@ -1,0 +1,1 @@
+export { handleGraphQlPost } from "./graphql";

@@ -3,6 +3,13 @@
   "private": true,
   "packageManager": "pnpm@11.20.0",
   "scripts": {
+    "bo:dev": "pnpm --dir apps/dadamjang-bo dev",
+    "bo:build": "pnpm --dir apps/dadamjang-bo build",
+    "bo:lint": "pnpm --dir apps/dadamjang-bo lint",
+    "bo:typecheck": "pnpm --dir apps/dadamjang-bo typecheck",
+    "bo:test": "pnpm --dir apps/dadamjang-bo test",
+    "bo:test:e2e": "pnpm --dir apps/dadamjang-bo test:e2e",
+    "bo:fsd": "pnpm --dir apps/dadamjang-bo fsd",
     "fo:typecheck": "pnpm --dir apps/dadamjang-fo typecheck",
     "fo:lint": "pnpm --dir apps/dadamjang-fo lint",
     "fo:test": "pnpm --dir apps/dadamjang-fo test",

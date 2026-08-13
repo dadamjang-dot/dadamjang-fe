@@ -1,0 +1,80 @@
+@import "@seed-design/css/all.css";
+
+:root {
+  --admin-surface: #ffffff;
+  --admin-surface-subtle: #f8f8f7;
+  --admin-surface-raised: #fcfcfb;
+  --admin-ink: #111111;
+  --admin-muted: #6f6f6b;
+  --admin-line: #deded9;
+  --admin-line-strong: #b8b8b2;
+  --admin-accent: #f05a47;
+  --admin-accent-text: #c94735;
+  --admin-accent-soft: #fff0ed;
+  --admin-danger: #c9342f;
+  --admin-positive: #16794f;
+  --admin-warning: #9a6700;
+  --admin-informative: #2457a7;
+  --admin-inverse-muted: #c9c9c4;
+  --admin-radius-sm: 6px;
+  --admin-radius-md: 10px;
+  --admin-sidebar-width: 248px;
+  color-scheme: light;
+  font-family:
+    Inter,
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--admin-surface-subtle);
+  color: var(--admin-ink);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--admin-accent) 40%, transparent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--admin-accent-soft);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

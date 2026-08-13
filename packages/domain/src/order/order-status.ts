@@ -1,26 +1,21 @@
 export type OrderStatus =
-  | 'PENDING'
-  | 'PAID'
-  | 'PREPARING'
-  | 'SHIPPED'
-  | 'DELIVERED'
-  | 'CANCELED'
-  | 'REFUND_REQUESTED'
-  | 'REFUNDED';
+  | "PAYMENT_PENDING"
+  | "PAID"
+  | "FULFILLING"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "FAILED";
 
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
-  PENDING: '결제 대기',
-  PAID: '결제 완료',
-  PREPARING: '상품 준비중',
-  SHIPPED: '배송중',
-  DELIVERED: '배송 완료',
-  CANCELED: '주문 취소',
-  REFUND_REQUESTED: '환불 요청',
-  REFUNDED: '환불 완료',
+  PAYMENT_PENDING: "결제 대기",
+  PAID: "결제 완료",
+  FULFILLING: "처리 중",
+  COMPLETED: "처리 완료",
+  CANCELLED: "주문 취소",
+  FAILED: "결제 실패",
 };
 
 export const isOrderCancelable = (status: OrderStatus) =>
-  status === 'PENDING' || status === 'PAID';
+  status === "PAYMENT_PENDING" || status === "PAID";
 
-export const canRequestRefund = (status: OrderStatus) =>
-  status === 'SHIPPED' || status === 'DELIVERED';
+export const canRequestRefund = (_status: OrderStatus) => false;
