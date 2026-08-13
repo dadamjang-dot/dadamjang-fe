@@ -12,7 +12,6 @@ type StylePostCardProps = {
   author: string;
   content: string;
   hashtags: string[];
-  productCount: number;
   likeCount: number;
   isLiked: boolean;
   rank?: number;
@@ -24,7 +23,6 @@ const StylePostCard = ({
   stylePostId,
   imageUrl,
   hashtags,
-  productCount,
   likeCount,
   isLiked,
   rank,
@@ -53,7 +51,6 @@ const StylePostCard = ({
         >
           <Text numberOfLines={1} style={s.tags}>{hashtags.slice(0, 2).map((tag) => `#${tag}`).join(" ")}</Text>
         </Pressable>
-        <Text style={s.productCount}>상품 {productCount}</Text>
         <Button
           accessibilityLabel={isLiked ? "좋아요 취소" : "좋아요"}
           accessibilityState={{ selected: isLiked }}
@@ -84,7 +81,6 @@ const s = StyleSheet.create({
   metaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.xs },
   tagsLink: { flex: 1, minWidth: 0 },
   tags: { color: colors.muted, fontSize: 12 },
-  productCount: { color: colors.muted, fontSize: 12 },
 });
 
 export default StylePostCard;
