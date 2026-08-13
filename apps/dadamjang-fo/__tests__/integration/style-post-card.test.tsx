@@ -22,8 +22,12 @@ describe("style post card interactions", () => {
       />,
     );
 
-    fireEvent.press(screen.getByLabelText("buyer 스타일 게시물 이미지"));
-    fireEvent.press(screen.getByLabelText("buyer 스타일 게시물 본문"));
+    expect(screen.queryByText("@buyer")).not.toBeOnTheScreen();
+    expect(screen.queryByText("오늘의 스타일")).not.toBeOnTheScreen();
+    expect(screen.getByText("#daily_look")).toBeOnTheScreen();
+
+    fireEvent.press(screen.getByLabelText("스타일 게시물 이미지"));
+    fireEvent.press(screen.getByLabelText("스타일 게시물 태그"));
     fireEvent.press(screen.getByLabelText("좋아요"));
 
     expect(onPress).toHaveBeenCalledTimes(2);

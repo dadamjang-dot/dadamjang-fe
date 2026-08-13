@@ -23,8 +23,6 @@ type StylePostCardProps = {
 const StylePostCard = ({
   stylePostId,
   imageUrl,
-  author,
-  content,
   hashtags,
   productCount,
   likeCount,
@@ -35,7 +33,7 @@ const StylePostCard = ({
 }: StylePostCardProps) => (
   <View style={s.card}>
     <Pressable
-      accessibilityLabel={`${author} 스타일 게시물 이미지`}
+      accessibilityLabel="스타일 게시물 이미지"
       accessibilityRole="button"
       onPress={() => onPress(stylePostId)}
       style={({ pressed }) => [s.imageLink, pressed && s.pressed]}
@@ -46,8 +44,16 @@ const StylePostCard = ({
       </View>
     </Pressable>
     <View style={s.body}>
-      <View style={s.authorRow}>
-        <Text numberOfLines={1} style={s.author}>@{author}</Text>
+      <View style={s.metaRow}>
+        <Pressable
+          accessibilityLabel="스타일 게시물 태그"
+          accessibilityRole="button"
+          onPress={() => onPress(stylePostId)}
+          style={({ pressed }) => [s.tagsLink, pressed && s.pressed]}
+        >
+          <Text numberOfLines={1} style={s.tags}>{hashtags.slice(0, 2).map((tag) => `#${tag}`).join(" ")}</Text>
+        </Pressable>
+        <Text style={s.productCount}>상품 {productCount}</Text>
         <Button
           accessibilityLabel={isLiked ? "좋아요 취소" : "좋아요"}
           accessibilityState={{ selected: isLiked }}
@@ -59,18 +65,6 @@ const StylePostCard = ({
           <Text style={s.likeCount}>{likeCount}</Text>
         </Button>
       </View>
-      <Pressable
-        accessibilityLabel={`${author} 스타일 게시물 본문`}
-        accessibilityRole="button"
-        onPress={() => onPress(stylePostId)}
-        style={({ pressed }) => [s.contentLink, pressed && s.pressed]}
-      >
-        <Text numberOfLines={2} style={s.content}>{content}</Text>
-        <View style={s.metaRow}>
-          <Text numberOfLines={1} style={s.tags}>{hashtags.slice(0, 2).map((tag) => `#${tag}`).join(" ")}</Text>
-          <Text style={s.productCount}>상품 {productCount}</Text>
-        </View>
-      </Pressable>
     </View>
   </View>
 );
@@ -83,16 +77,13 @@ const s = StyleSheet.create({
   image: { width: "100%", height: "100%" },
   imagePlaceholder: { flex: 1, backgroundColor: colors.primarySoft },
   rank: { position: "absolute", top: 8, left: 8, minWidth: 26, paddingHorizontal: 6, paddingVertical: 4, color: colors.surface, backgroundColor: colors.ink, fontSize: 13, fontWeight: "700", textAlign: "center" },
-  body: { gap: spacing.xs, paddingTop: spacing.sm },
-  authorRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.xs },
-  author: { flex: 1, color: colors.ink, fontSize: 13, fontWeight: "700" },
+  body: { paddingTop: spacing.sm },
   likeButton: { flexDirection: "row", alignItems: "center", gap: 3, paddingVertical: 2 },
   likeIcon: { width: 15, height: 15, tintColor: colors.ink },
   likeCount: { color: colors.ink, fontSize: 12, fontVariant: ["tabular-nums"] },
-  contentLink: { gap: spacing.xs },
-  content: { minHeight: 38, color: colors.ink, fontSize: 14, lineHeight: 19 },
   metaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.xs },
-  tags: { flex: 1, color: colors.muted, fontSize: 12 },
+  tagsLink: { flex: 1, minWidth: 0 },
+  tags: { color: colors.muted, fontSize: 12 },
   productCount: { color: colors.muted, fontSize: 12 },
 });
 

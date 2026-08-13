@@ -44,8 +44,6 @@ const s = StyleSheet.create({
     justifyContent: "flex-end",
     gap: 4,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
     backgroundColor: colors.surface,
   },
   button: { paddingHorizontal: 6, paddingVertical: 8 },
