@@ -3,7 +3,7 @@ import { LegendList } from "@legendapp/list/react-native";
 import { ActivityIndicator, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
-import { colors } from "@dadamjang/design-tokens";
+import { colors, spacing } from "@dadamjang/design-tokens";
 
 import { Button } from "@/shared/components";
 import type { StylePost } from "../types";
@@ -93,7 +93,6 @@ const StylePostGrid = ({
                   likeCount={post.likeCount}
                   onPress={onPostPress}
                   onToggleLike={onToggleLike}
-                  productCount={post.products.length}
                   rank={showRank ? item.startIndex + index + 1 : undefined}
                   stylePostId={post.stylePostId}
                 />
@@ -114,8 +113,8 @@ const StylePostGrid = ({
 const s = StyleSheet.create({
   list: { flex: 1 },
   listContent: { paddingBottom: 96 },
-  postRow: { flexDirection: "row", justifyContent: "space-between", gap: 16, paddingHorizontal: 16, paddingTop: 16 },
-  postCell: { flex: 1, minWidth: 0 },
+  postRow: { flexDirection: "row", justifyContent: "space-between", gap: 16, paddingHorizontal: 16, paddingTop: spacing.md },
+  postCell: { flexBasis: "48%", flexGrow: 0, flexShrink: 1, minWidth: 0 },
   footer: { paddingVertical: 12 },
   state: { minHeight: 280, alignItems: "center", justifyContent: "center", gap: 8, padding: 24 },
   stateTitle: { color: colors.ink, fontSize: 16, fontWeight: "700", textAlign: "center" },

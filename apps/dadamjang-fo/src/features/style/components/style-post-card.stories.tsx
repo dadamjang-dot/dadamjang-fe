@@ -14,7 +14,6 @@ const meta = {
     likeCount: 12,
     onPress: () => undefined,
     onToggleLike: () => undefined,
-    productCount: 2,
     stylePostId: "style-post-1",
   },
 } satisfies Meta<typeof StylePostCard>;
@@ -32,7 +31,6 @@ export const Default: Story = {
     likeCount: 12,
     onPress: () => undefined,
     onToggleLike: () => undefined,
-    productCount: 2,
     stylePostId: "style-post-1",
   },
 };
@@ -51,7 +49,6 @@ const RankingHarness = () => {
       likeCount={42}
       onPress={() => undefined}
       onToggleLike={(_, nextLiked) => setIsLiked(nextLiked)}
-      productCount={3}
       rank={1}
       stylePostId="ranking-post-1"
     />
@@ -68,7 +65,6 @@ export const Ranking: Story = {
     likeCount: 42,
     onPress: () => undefined,
     onToggleLike: () => undefined,
-    productCount: 3,
     rank: 1,
     stylePostId: "ranking-post-1",
   },

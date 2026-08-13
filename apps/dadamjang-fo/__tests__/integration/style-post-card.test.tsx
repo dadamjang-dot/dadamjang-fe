@@ -17,7 +17,6 @@ describe("style post card interactions", () => {
         likeCount={2}
         onPress={onPress}
         onToggleLike={onToggleLike}
-        productCount={1}
         stylePostId="style-1"
       />,
     );
@@ -25,6 +24,7 @@ describe("style post card interactions", () => {
     expect(screen.queryByText("@buyer")).not.toBeOnTheScreen();
     expect(screen.queryByText("오늘의 스타일")).not.toBeOnTheScreen();
     expect(screen.getByText("#daily_look")).toBeOnTheScreen();
+    expect(screen.queryByText("상품 1")).not.toBeOnTheScreen();
 
     fireEvent.press(screen.getByLabelText("스타일 게시물 이미지"));
     fireEvent.press(screen.getByLabelText("스타일 게시물 태그"));
