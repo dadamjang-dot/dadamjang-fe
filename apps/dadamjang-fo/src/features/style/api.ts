@@ -48,6 +48,26 @@ export const getStylePost = async (stylePostId: string): Promise<StylePost> => {
   return data.stylePost;
 };
 
+export const getLikedStylePosts = async ({
+  after,
+  first = 20,
+}: {
+  after?: string;
+  first?: number;
+}): Promise<StylePostConnection> => {
+  const data = await graphqlRequest<{ likedStylePosts: StylePostConnection }>(
+    `query LikedStylePosts($first: Int, $after: String) {
+      likedStylePosts(first: $first, after: $after) {
+        nodes { ${stylePostFields} }
+        nextCursor
+        hasNextPage
+      }
+    }`,
+    { first, after },
+  );
+  return data.likedStylePosts;
+};
+
 export const getPurchasedStyleProducts = async (): Promise<PurchasedStyleProduct[]> => {
   const data = await graphqlRequest<{ purchasedStyleProducts: PurchasedStyleProduct[] }>(
     `query PurchasedStyleProducts {

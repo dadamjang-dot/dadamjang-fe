@@ -10,6 +10,7 @@ import type {
 
 export const productFields = `
   productId partnerId brandId categoryId title description imageUrls status isOnSale isExpressDelivery createdAt
+  brand { brandId name slug }
   skus { skuId code colorId sizeId optionName price stock }
 `;
 

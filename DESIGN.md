@@ -61,6 +61,8 @@
 - 상품 열: 2열, 열 너비 48%
 - 상품 행 간격: 16px
 - 상품 이미지: 0.78 aspect ratio, 12px radius
+- WISH 상품 열: 1열, 전체 너비
+- WISH 상품 이미지: 0.64 aspect ratio, 12px radius
 
 ## 5. Components
 
@@ -73,6 +75,16 @@
 - **Accessibility**: 본문과 좋아요를 별도 버튼으로 제공하고 좋아요 상태를 accessibilityState로 노출
 - **Motion**: React Native Pressable의 pressed 피드백만 사용
 - **Layout**: 2열 grid row
+
+### WishProductCard
+
+- **Structure**: 상품 본문 버튼, 세로형 전체 너비 이미지, 세일·품절 상태, 브랜드명, 상품명, 가격, 선택적 배송 상태, 별도 위시 해제 버튼
+- **Variants**: 저장 상품, 최근 본 상품
+- **Spacing**: `spacing.sm` 카드 내부, `spacing.lg` 카드 간격
+- **States**: default, pressed, on-sale, sold-out, removed
+- **Accessibility**: 본문과 위시 해제 버튼을 분리하고 품절 상태를 텍스트로 제공
+- **Motion**: React Native Pressable의 pressed 피드백만 사용
+- **Layout**: WISH에서만 1열 row와 0.64 aspect ratio 세로형 이미지
 
 ### FilterChip
 
@@ -87,6 +99,20 @@
 - **States**: default, selected, pressed
 - **Accessibility**: selected state를 VoiceOver에 노출
 - **Layout**: horizontal scroll, 화면 좌우 16px 여백
+
+### WishCategoryBar
+
+- **Structure**: `상품 / 스타일 / 브랜드 / 최근 본 상품` 48px line tab
+- **States**: default, selected, pressed
+- **Accessibility**: selected state를 VoiceOver에 노출
+- **Layout**: horizontal scroll, 화면 좌우 16px 여백
+
+### WishState
+
+- **Structure**: 상태 제목, 보조 문구, 선택적 재시도 또는 단일 CTA 버튼
+- **Variants**: 중앙 정렬 loading/error/empty, 상단 정렬 signed-out
+- **Layout**: signed-out은 category bar 아래 `spacing.xxl * 4` 간격부터 시작하고 CTA는 144pt 고정 폭을 사용
+- **Accessibility**: CTA는 명시적인 button label을 제공
 
 ### InlineSortBar
 
