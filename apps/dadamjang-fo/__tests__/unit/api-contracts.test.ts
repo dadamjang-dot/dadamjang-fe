@@ -1,6 +1,6 @@
 import { getDeviceId } from "@dadamjang/graphql-client";
 
-import { signIn } from "@/features/auth/api";
+import { signInFo, startIdentityVerification } from "@/features/auth/api";
 import { checkoutCart, upsertCartItem } from "@/features/cart/api";
 import { getProducts } from "@/features/catalog/api";
 import { getOrder } from "@/features/order/api";
@@ -48,15 +48,30 @@ describe("feature API contracts", () => {
       refreshToken: "refresh",
       role: "USER" as const,
     };
-    mockResponses.push({ signin: tokens });
+    mockResponses.push({ signinFo: tokens });
 
-    await expect(signIn("buyer", "password")).resolves.toEqual(tokens);
-    expect(mockRequests[0]?.query).toContain("mutation Signin");
+    await expect(signInFo("buyer@example.com", "password")).resolves.toEqual(tokens);
+    expect(mockRequests[0]?.query).toContain("mutation SigninFo");
     expect(mockRequests[0]?.variables).toEqual({
-      input: { password: "password", portal: "Fo", userid: "buyer" },
+      input: { email: "buyer@example.com", password: "password" },
     });
     expect(mockRequests[0]?.headers).toEqual({ "x-device-id": "device-1" });
     expect(mockStoredTokens).toEqual([tokens]);
+  });
+
+  it("binds identity verification requests to the local device", async () => {
+    const started = {
+      sessionId: "session-1",
+      launchUrl: "https://identity.example/start",
+      expiresAt: "2026-08-13T00:00:00.000Z",
+    };
+    mockResponses.push({ startIdentityVerification: started });
+
+    await expect(startIdentityVerification("SIGNUP", "TOSS")).resolves.toEqual(started);
+    expect(mockRequests[0]?.variables).toEqual({
+      input: { purpose: "SIGNUP", provider: "TOSS" },
+    });
+    expect(mockRequests[0]?.headers).toEqual({ "x-device-id": "device-1" });
   });
 
   it("passes catalog filters without changing the public GraphQL shape", async () => {

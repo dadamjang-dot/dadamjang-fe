@@ -54,7 +54,13 @@ const Button = ({
     testID={testID}
   >
     {children ?? (
-      <Text style={[s.label, variant === "secondary" && s.secondaryLabel]}>
+      <Text
+        style={[
+          s.label,
+          variant === "secondary" && s.secondaryLabel,
+          variant === "bare" && s.bareLabel,
+        ]}
+      >
         {label}
       </Text>
     )}
@@ -87,6 +93,9 @@ const s = StyleSheet.create({
     fontWeight: "700",
   },
   secondaryLabel: {
+    color: colors.ink,
+  },
+  bareLabel: {
     color: colors.ink,
   },
 });

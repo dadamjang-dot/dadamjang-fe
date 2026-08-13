@@ -1,16 +1,11 @@
-import * as Linking from "expo-linking";
+import { getDeviceId, graphqlRequest, setAuthTokens } from "@dadamjang/graphql-client";
 
-import {
-  getDeviceId,
-  graphqlRequest,
-  setAuthTokens,
-} from "@dadamjang/graphql-client";
-
-import type { TokenPayload, CurrentUser } from "./types";
-
-const apiBaseUrl = (
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/graphql"
-).replace(/\/graphql$/, "");
+import type {
+  ConsentAcceptance,
+  CurrentUser,
+  SignupConsentDocument,
+  TokenPayload,
+} from "./types";
 
 export const getCurrentUser = async () => {
   const data = await graphqlRequest<{ me: CurrentUser }>(
@@ -19,62 +14,69 @@ export const getCurrentUser = async () => {
   return data.me;
 };
 
-export const signIn = async (userid: string, password: string) => {
+export const signInFo = async (email: string, password: string) => {
   const deviceId = await getDeviceId();
-  const data = await graphqlRequest<{ signin: TokenPayload }>(
-    "mutation Signin($input: SigninAuthInput!) { signin(input: $input) { accessToken refreshToken role } }",
-    { input: { userid, password, portal: "Fo" } },
+  const data = await graphqlRequest<{ signinFo: TokenPayload }>(
+    `mutation SigninFo($input: SigninFoInput!) {
+      signinFo(input: $input) { accessToken refreshToken role }
+    }`,
+    { input: { email, password } },
     { "x-device-id": deviceId },
   );
-  await setAuthTokens(data.signin);
-  return data.signin;
+  await setAuthTokens(data.signinFo);
+  return data.signinFo;
 };
 
-export const requestSignupEmailCode = async (email: string) =>
-  graphqlRequest<{ requestSignupEmailCode: { ok: boolean } }>(
-    "mutation RequestSignupEmailCode($input: EmailInput!) { requestSignupEmailCode(input: $input) { ok } }",
+export const requestSignupEmailCode = async (email: string) => {
+  const data = await graphqlRequest<{ requestSignupEmailCode: { ok: boolean } }>(
+    `mutation RequestSignupEmailCode($input: RequestEmailCodeInput!) {
+      requestSignupEmailCode(input: $input) { ok }
+    }`,
     { input: { email } },
   );
+  return data.requestSignupEmailCode;
+};
 
-export const verifySignupEmailCode = async (email: string, code: string) =>
-  graphqlRequest<{ verifySignupEmailCode: { emailVerificationToken: string } }>(
-    "mutation VerifySignupEmailCode($input: VerifyEmailCodeInput!) { verifySignupEmailCode(input: $input) { emailVerificationToken } }",
+export const verifySignupEmailCode = async (email: string, code: string) => {
+  const data = await graphqlRequest<{
+    verifySignupEmailCode: { emailVerificationToken: string };
+  }>(
+    `mutation VerifySignupEmailCode($input: VerifyEmailCodeInput!) {
+      verifySignupEmailCode(input: $input) { emailVerificationToken }
+    }`,
     { input: { email, code } },
   );
+  return data.verifySignupEmailCode;
+};
 
-export const signUp = async (input: {
-  userid: string;
+export const getActiveSignupConsentDocuments = async () => {
+  const data = await graphqlRequest<{
+    activeSignupConsentDocuments: SignupConsentDocument[];
+  }>(`query ActiveSignupConsentDocuments {
+    activeSignupConsentDocuments { documentId type title body version required activeFrom }
+  }`);
+  return data.activeSignupConsentDocuments;
+};
+
+export const signUpFo = async (input: {
   email: string;
   password: string;
   emailVerificationToken: string;
+  identityVerificationToken: string;
+  consents: ConsentAcceptance[];
 }) => {
   const deviceId = await getDeviceId();
-  const data = await graphqlRequest<{ signup: TokenPayload }>(
-    "mutation Signup($input: SignupAuthInput!) { signup(input: $input) { accessToken refreshToken role } }",
-    { input },
-    { "x-device-id": deviceId },
-  );
-  await setAuthTokens(data.signup);
-  return data.signup;
-};
-
-export const completeKakaoSignup = async (input: {
-  userid: string;
-  kakaoSignupToken: string;
-}) => {
-  const deviceId = await getDeviceId();
-  const data = await graphqlRequest<{ completeKakaoSignup: TokenPayload }>(
-    `mutation CompleteKakaoSignup($input: KakaoSignupAuthInput!) {
-      completeKakaoSignup(input: $input) { accessToken refreshToken role }
+  const data = await graphqlRequest<{ signupFo: TokenPayload }>(
+    `mutation SignupFo($input: SignupFoInput!) {
+      signupFo(input: $input) { accessToken refreshToken role }
     }`,
     { input },
     { "x-device-id": deviceId },
   );
-
-  await setAuthTokens(data.completeKakaoSignup);
-  return data.completeKakaoSignup;
+  await setAuthTokens(data.signupFo);
+  return data.signupFo;
 };
 
-export const openKakaoLogin = async () => {
-  await Linking.openURL(`${apiBaseUrl}/api/auth/kakao`);
-};
+export * from "./identity-api";
+export * from "./kakao-api";
+export * from "./recovery-api";

@@ -27,7 +27,7 @@ const StyleScreen = () => {
 
   const requireSignIn = (returnTo: string) => {
     if (!currentUser.data) {
-      router.push({ pathname: "/auth/signin", params: { returnTo } });
+      router.push({ pathname: "/auth", params: { returnTo } });
       return false;
     }
     return true;

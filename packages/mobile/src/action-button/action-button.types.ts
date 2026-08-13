@@ -1,5 +1,7 @@
 export interface Action {
+  accessibilityLabel?: string;
   icon?: string;
+  iconSize?: number;
   label?: string;
   onPress: () => void;
 }

@@ -211,6 +211,6 @@ describe("WISH library screen", () => {
 
     await fireEvent.press(await screen.findByTestId("e2e.wish.login"));
 
-    expect(navigation.path).toBe("/auth/signin");
+    expect(navigation.path).toBe("/auth");
   });
 });

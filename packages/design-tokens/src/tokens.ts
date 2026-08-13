@@ -8,6 +8,7 @@ export const colors = {
   line: '#cccc',
   accent: '#F05A47',
   danger: '#E5484D',
+  kakao: '#FEE500',
   partner: '#2563EB',
 } as const;
 

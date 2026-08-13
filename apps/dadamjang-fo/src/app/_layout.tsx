@@ -26,7 +26,18 @@ const RootLayout = () => (
               name="auth"
               options={{
                 presentation: "fullScreenModal",
-                gestureEnabled: false,
+                gestureEnabled: true,
+              }}
+            />
+            <Stack.Screen
+              name="auth-identity-provider-sheet"
+              options={{
+                presentation:
+                  process.env.EXPO_OS === "ios" ? "formSheet" : "modal",
+                sheetAllowedDetents: [0.44],
+                sheetExpandsWhenScrolledToEdge: false,
+                sheetGrabberVisible: true,
+                headerShown: false,
               }}
             />
             <Stack.Screen

@@ -3,50 +3,52 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { clearAccessToken } from "@dadamjang/graphql-client";
 
 import {
-  completeKakaoSignup,
+  completeKakaoSignupFo,
+  findFoEmail,
+  getActiveSignupConsentDocuments,
   getCurrentUser,
-  openKakaoLogin,
+  requestPasswordResetCode,
   requestSignupEmailCode,
-  signIn,
-  signUp,
+  resetPassword,
+  signInFo,
+  signUpFo,
+  verifyPasswordResetCode,
   verifySignupEmailCode,
 } from "./api";
 
+export const authQueryKeys = {
+  viewer: ["viewer"] as const,
+  signupConsents: ["auth", "signup-consents"] as const,
+};
+
 export const useCurrentUser = () =>
-  useQuery({ queryKey: ["viewer"], queryFn: getCurrentUser, retry: false });
+  useQuery({ queryKey: authQueryKeys.viewer, queryFn: getCurrentUser, retry: false });
 
-export const useSignIn = () => {
+const useViewerMutation = <TVariables,>(mutationFn: (variables: TVariables) => Promise<unknown>) => {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: ({ userid, password }: { userid: string; password: string }) =>
-      signIn(userid, password),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["viewer"] }),
+    mutationFn,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: authQueryKeys.viewer }),
   });
 };
 
-export const useSignUp = () => {
-  const queryClient = useQueryClient();
+export const useSignIn = () =>
+  useViewerMutation(({ email, password }: { email: string; password: string }) =>
+    signInFo(email, password),
+  );
 
-  return useMutation({
-    mutationFn: signUp,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["viewer"] }),
+export const useSignUpFo = () => useViewerMutation(signUpFo);
+
+export const useCompleteKakaoSignupFo = () => useViewerMutation(completeKakaoSignupFo);
+
+export const useSignupConsentDocuments = () =>
+  useQuery({
+    queryKey: authQueryKeys.signupConsents,
+    queryFn: getActiveSignupConsentDocuments,
+    staleTime: 5 * 60_000,
   });
-};
 
-export const useCompleteKakaoSignup = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: completeKakaoSignup,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["viewer"] }),
-  });
-};
-
-export const useKakaoLogin = () => useMutation({ mutationFn: openKakaoLogin });
-
-export const useRequestSignupEmailCode = () =>
-  useMutation({ mutationFn: (email: string) => requestSignupEmailCode(email) });
+export const useRequestSignupEmailCode = () => useMutation({ mutationFn: requestSignupEmailCode });
 
 export const useVerifySignupEmailCode = () =>
   useMutation({
@@ -54,11 +56,27 @@ export const useVerifySignupEmailCode = () =>
       verifySignupEmailCode(email, code),
   });
 
+export const useFindFoEmail = () => useMutation({ mutationFn: findFoEmail });
+
+export const useRequestPasswordResetCode = () =>
+  useMutation({ mutationFn: requestPasswordResetCode });
+
+export const useVerifyPasswordResetCode = () =>
+  useMutation({
+    mutationFn: ({ email, code }: { email: string; code: string }) =>
+      verifyPasswordResetCode(email, code),
+  });
+
+export const useResetPassword = () =>
+  useMutation({
+    mutationFn: ({ token, password }: { token: string; password: string }) =>
+      resetPassword(token, password),
+  });
+
 export const useSignOut = () => {
   const queryClient = useQueryClient();
-
   return async () => {
     await clearAccessToken();
-    queryClient.removeQueries({ queryKey: ["viewer"] });
+    queryClient.removeQueries({ queryKey: authQueryKeys.viewer });
   };
 };

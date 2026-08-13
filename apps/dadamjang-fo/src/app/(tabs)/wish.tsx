@@ -28,7 +28,7 @@ const WishScreen = () => {
     <WishState
       action={{
         label: "로그인",
-        onPress: () => router.push("/auth/signin"),
+        onPress: () => router.push("/auth"),
         testID: "e2e.wish.login",
       }}
       alignment="top"
