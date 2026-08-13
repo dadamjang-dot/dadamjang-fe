@@ -24,10 +24,32 @@ jest.mock("expo-router", () => ({
 
 jest.mock("@/shared/components", () => {
   const React = jest.requireActual<typeof import("react")>("react");
-  const { Text } = jest.requireActual<typeof import("react-native")>("react-native");
+  const { Pressable, Text, View } = jest.requireActual<typeof import("react-native")>("react-native");
 
   return {
-    TitleHeader: ({ title }: { title: string }) => React.createElement(Text, null, title),
+    ActionButton: ({ actions }: { actions: { icon?: string; label?: string; onPress: () => void }[] }) => {
+      const action = actions[0];
+      return action
+        ? React.createElement(
+            Pressable,
+            { onPress: action.onPress, testID: "e2e.wish.cart" },
+            React.createElement(Text, null, action.label ?? action.icon),
+          )
+        : null;
+    },
+    Button: ({ children, label, onPress, testID }: { children?: ReactNode; label?: string; onPress: () => void; testID?: string }) =>
+      React.createElement(
+        Pressable,
+        { onPress, testID },
+        children ?? React.createElement(Text, null, label),
+      ),
+    TitleHeader: ({ children, title }: { children?: ReactNode; title: string }) =>
+      React.createElement(
+        View,
+        null,
+        React.createElement(Text, null, title),
+        children,
+      ),
   };
 });
 
@@ -84,6 +106,7 @@ const wishlist = [
       productId: "product-1",
       partnerId: "partner-1",
       brandId: null,
+      brand: null,
       categoryId: "category-1",
       title: "테스트 상품",
       description: "상품 설명",

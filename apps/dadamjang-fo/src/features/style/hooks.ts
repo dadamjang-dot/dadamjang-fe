@@ -8,6 +8,7 @@ import {
 
 import {
   createStylePost,
+  getLikedStylePosts,
   getPurchasedStyleProducts,
   getStylePost,
   getStylePosts,
@@ -20,6 +21,7 @@ export const styleQueryKeys = {
   postsRoot: () => ["style-posts"] as const,
   posts: (category: StylePostCategory | undefined, sort: StylePostSort) =>
     ["style-posts", { category: category ?? null, sort }] as const,
+  likedPosts: () => ["style-posts", "liked"] as const,
   post: (stylePostId: string) => ["style-post", stylePostId] as const,
   purchasedProducts: () => ["purchased-style-products"] as const,
 };
@@ -30,6 +32,17 @@ export const useStylePosts = (category?: StylePostCategory, sort: StylePostSort 
     queryFn: ({ pageParam }) => getStylePosts({ filter: { category, sort }, after: pageParam, first: 20 }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.nextCursor ?? undefined : undefined),
+  });
+
+export const useLikedStylePosts = (enabled = true) =>
+  useInfiniteQuery({
+    queryKey: styleQueryKeys.likedPosts(),
+    queryFn: ({ pageParam }) =>
+      getLikedStylePosts({ after: pageParam, first: 20 }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasNextPage ? lastPage.nextCursor ?? undefined : undefined,
+    enabled,
   });
 
 export const useStylePost = (stylePostId: string) =>

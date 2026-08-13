@@ -22,6 +22,7 @@ export type {
   Category,
   PersonalizedFeedConnection,
   Product,
+  ProductBrand,
   ProductFilter,
   ProductSku,
   ProductSort,

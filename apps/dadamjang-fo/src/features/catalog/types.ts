@@ -8,10 +8,17 @@ export type ProductSku = {
   stock: number;
 };
 
+export type ProductBrand = {
+  brandId: string;
+  name: string;
+  slug: string;
+};
+
 export type Product = {
   productId: string;
   partnerId: string;
   brandId: string | null;
+  brand: ProductBrand | null;
   categoryId: string;
   title: string;
   description: string;
