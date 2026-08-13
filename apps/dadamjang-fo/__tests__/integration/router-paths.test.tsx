@@ -1,19 +1,32 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Link } from "expo-router";
 import { fireEvent, render } from "@testing-library/react-native";
 import { renderRouter, screen } from "expo-router/testing-library";
+import type { ReactNode } from "react";
 import { Text } from "react-native";
 
 import AuthScreen from "@/app/auth";
+import { AuthFlowProvider } from "@/features/auth/auth-flow-provider";
 
 const Home = () => <Link href="/auth/signin">Sign in</Link>;
 const SignIn = () => <Link href="/(tabs)/shop">Shop</Link>;
 const Product = () => <Text>Product detail</Text>;
 
+const AuthWrapper = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={new QueryClient()}>
+    <AuthFlowProvider>{children}</AuthFlowProvider>
+  </QueryClientProvider>
+);
+
 describe("Expo Router paths", () => {
   it("exposes a stable sign-in entry control", () => {
-    render(<AuthScreen />);
+    render(<AuthScreen />, { wrapper: AuthWrapper });
 
     expect(screen.getByTestId("e2e.auth.open-signin")).toBeVisible();
+    expect(screen.getByText("카카오로 시작하기")).toBeVisible();
+    expect(screen.getByText("가입하기")).toBeVisible();
+    expect(screen.getByText("이메일 찾기")).toBeVisible();
+    expect(screen.getByText("비밀번호 찾기")).toBeVisible();
   });
 
   it("moves through auth and tabs", async () => {

@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import type { ReactNode } from "react";
 
 import SigninScreen from "@/app/auth/signin";
-import { signIn } from "@/features/auth/api";
+import { signInFo } from "@/features/auth/api";
 
 const mockNavigation: { path?: string } = {};
 
@@ -17,7 +17,7 @@ jest.mock("expo-router", () => ({
 }));
 
 jest.mock("@/features/auth/api", () => ({
-  signIn: jest.fn(),
+  signInFo: jest.fn(),
 }));
 
 let queryClient: QueryClient | undefined;
@@ -41,27 +41,27 @@ const createWrapper = () => {
 
 afterEach(() => {
   queryClient?.clear();
-  jest.mocked(signIn).mockReset();
+  jest.mocked(signInFo).mockReset();
   delete mockNavigation.path;
 });
 
 describe("sign in", () => {
   it("shows validation without submitting empty credentials", async () => {
-    jest.mocked(signIn).mockRejectedValueOnce(new Error("empty credentials submitted"));
+    jest.mocked(signInFo).mockRejectedValueOnce(new Error("empty credentials submitted"));
     await render(<SigninScreen />, { wrapper: createWrapper() });
 
     await fireEvent.press(screen.getByTestId("e2e.auth.submit"));
 
-    expect(screen.getByText("아이디와 비밀번호를 입력해 주세요.")).toBeVisible();
+    expect(screen.getByText("이메일과 비밀번호를 입력해 주세요.")).toBeVisible();
   });
 
   it("shows an observable failure after rejected credentials", async () => {
-    jest.mocked(signIn).mockRejectedValueOnce(new Error("invalid credentials"));
+    jest.mocked(signInFo).mockRejectedValueOnce(new Error("invalid credentials"));
     await render(<SigninScreen />, { wrapper: createWrapper() });
 
     await fireEvent.changeText(
-      screen.getByTestId("e2e.auth.userid.input"),
-      "buyer",
+      screen.getByTestId("e2e.auth.email.input"),
+      "buyer@example.com",
     );
     await fireEvent.changeText(
       screen.getByTestId("e2e.auth.password.input"),
@@ -70,12 +70,12 @@ describe("sign in", () => {
     await fireEvent.press(screen.getByTestId("e2e.auth.submit"));
 
     await waitFor(() =>
-      expect(screen.getByText("로그인에 실패했어요.")).toBeVisible(),
+      expect(screen.getByText("이메일 또는 비밀번호가 올바르지 않습니다.")).toBeVisible(),
     );
   });
 
   it("navigates to home after accepted credentials", async () => {
-    jest.mocked(signIn).mockResolvedValueOnce({
+    jest.mocked(signInFo).mockResolvedValueOnce({
       accessToken: "access",
       refreshToken: "refresh",
       role: "USER",
@@ -83,8 +83,8 @@ describe("sign in", () => {
     await render(<SigninScreen />, { wrapper: createWrapper() });
 
     await fireEvent.changeText(
-      screen.getByTestId("e2e.auth.userid.input"),
-      "buyer",
+      screen.getByTestId("e2e.auth.email.input"),
+      "buyer@example.com",
     );
     await fireEvent.changeText(
       screen.getByTestId("e2e.auth.password.input"),

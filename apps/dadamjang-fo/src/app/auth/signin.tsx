@@ -1,121 +1,100 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
+import { useRef, useState } from "react";
+import { Text, TextInput, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
-import { colors } from "@dadamjang/design-tokens";
+import { colors, spacing } from "@dadamjang/design-tokens";
 
-import { useSignIn } from "@/features/auth";
+import { resolveAuthReturnTo, useSignIn, validateEmail } from "@/features/auth";
+import { AuthField, AuthLinks, AuthScreen } from "@/features/auth/components";
+import { Button } from "@/shared/components/button";
 
 const SigninScreen = () => {
   const router = useRouter();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const signIn = useSignIn();
-  const [userid, setUserid] = useState("");
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string>();
 
   const handleSubmit = () => {
-    const normalizedUserid = userid.trim();
-    if (!normalizedUserid || !password) {
-      setMessage("아이디와 비밀번호를 입력해 주세요.");
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !password) {
+      setMessage("이메일과 비밀번호를 입력해 주세요.");
+      (normalizedEmail ? passwordRef : emailRef).current?.focus();
       return;
     }
-
+    if (validateEmail(normalizedEmail)) {
+      setMessage("올바른 이메일 주소를 입력해 주세요.");
+      emailRef.current?.focus();
+      return;
+    }
     setMessage(undefined);
     signIn.mutate(
-      { userid: normalizedUserid, password },
+      { email: normalizedEmail, password },
       {
-        onError: () => setMessage("로그인에 실패했어요."),
-        onSuccess: () => {
-          if (returnTo === "/style-compose") {
-            router.replace("/style-compose");
-          } else if (returnTo?.startsWith("/style/")) {
-            router.replace({
-              pathname: "/style/[style-id]",
-              params: { "style-id": returnTo.slice("/style/".length) },
-            });
-          } else {
-            router.replace("/");
-          }
-        },
+        onError: () => setMessage("이메일 또는 비밀번호가 올바르지 않습니다."),
+        onSuccess: () => router.replace(resolveAuthReturnTo(returnTo) as Href),
       },
     );
   };
 
   return (
-    <View style={s.container}>
-      <Text style={s.title}>로그인</Text>
-      <TextInput
-        autoCapitalize="none"
-        autoCorrect={false}
-        onChangeText={setUserid}
-        placeholder="아이디"
-        style={s.input}
-        testID="e2e.auth.userid.input"
-        value={userid}
-      />
-      <TextInput
-        onChangeText={setPassword}
-        onSubmitEditing={handleSubmit}
-        placeholder="비밀번호"
-        secureTextEntry
-        style={s.input}
-        testID="e2e.auth.password.input"
-        value={password}
-      />
-      {message ? <Text style={s.message}>{message}</Text> : null}
-      <Pressable
-        accessibilityRole="button"
-        disabled={signIn.isPending}
-        onPress={handleSubmit}
-        style={s.submit}
-        testID="e2e.auth.submit"
-      >
-        <Text style={s.submitLabel}>{signIn.isPending ? "로그인 중" : "로그인"}</Text>
-      </Pressable>
-    </View>
+    <AuthScreen testID="e2e.auth.signin">
+      <View style={s.form}>
+        <Text style={s.intro}>가입한 이메일과 비밀번호를 입력해 주세요.</Text>
+        <AuthField
+          ref={emailRef}
+          autoCapitalize="none"
+          autoComplete="email"
+          autoCorrect={false}
+          keyboardType="email-address"
+          label="이메일"
+          onChangeText={setEmail}
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          returnKeyType="next"
+          testID="e2e.auth.email.input"
+          textContentType="emailAddress"
+          value={email}
+        />
+        <AuthField
+          ref={passwordRef}
+          autoComplete="current-password"
+          label="비밀번호"
+          onChangeText={setPassword}
+          onSubmitEditing={handleSubmit}
+          returnKeyType="done"
+          secureTextEntry
+          testID="e2e.auth.password.input"
+          textContentType="password"
+          value={password}
+        />
+        {message ? (
+          <Text accessibilityRole="alert" style={s.message}>
+            {message}
+          </Text>
+        ) : null}
+        <Button
+          disabled={signIn.isPending}
+          label={signIn.isPending ? "로그인 중" : "로그인"}
+          onPress={handleSubmit}
+          testID="e2e.auth.submit"
+        />
+        <AuthLinks
+          onFindEmail={() => router.push("/auth/find-email")}
+          onFindPassword={() => router.push("/auth/find-password")}
+        />
+      </View>
+    </AuthScreen>
   );
 };
 
 const s = StyleSheet.create({
-  container: {
-    flex: 1,
-    gap: 12,
-    justifyContent: "center",
-    padding: 24,
-    backgroundColor: colors.surface,
-  },
-  title: {
-    marginBottom: 12,
-    color: colors.ink,
-    fontSize: 28,
-    fontWeight: "700",
-  },
-  input: {
-    minHeight: 52,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 8,
-    color: colors.ink,
-  },
-  message: {
-    color: colors.danger,
-    fontSize: 13,
-  },
-  submit: {
-    minHeight: 52,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 8,
-    backgroundColor: colors.primary,
-  },
-  submitLabel: {
-    color: colors.surface,
-    fontSize: 16,
-    fontWeight: "700",
-  },
+  form: { gap: spacing.lg },
+  intro: { marginBottom: spacing.sm, color: colors.muted, fontSize: 14, lineHeight: 20 },
+  message: { color: colors.danger, fontSize: 13, lineHeight: 18 },
 });
 
 export default SigninScreen;

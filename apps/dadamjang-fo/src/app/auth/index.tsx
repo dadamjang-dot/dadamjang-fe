@@ -1,79 +1,124 @@
-import { useEffect } from "react";
-import { router } from "expo-router";
-import { BackHandler, Text, View } from "react-native";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
+import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
+import { useQueryClient } from "@tanstack/react-query";
 
-import { Button } from "@/shared/components";
+import { colors, spacing } from "@dadamjang/design-tokens";
 
-const AuthScreen = () => {
-  useEffect(() => {
-    const subscription = BackHandler.addEventListener(
-      "hardwareBackPress",
-      () => true,
-    );
-    return () => subscription.remove();
-  }, []);
+import {
+  AuthSessionCancelledError,
+  authErrorMessage,
+  authQueryKeys,
+  resolveAuthReturnTo,
+  runKakaoLoginSession,
+  useAuthFlow,
+} from "@/features/auth";
+import { AuthLinks, AuthScreen } from "@/features/auth/components";
+import { Button } from "@/shared/components/button";
+
+const AuthScreenRoute = () => {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const { setKakaoSignup } = useAuthFlow();
+  const [isKakaoPending, setIsKakaoPending] = useState(false);
+  const [message, setMessage] = useState<string>();
+
+  const handleKakao = async () => {
+    if (isKakaoPending) return;
+    setIsKakaoPending(true);
+    setMessage(undefined);
+    try {
+      const result = await runKakaoLoginSession();
+      if (result.status === "SIGNED_IN") {
+        await queryClient.invalidateQueries({ queryKey: authQueryKeys.viewer });
+        router.replace(resolveAuthReturnTo(returnTo) as Href);
+        return;
+      }
+      if (!result.kakaoSignupToken) throw new Error("카카오 가입 정보를 확인하지 못했습니다.");
+      setKakaoSignup({
+        kakaoSignupToken: result.kakaoSignupToken,
+        email: result.email ?? undefined,
+        emailVerificationRequired: result.emailVerificationRequired,
+      });
+      router.push({
+        pathname: "/auth/signup",
+        params: { mode: "kakao", ...(returnTo ? { returnTo } : {}) },
+      });
+    } catch (error) {
+      setMessage(
+        authErrorMessage(
+          error,
+          error instanceof AuthSessionCancelledError
+            ? "카카오 로그인이 취소되었습니다."
+            : "카카오 로그인에 실패했습니다.",
+        ),
+      );
+    } finally {
+      setIsKakaoPending(false);
+    }
+  };
+
+  const authParams = returnTo ? { returnTo } : undefined;
 
   return (
-    <View style={s.screen}>
-      <View style={s.hero}>
-        <Text style={s.brandName}>DADAMJANG</Text>
-        <Text style={s.subtitle}>로그인해서 주문과 위시템을 관리해요.</Text>
-
+    <AuthScreen centered testID="e2e.auth.home">
+      <View style={s.content}>
+        <View style={s.intro}>
+          <Text style={s.heading}>다담장에 오신 것을 환영해요.</Text>
+          <Text style={s.description}>로그인하고 주문과 위시 상품을 한곳에서 관리하세요.</Text>
+        </View>
         <View style={s.actions}>
           <Button
-            label="로그인"
-            onPress={() => router.push("/auth/signin")}
-            style={s.primaryButton}
-            testID="e2e.auth.open-signin"
-          />
-
+            accessibilityLabel={isKakaoPending ? "카카오 연결 중" : "카카오로 시작하기"}
+            disabled={isKakaoPending}
+            onPress={handleKakao}
+            style={s.kakaoButton}
+            testID="e2e.auth.kakao"
+          >
+            <Text style={s.kakaoLabel}>
+              {isKakaoPending ? "카카오 연결 중" : "카카오로 시작하기"}
+            </Text>
+          </Button>
           <Button
-            label="회원가입"
-            onPress={() => router.push("/auth/signup")}
-            style={s.secondaryButton}
-            testID="e2e.auth.open-signup"
+            label="이메일로 시작하기"
+            onPress={() => router.push({ pathname: "/auth/signin", params: authParams })}
+            testID="e2e.auth.open-signin"
             variant="secondary"
           />
+          <Button
+            label="가입하기"
+            onPress={() => router.push({ pathname: "/auth/signup", params: authParams })}
+            style={s.signupButton}
+            testID="e2e.auth.open-signup"
+            variant="bare"
+          />
         </View>
+        {message ? (
+          <Text accessibilityRole="alert" style={s.message}>
+            {message}
+          </Text>
+        ) : null}
+        <AuthLinks
+          onFindEmail={() => router.push("/auth/find-email")}
+          onFindPassword={() => router.push("/auth/find-password")}
+        />
       </View>
-    </View>
+    </AuthScreen>
   );
 };
 
 const s = StyleSheet.create({
-  screen: {
-    flex: 1,
-    padding: 24,
-    paddingTop: 60,
-  },
-  hero: {
-    flex: 1,
-    justifyContent: "center",
-    gap: 16,
-  },
-  brandName: {
-    fontSize: 28,
-    fontWeight: "900",
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: "#666",
-    lineHeight: 22,
-  },
-  actions: {
-    gap: 10,
-    marginTop: 20,
-  },
-  primaryButton: {
-    borderRadius: 999,
-  },
-  secondaryButton: {
-    backgroundColor: "#f0f0f0",
-    borderRadius: 999,
-    borderWidth: 0,
-  },
+  content: { gap: spacing.xl },
+  intro: { gap: spacing.sm },
+  heading: { color: colors.ink, fontSize: 22, fontWeight: "800", lineHeight: 30 },
+  description: { color: colors.muted, fontSize: 14, lineHeight: 21 },
+  actions: { gap: spacing.md },
+  kakaoButton: { backgroundColor: colors.kakao },
+  kakaoLabel: { color: colors.ink, fontSize: 15, fontWeight: "700" },
+  signupButton: { minHeight: 48, alignItems: "center", justifyContent: "center" },
+  message: { color: colors.danger, fontSize: 13, lineHeight: 18, textAlign: "center" },
 });
 
-export default AuthScreen;
+export default AuthScreenRoute;

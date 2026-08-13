@@ -22,7 +22,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
   if (!actions || actions.length === 0) return null;
 
   if (actions.length === 1) {
-    const { icon, label, onPress } = actions[0];
+    const { icon, iconSize, label, onPress } = actions[0];
     const isCircle = iconOnly && !!icon && !label;
 
     if (label && !icon) {
@@ -54,7 +54,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
           }}
           modifiers={[size(40, 40)]}
         >
-          {icon ? <Icon source={{ uri: icon }} size={20} /> : null}
+          {icon ? <Icon source={{ uri: icon }} size={iconSize ?? 20} /> : null}
         </FilledTonalIconButton>
       </Host>
     );
@@ -82,7 +82,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
               >
                 <Row modifiers={[paddingAll(0)]}>
                   {action.icon ? (
-                    <Icon source={{ uri: action.icon }} size={20} />
+                    <Icon source={{ uri: action.icon }} size={action.iconSize ?? 20} />
                   ) : null}
                   {action.label ? <Text>{action.label}</Text> : null}
                 </Row>

@@ -2,6 +2,8 @@ import { act, type ReactElement } from "react";
 import { Text } from "react-native";
 import { create, type ReactTestRenderer } from "react-test-renderer";
 
+import { colors } from "@dadamjang/design-tokens";
+
 import { Button } from "../button";
 
 jest.mock("react-native-unistyles", () => ({
@@ -83,5 +85,15 @@ describe("Button", () => {
 
     expect(button.props.accessibilityState).toEqual({ checked: true });
     expect(renderer.root.findByType(Text).props.children).toBe("필터");
+  });
+
+  it("renders a visible dark label for a bare button", () => {
+    const renderer = render(
+      <Button label="가입하기" onPress={jest.fn()} variant="bare" />,
+    );
+
+    expect(renderer.root.findByType(Text).props.style).toContainEqual({
+      color: colors.ink,
+    });
   });
 });

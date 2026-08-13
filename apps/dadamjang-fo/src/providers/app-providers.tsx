@@ -6,6 +6,8 @@ import {
 import NetInfo from "@react-native-community/netinfo";
 import { useEffect, type ReactNode } from "react";
 
+import { AuthFlowProvider } from "@/features/auth";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { staleTime: 60_000, retry: 2, refetchOnReconnect: true },
@@ -25,6 +27,8 @@ export const AppProviders = ({ children }: AppProvidersProps) => {
     [],
   );
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthFlowProvider>{children}</AuthFlowProvider>
+    </QueryClientProvider>
   );
 };

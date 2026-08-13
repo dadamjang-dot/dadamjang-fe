@@ -24,7 +24,7 @@ export const ActionButtonContent = ({
 
   return (
     <Pressable
-      accessibilityLabel={action.label ?? action.icon}
+      accessibilityLabel={action.accessibilityLabel ?? action.label ?? action.icon}
       accessibilityRole="button"
       onPress={action.onPress}
       style={[s.action, isIconOnly ? s.iconAction : s.labelAction]}
@@ -32,7 +32,7 @@ export const ActionButtonContent = ({
       {action.icon ? (
         <SymbolView
           name={action.icon as SFSymbol}
-          size={24}
+          size={action.iconSize ?? 24}
           tintColor={colors.primary}
         />
       ) : action.label ? (

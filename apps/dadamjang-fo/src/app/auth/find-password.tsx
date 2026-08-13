@@ -1,0 +1,122 @@
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
+import { Text, View } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
+
+import { colors, spacing } from "@dadamjang/design-tokens";
+
+import {
+  authErrorMessage,
+  useRequestPasswordResetCode,
+  useResetPassword,
+  useVerifyPasswordResetCode,
+  validatePassword,
+} from "@/features/auth";
+import {
+  AuthField,
+  AuthScreen,
+  EmailVerificationFields,
+} from "@/features/auth/components";
+import { Button } from "@/shared/components/button";
+
+const FindPasswordScreen = () => {
+  const router = useRouter();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const requestCode = useRequestPasswordResetCode();
+  const verifyCode = useVerifyPasswordResetCode();
+  const resetPassword = useResetPassword();
+  const [email, setEmail] = useState("");
+  const [verificationToken, setVerificationToken] = useState<string>();
+  const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [message, setMessage] = useState<string>();
+
+  const handleReset = async () => {
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setMessage(passwordError);
+      return;
+    }
+    if (password !== passwordConfirmation) {
+      setMessage("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+    if (!verificationToken) return;
+    setMessage(undefined);
+    try {
+      await resetPassword.mutateAsync({ token: verificationToken, password });
+      router.replace({
+        pathname: "/auth/signin",
+        params: returnTo ? { returnTo } : undefined,
+      });
+    } catch (error) {
+      setMessage(authErrorMessage(error, "비밀번호를 변경하지 못했습니다."));
+    }
+  };
+
+  return (
+    <AuthScreen testID="e2e.auth.find-password">
+      <View style={s.form}>
+        <Text style={s.description}>
+          가입한 이메일을 확인한 뒤 새 비밀번호를 설정합니다. 계정 여부와 관계없이 요청 결과는 동일하게 안내됩니다.
+        </Text>
+        {!verificationToken ? (
+          <EmailVerificationFields
+            email={email}
+            onEmailChange={setEmail}
+            onVerified={setVerificationToken}
+            requestCode={(nextEmail) => requestCode.mutateAsync(nextEmail)}
+            testIDPrefix="e2e.auth.password-reset"
+            verificationToken={verificationToken}
+            verifyCode={(input) => verifyCode.mutateAsync(input)}
+          />
+        ) : (
+          <>
+            <AuthField
+              autoComplete="new-password"
+              helper="8자 이상, 72바이트 이하"
+              label="새 비밀번호"
+              onChangeText={setPassword}
+              secureTextEntry
+              testID="e2e.auth.password-reset.password"
+              textContentType="newPassword"
+              value={password}
+            />
+            <AuthField
+              error={
+                passwordConfirmation && password !== passwordConfirmation
+                  ? "비밀번호가 일치하지 않습니다."
+                  : undefined
+              }
+              label="새 비밀번호 재입력"
+              onChangeText={setPasswordConfirmation}
+              secureTextEntry
+              testID="e2e.auth.password-reset.password-confirmation"
+              textContentType="newPassword"
+              value={passwordConfirmation}
+            />
+            <Button
+              disabled={resetPassword.isPending}
+              label={resetPassword.isPending ? "변경 중" : "비밀번호 변경"}
+              onPress={handleReset}
+              testID="e2e.auth.password-reset.submit"
+            />
+          </>
+        )}
+        {message ? (
+          <Text accessibilityRole="alert" style={s.message}>
+            {message}
+          </Text>
+        ) : null}
+      </View>
+    </AuthScreen>
+  );
+};
+
+const s = StyleSheet.create({
+  form: { gap: spacing.lg },
+  description: { marginBottom: spacing.sm, color: colors.muted, fontSize: 14, lineHeight: 21 },
+  message: { color: colors.danger, fontSize: 13, lineHeight: 18 },
+});
+
+export default FindPasswordScreen;

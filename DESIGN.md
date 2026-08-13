@@ -17,6 +17,7 @@
 | Border/default  | `colors.line`        | `#CCCCCC` | 구분선과 버튼 테두리         |
 | Accent/primary  | `colors.accent`      | `#F05A47` | 슈퍼세일 라벨, 바로배송 상태 |
 | Status/error    | `colors.danger`      | `#E5484D` | 오류와 삭제 상태             |
+| Brand/Kakao     | `colors.kakao`       | `#FEE500` | 카카오 로그인 버튼 전용      |
 
 ### Rules
 
@@ -140,6 +141,38 @@
 - `InlineSortBar`: 추천순, 인기순, 최신순 선택 상태
 - `StylePostCard`: 기본, 랭킹, liked 상태
 - `StyleComposer`: 빈 상태, 상품·이미지·태그 선택, 검증 오류 상태
+
+### AuthStackHeader
+
+- **Structure**: native Stack 제목, 최초 화면 `xmark` icon-only `ActionButton`, 하위 화면 native back
+- **States**: root, pushed, direct-entry close
+- **Rules**: root `/auth`는 제목과 하단 경계선 없이 닫기만 표시한다. iOS에서는 header item의 시스템 glass를 숨기고 `ActionButton` 자체 glass만 사용하며 16pt trailing inset과 버튼 중심축을 `ProductHeader` 오른쪽 액션에 맞춘다. `xmark`는 18pt를 사용한다. 하위 화면은 제목을 표시한다. swipe/back와 Android hardware back을 허용하고 직접 진입 닫기는 `/`로 이동
+
+### AuthField
+
+- **Structure**: 항상 보이는 label, input, 선택적 우측 action, 오류 문구
+- **States**: empty, focused, invalid, disabled, verified
+- **Accessibility**: label과 input을 연결하고 오류를 alert로 노출
+- **Layout**: 최소 입력 높이 52pt, 버튼 최소 높이 48pt
+
+### ConsentChecklist
+
+- **Structure**: 모두 동의, 필수·선택 약관 행, 상세 이동 버튼
+- **States**: checked, mixed, unchecked
+- **Rules**: 모두 동의는 4개 전체를 토글하고 필수 3개만 동의해도 가입 가능
+- **Accessibility**: 각 행의 checked 상태와 필수·선택 여부를 읽음
+
+### IdentityProviderSheet
+
+- **Structure**: Expo Router native `formSheet` 제목, 토스 인증, 카카오 인증, 네이버 인증
+- **States**: idle, pending, canceled, failed, expired, verified
+- **Rules**: `shop-filter-sheet.tsx`와 같은 root sheet route. 닫기·실패·만료 후에도 상위 폼 상태를 유지
+
+### Auth social actions
+
+- `카카오로 시작하기`만 `colors.kakao`를 사용한다.
+- 이메일·가입·복구 액션은 흑백과 `borders-only` 표면을 유지한다.
+- pending 중 중복 제출을 막고 error/success 상태는 화면 텍스트로 제공한다.
 
 ## 6. Motion & Interaction
 
