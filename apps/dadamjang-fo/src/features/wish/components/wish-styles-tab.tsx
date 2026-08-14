@@ -19,7 +19,7 @@ const WishStylesTab = () => {
   const posts = likedPosts.data?.pages.flatMap((page) => page.nodes) ?? [];
 
   if (likedPosts.isLoading) {
-    return <WishState isLoading title="찜한 스타일을 불러오는 중이에요." />;
+    return <WishState isLoading title="위시한 스타일을 불러오는 중이에요." />;
   }
 
   if (likedPosts.isError) {
@@ -27,7 +27,7 @@ const WishStylesTab = () => {
       <WishState
         description="잠시 후 다시 시도해 주세요."
         onRetry={() => likedPosts.refetch()}
-        title="찜한 스타일을 불러오지 못했어요."
+        title="위시한 스타일을 불러오지 못했어요."
       />
     );
   }
@@ -36,7 +36,7 @@ const WishStylesTab = () => {
     return (
       <WishState
         description="좋아요를 누른 스타일을 여기서 모아볼 수 있어요."
-        title="찜한 스타일이 없어요."
+        title="위시한 스타일이 없어요."
       />
     );
   }

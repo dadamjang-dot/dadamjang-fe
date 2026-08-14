@@ -125,7 +125,7 @@ const savedStylePost: StylePost = {
   stylePostId: "style-1",
   authorId: "user-1",
   author: { userId: "user-1", userid: "buyer" },
-  title: "찜한 스타일",
+  title: "위시한 스타일",
   content: "스타일 설명",
   category: "CLOTHING",
   imageUrls: [],
