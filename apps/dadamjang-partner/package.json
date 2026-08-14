@@ -1,0 +1,50 @@
+{
+  "name": "@dadamjang/partner",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev --port 3002",
+    "build": "next build",
+    "start": "next start --port 3002",
+    "lint": "eslint .",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "fsd": "steiger src",
+    "format:check": "prettier --check app src tests *.ts *.mjs *.json"
+  },
+  "dependencies": {
+    "@dadamjang/domain": "workspace:*",
+    "@seed-design/css": "2.4.2",
+    "@seed-design/react": "2.2.2",
+    "@tanstack/react-query": "5.101.4",
+    "graphql-request": "7.4.0",
+    "next": "16.3.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@feature-sliced/steiger-plugin": "0.7.0",
+    "@axe-core/playwright": "4.10.2",
+    "@playwright/test": "1.62.1",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.0",
+    "@testing-library/user-event": "14.6.1",
+    "@types/node": "26.1.1",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.1",
+    "eslint-config-next": "16.3.0",
+    "jsdom": "28.1.0",
+    "prettier": "3.9.0",
+    "steiger": "0.6.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}
