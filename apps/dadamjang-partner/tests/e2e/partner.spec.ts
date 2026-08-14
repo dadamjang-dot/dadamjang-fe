@@ -1,5 +1,15 @@
 import { expect, Page, test } from "@playwright/test";
 
+test.beforeEach(async ({ context, baseURL }) => {
+  await context.addCookies([
+    {
+      name: "access_token",
+      value: "partner-e2e-access-token",
+      url: baseURL!,
+    },
+  ]);
+});
+
 type Handler = (variables: Record<string, unknown>) => unknown;
 const routeGraphQl = async (page: Page, handlers: Record<string, Handler>) => {
   const calls: Array<{ query: string; variables: Record<string, unknown> }> =
@@ -40,7 +50,7 @@ const session = {
     role: "PARTNER",
   },
 };
-const product = (approvalStatus = "DRAFT", status = "UNPUBLISHED") => ({
+const product = (approvalStatus = "DRAFT", status = "DRAFT") => ({
   productId: "product-1",
   partnerId: "partner-1",
   brandId: "brand-1",
@@ -216,6 +226,7 @@ test("create saves a draft and recovers its route when submit fails", async ({
       CatalogOptions: () => options,
       CreateProduct: () => ({ createPartnerProductDraft: product() }),
       SubmitProduct: () => new Error("심사를 요청하지 못했습니다"),
+      PartnerProduct: () => ({ myPartnerProduct: product() }),
     }),
   );
   await page.goto("/products/new");
@@ -277,7 +288,7 @@ test("approved product publishes only after confirmation", async ({ page }) => {
       PartnerProduct: () => ({
         myPartnerProduct: product(
           "APPROVED",
-          published ? "PUBLISHED" : "UNPUBLISHED",
+          published ? "PUBLISHED" : "DRAFT",
         ),
       }),
       CatalogOptions: () => options,

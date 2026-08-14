@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { ActionButton } from "@seed-design/react";
 import { PartnerTextarea, PartnerTextField } from "@/shared/ui";
@@ -34,6 +34,7 @@ const emptySku = (): Sku => ({
 });
 export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const qc = useQueryClient();
   const existing = useQuery({
     queryKey: ["product", productId],
@@ -52,7 +53,9 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const [skus, setSkus] = useState<Sku[]>([emptySku()]);
   const [sale, setSale] = useState(false);
   const [express, setExpress] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(
+    () => searchParams.get("submitError") ?? "",
+  );
   const [confirm, setConfirm] = useState(false);
   const hydrated = useRef(false);
   useEffect(() => {
@@ -72,8 +75,8 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     setSkus(
       p.skus.map((s) => ({
         code: s.code,
-        colorId: s.colorId,
-        sizeId: s.sizeId,
+        colorId: s.colorId ?? "",
+        sizeId: s.sizeId ?? "",
         optionName: s.optionName,
         price: s.price,
         stock: s.stock,
@@ -178,7 +181,13 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
         try {
           await submitProduct(draft.productId);
         } catch (e) {
-          if (!productId) router.replace(`/products/${draft.productId}`);
+          if (!productId) {
+            const message =
+              e instanceof Error ? e.message : "심사 요청에 실패했습니다.";
+            router.replace(
+              `/products/${draft.productId}?submitError=${encodeURIComponent(message)}`,
+            );
+          }
           throw e;
         }
       }

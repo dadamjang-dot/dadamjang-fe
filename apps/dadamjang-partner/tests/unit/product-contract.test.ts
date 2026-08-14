@@ -16,9 +16,9 @@ describe("partner product contract", () => {
     expect(isProductEditable(state)).toBe(value),
   );
   it.each([
-    ["UNPUBLISHED", "DRAFT", "DRAFT"],
-    ["UNPUBLISHED", "REJECTED", "REJECTED"],
-    ["UNPUBLISHED", "APPROVED", "APPROVED"],
+    ["DRAFT", "DRAFT", "DRAFT"],
+    ["DRAFT", "REJECTED", "REJECTED"],
+    ["DRAFT", "APPROVED", "APPROVED"],
     ["PUBLISHED", "APPROVED", "PUBLISHED"],
   ] as const)("derives %s / %s as %s", (status, approvalStatus, expected) => {
     expect(effectiveProductState({ status, approvalStatus })).toBe(expected);
@@ -75,5 +75,27 @@ describe("partner product contract", () => {
     });
     expect(variables.input).not.toHaveProperty("brandId");
     expect(variables.input.skus[0]).not.toHaveProperty("skuId");
+  });
+  it("omits blank nullable SKU options", () => {
+    const variables = productInputVariables({
+      categoryId: "tops",
+      title: "셔츠",
+      description: "",
+      imageKeys: [],
+      skus: [
+        {
+          code: "A",
+          colorId: "",
+          sizeId: "  ",
+          optionName: "기본",
+          price: 1000,
+          stock: 2,
+        },
+      ],
+      isOnSale: true,
+      isExpressDelivery: false,
+    });
+    expect(variables.input.skus[0]).not.toHaveProperty("colorId");
+    expect(variables.input.skus[0]).not.toHaveProperty("sizeId");
   });
 });

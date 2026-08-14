@@ -1,6 +1,6 @@
 import { requestGraphQl } from "./graphql-client";
 export type ApprovalStatus = "DRAFT" | "PENDING" | "REJECTED" | "APPROVED";
-export type PublicationStatus = "UNPUBLISHED" | "PUBLISHED";
+export type PublicationStatus = "DRAFT" | "PUBLISHED";
 export type EffectiveProductState = ApprovalStatus | "PUBLISHED";
 export const effectiveProductState = ({
   status,
@@ -26,8 +26,8 @@ export type PartnerProduct = {
   skus: Array<{
     skuId: string;
     code: string;
-    colorId: string;
-    sizeId: string;
+    colorId: string | null;
+    sizeId: string | null;
     optionName: string;
     price: number;
     stock: number;
@@ -50,8 +50,8 @@ export type ProductInput = {
   imageKeys: string[];
   skus: Array<{
     code: string;
-    colorId: string;
-    sizeId: string;
+    colorId?: string;
+    sizeId?: string;
     optionName: string;
     price: number;
     stock: number;
@@ -67,7 +67,16 @@ export const PARTNER_PRODUCT_MUTATION_FIELDS = {
   publish: "publishPartnerProduct",
 } as const;
 export const productFilterVariables = (filter: ProductFilter) => ({ filter });
-export const productInputVariables = (input: ProductInput) => ({ input });
+export const productInputVariables = (input: ProductInput) => ({
+  input: {
+    ...input,
+    skus: input.skus.map(({ colorId, sizeId, ...sku }) => ({
+      ...sku,
+      ...(colorId?.trim() ? { colorId } : {}),
+      ...(sizeId?.trim() ? { sizeId } : {}),
+    })),
+  },
+});
 export const listProducts = (filter: ProductFilter) =>
   requestGraphQl<{
     myPartnerProducts: {

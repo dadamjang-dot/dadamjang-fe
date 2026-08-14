@@ -14,8 +14,8 @@ export const isProductEditable = (state: ProductState) =>
 export type ProductSku = {
   skuId?: string;
   code: string;
-  colorId: string;
-  sizeId: string;
+  colorId: string | null;
+  sizeId: string | null;
   optionName: string;
   price: number;
   stock: number;
