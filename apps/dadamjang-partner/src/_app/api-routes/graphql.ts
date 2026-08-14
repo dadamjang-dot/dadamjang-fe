@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import {
+  Kind,
+  parse,
+  type FragmentDefinitionNode,
+  type SelectionNode,
+} from "graphql";
 
 type GraphQlPayload = {
   query?: string;
@@ -9,7 +15,10 @@ type GraphQlPayload = {
 };
 
 const MAX_BODY_BYTES = 1024 * 1024;
-const PUBLIC_OPERATION = /\b(signin|refresh)\b/;
+const PUBLIC_FIELDS = new Set(["signin", "refresh"]);
+const PUBLIC_ROOT_FIELD = 1;
+const PROTECTED_ROOT_FIELD = 2;
+const MAX_FRAGMENT_DEPTH = 64;
 
 const upstreamUrl = () => {
   const value = process.env.DADAMJANG_API_URL;
@@ -62,6 +71,104 @@ const isUnauthenticated = (payload: GraphQlPayload | null) =>
     (error) => error.extensions?.code === "UNAUTHENTICATED",
   ) ?? false;
 
+const rootFieldMask = (
+  selections: readonly SelectionNode[],
+  fragments: ReadonlyMap<string, FragmentDefinitionNode>,
+  active: Set<string>,
+  memo: Map<string, number>,
+) => {
+  let mask = 0;
+  for (const selection of selections) {
+    if (selection.kind === Kind.FIELD) {
+      mask |= PUBLIC_FIELDS.has(selection.name.value)
+        ? PUBLIC_ROOT_FIELD
+        : PROTECTED_ROOT_FIELD;
+      if (mask & PROTECTED_ROOT_FIELD) return mask;
+      continue;
+    }
+    if (selection.kind === Kind.INLINE_FRAGMENT) {
+      mask |= rootFieldMask(
+        selection.selectionSet.selections,
+        fragments,
+        active,
+        memo,
+      );
+      if (mask & PROTECTED_ROOT_FIELD) return mask;
+      continue;
+    }
+    const name = selection.name.value;
+    const fragment = fragments.get(name);
+    if (!fragment || active.has(name) || active.size >= MAX_FRAGMENT_DEPTH)
+      return mask | PROTECTED_ROOT_FIELD;
+    let nested = memo.get(name);
+    if (nested === undefined) {
+      active.add(name);
+      nested = rootFieldMask(
+        fragment.selectionSet.selections,
+        fragments,
+        active,
+        memo,
+      );
+      active.delete(name);
+      memo.set(name, nested);
+    }
+    mask |= nested;
+    if (mask & PROTECTED_ROOT_FIELD) return mask;
+  }
+  return mask;
+};
+
+const isPublicOperation = (payload: GraphQlPayload) => {
+  if (!payload.query) return false;
+  try {
+    const definitions = parse(payload.query).definitions;
+    const operations = definitions.filter(
+      (definition) => definition.kind === Kind.OPERATION_DEFINITION,
+    );
+    const operation = payload.operationName
+      ? operations.find(
+          (definition) => definition.name?.value === payload.operationName,
+        )
+      : operations.length === 1
+        ? operations[0]
+        : undefined;
+    if (!operation || operation.operation !== "mutation") return false;
+    const fragments = new Map(
+      definitions
+        .filter((definition) => definition.kind === Kind.FRAGMENT_DEFINITION)
+        .map((definition) => [definition.name.value, definition]),
+    );
+    return (
+      rootFieldMask(
+        operation.selectionSet.selections,
+        fragments,
+        new Set(),
+        new Map(),
+      ) === PUBLIC_ROOT_FIELD
+    );
+  } catch {
+    return false;
+  }
+};
+
+const readBody = async (request: Request) => {
+  const reader = request.body?.getReader();
+  if (!reader) return "";
+  const decoder = new TextDecoder();
+  let body = "";
+  let bytes = 0;
+  while (true) {
+    const chunk = await reader.read();
+    if (chunk.done) return body + decoder.decode();
+    bytes += chunk.value.byteLength;
+    if (bytes > MAX_BODY_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    body += decoder.decode(chunk.value, { stream: true });
+  }
+};
+
 const responseWithCookies = (
   body: string,
   status: number,
@@ -109,8 +216,8 @@ export const handleGraphQlPost = async (request: Request) => {
       { error: "Request body too large" },
       { status: 413 },
     );
-  const body = await request.text();
-  if (new TextEncoder().encode(body).byteLength > MAX_BODY_BYTES)
+  const body = await readBody(request);
+  if (body === null)
     return NextResponse.json(
       { error: "Request body too large" },
       { status: 413 },
@@ -129,10 +236,7 @@ export const handleGraphQlPost = async (request: Request) => {
   const initial = await forward(body, cookieHeader, deviceId);
   const initialBody = await initial.text();
   const initialCookies = setCookies(initial.headers);
-  if (
-    !isUnauthenticated(readPayload(initialBody)) ||
-    PUBLIC_OPERATION.test(input.query)
-  )
+  if (!isUnauthenticated(readPayload(initialBody)) || isPublicOperation(input))
     return responseWithCookies(
       initialBody,
       initial.status,

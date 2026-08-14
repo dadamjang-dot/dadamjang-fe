@@ -20,11 +20,20 @@ import {
   saveProduct,
   submitProduct,
   ProductInput,
+  uploadFile,
 } from "@/shared/api";
 import { effectiveProductState, isProductEditable } from "@/entities/product";
-type ImageItem = { key: string; preview: string; local: boolean };
-type Sku = ProductInput["skus"][number];
+import { myPartner } from "@/shared/auth";
+type ImageItem = {
+  key: string;
+  preview: string;
+  local: boolean;
+  progress: number;
+};
+type Sku = ProductInput["skus"][number] & { identity: string };
+let nextSkuIdentity = 0;
 const emptySku = (): Sku => ({
+  identity: `new-sku-${nextSkuIdentity++}`,
   code: "",
   colorId: "",
   sizeId: "",
@@ -45,11 +54,15 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     queryKey: ["catalog-options"],
     queryFn: catalogOptions,
   });
+  const partner = useQuery({ queryKey: ["my-partner"], queryFn: myPartner });
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategory] = useState("");
   const [images, setImages] = useState<ImageItem[]>([]);
   const imageRef = useRef<ImageItem[]>([]);
+  const uploadControllers = useRef(new Map<string, AbortController>());
+  const mounted = useRef(true);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [skus, setSkus] = useState<Sku[]>([emptySku()]);
   const [sale, setSale] = useState(false);
   const [express, setExpress] = useState(false);
@@ -57,6 +70,8 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     () => searchParams.get("submitError") ?? "",
   );
   const [confirm, setConfirm] = useState(false);
+  const [publishPending, setPublishPending] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const hydrated = useRef(false);
   useEffect(() => {
     const p = existing.data?.myPartnerProduct;
@@ -70,10 +85,12 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
         key,
         preview: p.imageUrls[i] ?? "",
         local: false,
+        progress: 100,
       })),
     );
     setSkus(
       p.skus.map((s) => ({
+        identity: s.skuId,
         code: s.code,
         colorId: s.colorId ?? "",
         sizeId: s.sizeId ?? "",
@@ -86,22 +103,88 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     setExpress(p.isExpressDelivery);
   }, [existing.data]);
   useEffect(() => {
+    const guard = (event: BeforeUnloadEvent) => {
+      if (!dirty) return;
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [dirty]);
+  useEffect(() => {
+    const guard = (event: MouseEvent) => {
+      const anchor =
+        event.target instanceof Element ? event.target.closest("a") : null;
+      if (!dirty || !anchor?.href) return;
+      if (window.confirm("저장하지 않은 변경사항이 있습니다. 이동할까요?"))
+        return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    document.addEventListener("click", guard, true);
+    return () => document.removeEventListener("click", guard, true);
+  }, [dirty]);
+  useEffect(() => {
     imageRef.current = images;
   }, [images]);
-  useEffect(
-    () => () =>
+  useEffect(() => {
+    const controllers = uploadControllers.current;
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      controllers.forEach((controller) => controller.abort());
       imageRef.current
         .filter((x) => x.local)
-        .forEach((x) => URL.revokeObjectURL(x.preview)),
-    [],
-  );
+        .forEach((x) => URL.revokeObjectURL(x.preview));
+    };
+  }, []);
+  useEffect(() => {
+    if (!confirm) return;
+    const previous =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const focusable = () =>
+      Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(
+          "button:not([disabled])",
+        ) ?? [],
+      );
+    focusable()[0]?.focus();
+    const guard = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setConfirm(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", guard);
+    return () => {
+      document.removeEventListener("keydown", guard);
+      previous?.focus();
+    };
+  }, [confirm]);
   const editable =
     !productId ||
     (!!existing.data &&
       isProductEditable(effectiveProductState(existing.data.myPartnerProduct)));
   const addFiles = async (files: FileList | File[]) => {
     setError("");
-    for (const file of Array.from(files)) {
+    const available = Math.max(0, 10 - images.length);
+    if (files.length > available)
+      setError("이미지는 최대 10장까지 등록할 수 있습니다.");
+    for (const file of Array.from(files).slice(0, available)) {
       if (
         !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
         file.size > 10 * 1024 * 1024
@@ -112,30 +195,61 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
         continue;
       }
       const preview = URL.createObjectURL(file);
+      let controller: AbortController | undefined;
       try {
         const { createProductImageUpload: u } = await createImageUpload({
           filename: file.name,
           contentType: file.type,
           fileSize: file.size,
         });
-        await fetch(u.uploadUrl, {
-          method: "PUT",
-          headers: { "content-type": file.type },
-          body: file,
-        });
-        setImages((v) => [...v, { key: u.key, preview, local: true }]);
+        if (!mounted.current) {
+          URL.revokeObjectURL(preview);
+          return;
+        }
+        controller = new AbortController();
+        uploadControllers.current.set(u.key, controller);
+        setImages((value) => [
+          ...value,
+          { key: u.key, preview, local: true, progress: 0 },
+        ]);
+        try {
+          await uploadFile(
+            u.uploadUrl,
+            file,
+            (progress) => {
+              if (!mounted.current) return;
+              setImages((value) =>
+                value.map((item) =>
+                  item.key === u.key ? { ...item, progress } : item,
+                ),
+              );
+            },
+            controller.signal,
+          );
+        } finally {
+          uploadControllers.current.delete(u.key);
+        }
+        if (mounted.current) setDirty(true);
       } catch (e) {
+        if (mounted.current) {
+          setImages((value) =>
+            value.filter((item) => item.preview !== preview),
+          );
+          if (!controller?.signal.aborted)
+            setError(
+              e instanceof Error ? e.message : "이미지 업로드에 실패했습니다.",
+            );
+        }
         URL.revokeObjectURL(preview);
-        setError(
-          e instanceof Error ? e.message : "이미지 업로드에 실패했습니다.",
-        );
       }
     }
   };
   const remove = (i: number) =>
     setImages((v) => {
       const item = v[i];
+      uploadControllers.current.get(item.key)?.abort();
       if (item.local) URL.revokeObjectURL(item.preview);
+      setDirty(true);
       return v.filter((_, n) => n !== i);
     });
   const move = (i: number, d: number) =>
@@ -143,12 +257,21 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       const n = [...v];
       const [x] = n.splice(i, 1);
       n.splice(i + d, 0, x);
+      setDirty(true);
       return n;
     });
   const mutation = useMutation({
     mutationFn: async ({ submit }: { submit: boolean }) => {
-      if (!title.trim() || !categoryId)
-        throw new Error("카테고리와 상품명은 필수입니다.");
+      if (images.some((image) => image.progress < 100))
+        throw new Error("이미지 업로드가 끝난 뒤 저장해 주세요.");
+      if (!title.trim() || !description.trim() || !categoryId)
+        throw new Error("카테고리, 상품명, 설명은 필수입니다.");
+      if (title.length > 200 || description.length > 2000)
+        throw new Error("상품명은 200자, 설명은 2,000자 이하여야 합니다.");
+      if (!images.length)
+        throw new Error("상품 이미지를 1장 이상 등록해 주세요.");
+      if (images.some((image) => !image.preview))
+        throw new Error("불러오지 못한 상품 이미지를 다시 등록해 주세요.");
       if (
         skus.some(
           (s) =>
@@ -163,12 +286,21 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
         throw new Error(
           "SKU 코드와 옵션명을 입력하고 가격/재고는 0 이상의 정수로 입력하세요.",
         );
+      if (new Set(skus.map((sku) => sku.code)).size !== skus.length)
+        throw new Error("SKU 코드는 중복될 수 없습니다.");
       const input = {
         categoryId,
         title,
         description,
         imageKeys: images.map((x) => x.key),
-        skus,
+        skus: skus.map((sku) => ({
+          code: sku.code,
+          colorId: sku.colorId,
+          sizeId: sku.sizeId,
+          optionName: sku.optionName,
+          price: sku.price,
+          stock: sku.stock,
+        })),
         isOnSale: sale,
         isExpressDelivery: express,
       };
@@ -185,7 +317,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
             const message =
               e instanceof Error ? e.message : "심사 요청에 실패했습니다.";
             router.replace(
-              `/products/${draft.productId}?submitError=${encodeURIComponent(message)}`,
+              `/products/${draft.productId}/edit?submitError=${encodeURIComponent(message)}`,
             );
           }
           throw e;
@@ -194,6 +326,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       return draft;
     },
     onSuccess: async () => {
+      setDirty(false);
       await qc.invalidateQueries({ queryKey: ["products"] });
       router.push("/products");
     },
@@ -222,238 +355,324 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
           반려 사유: {p.rejectionReason}
         </div>
       )}
-      <form onSubmit={onSubmit}>
-        <fieldset disabled={!editable || mutation.isPending}>
-          <label>
-            카테고리
-            <select
-              value={categoryId}
-              onChange={(e) => setCategory(e.target.value)}
-              required
-            >
-              <option value="">선택</option>
-              {options.data?.catalogFilterOptions.categories.map((x) => (
-                <option value={x.categoryId} key={x.categoryId}>
-                  {x.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <PartnerTextField
-            label="상품명"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-          <PartnerTextarea
-            label="설명"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <div
-            className="drop"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e: DragEvent) => {
-              e.preventDefault();
-              void addFiles(e.dataTransfer.files);
-            }}
-          >
+      <form
+        className="editor-grid"
+        onSubmit={onSubmit}
+        onChange={() => setDirty(true)}
+      >
+        <div className="editor-main">
+          <fieldset disabled={!editable || mutation.isPending}>
             <label>
-              이미지 선택
-              <input
-                type="file"
-                multiple
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  e.target.files && void addFiles(e.target.files)
-                }
-              />
+              카테고리
+              <select
+                value={categoryId}
+                onChange={(e) => setCategory(e.target.value)}
+                required
+              >
+                <option value="">선택</option>
+                {options.data?.catalogFilterOptions?.categories?.map((x) => (
+                  <option value={x.categoryId} key={x.categoryId}>
+                    {x.name}
+                  </option>
+                ))}
+              </select>
             </label>
-            <p>또는 이미지를 여기에 놓으세요 (최대 10 MiB)</p>
-          </div>
-          <div className="images">
-            {images.map((x, i) => (
-              <article key={x.key}>
-                <Image
-                  src={x.preview}
-                  alt={`상품 이미지 ${i + 1}`}
-                  width={190}
-                  height={140}
-                  unoptimized
+            <PartnerTextField
+              label="상품명"
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setDirty(true);
+              }}
+              maxLength={200}
+              required
+            />
+            <PartnerTextField
+              label="연결 브랜드"
+              value={
+                p?.brand?.name ??
+                partner.data?.myPartner?.brand?.name ??
+                "연결 브랜드"
+              }
+              readOnly
+            />
+            <PartnerTextarea
+              label="설명"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={2000}
+              required
+            />
+            <div
+              className="drop"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e: DragEvent) => {
+                e.preventDefault();
+                void addFiles(e.dataTransfer.files);
+              }}
+            >
+              <label>
+                이미지 선택
+                <input
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    e.target.files && void addFiles(e.target.files)
+                  }
+                />
+              </label>
+              <p>또는 이미지를 여기에 놓으세요 (최대 10 MiB)</p>
+            </div>
+            <div className="images">
+              {images.map((x, i) => (
+                <article key={x.key}>
+                  {x.preview ? (
+                    <Image
+                      src={x.preview}
+                      alt={`상품 이미지 ${i + 1}`}
+                      width={190}
+                      height={140}
+                      unoptimized
+                    />
+                  ) : (
+                    <span
+                      className="thumbnail"
+                      role="img"
+                      aria-label={`상품 이미지 ${i + 1}을 불러올 수 없습니다.`}
+                    >
+                      이미지 없음
+                    </span>
+                  )}
+                  <span aria-live="polite">{x.progress}%</span>
+                  <ActionButton
+                    type="button"
+                    disabled={i === 0}
+                    onClick={() => move(i, -1)}
+                  >
+                    앞으로
+                  </ActionButton>
+                  <ActionButton
+                    type="button"
+                    disabled={i === images.length - 1}
+                    onClick={() => move(i, 1)}
+                  >
+                    뒤로
+                  </ActionButton>
+                  <ActionButton type="button" onClick={() => remove(i)}>
+                    삭제
+                  </ActionButton>
+                </article>
+              ))}
+            </div>
+            <h2>SKU</h2>
+            {skus.map((s, i) => (
+              <div className="sku" key={s.identity}>
+                <input
+                  aria-label={`SKU ${i + 1} 코드`}
+                  placeholder="코드"
+                  value={s.code}
+                  onChange={(e) =>
+                    setSkus((v) =>
+                      v.map((x, n) =>
+                        n === i ? { ...x, code: e.target.value } : x,
+                      ),
+                    )
+                  }
+                />
+                <input
+                  aria-label={`SKU ${i + 1} 옵션명`}
+                  placeholder="옵션명"
+                  value={s.optionName}
+                  onChange={(e) =>
+                    setSkus((v) =>
+                      v.map((x, n) =>
+                        n === i ? { ...x, optionName: e.target.value } : x,
+                      ),
+                    )
+                  }
+                />
+                <select
+                  aria-label={`SKU ${i + 1} 색상`}
+                  value={s.colorId}
+                  onChange={(e) =>
+                    setSkus((v) =>
+                      v.map((x, n) =>
+                        n === i ? { ...x, colorId: e.target.value } : x,
+                      ),
+                    )
+                  }
+                >
+                  <option value="">색상</option>
+                  {options.data?.catalogFilterOptions?.colors?.map((x) => (
+                    <option value={x.colorId} key={x.colorId}>
+                      {x.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  aria-label={`SKU ${i + 1} 사이즈`}
+                  value={s.sizeId}
+                  onChange={(e) =>
+                    setSkus((v) =>
+                      v.map((x, n) =>
+                        n === i ? { ...x, sizeId: e.target.value } : x,
+                      ),
+                    )
+                  }
+                >
+                  <option value="">사이즈</option>
+                  {options.data?.catalogFilterOptions?.sizes?.map((x) => (
+                    <option value={x.sizeId} key={x.sizeId}>
+                      {x.name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  aria-label={`SKU ${i + 1} 가격`}
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={s.price}
+                  onChange={(e) =>
+                    setSkus((v) =>
+                      v.map((x, n) =>
+                        n === i ? { ...x, price: Number(e.target.value) } : x,
+                      ),
+                    )
+                  }
+                />
+                <input
+                  aria-label={`SKU ${i + 1} 재고`}
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={s.stock}
+                  onChange={(e) =>
+                    setSkus((v) =>
+                      v.map((x, n) =>
+                        n === i ? { ...x, stock: Number(e.target.value) } : x,
+                      ),
+                    )
+                  }
                 />
                 <ActionButton
+                  aria-label={`SKU ${i + 1} 위로 이동`}
                   type="button"
                   disabled={i === 0}
-                  onClick={() => move(i, -1)}
+                  onClick={() =>
+                    setSkus((value) => {
+                      const next = [...value];
+                      [next[i - 1], next[i]] = [next[i], next[i - 1]];
+                      setDirty(true);
+                      return next;
+                    })
+                  }
                 >
-                  앞으로
+                  위로
+                </ActionButton>
+                <ActionButton
+                  aria-label={`SKU ${i + 1} 아래로 이동`}
+                  type="button"
+                  disabled={i === skus.length - 1}
+                  onClick={() =>
+                    setSkus((value) => {
+                      const next = [...value];
+                      [next[i], next[i + 1]] = [next[i + 1], next[i]];
+                      setDirty(true);
+                      return next;
+                    })
+                  }
+                >
+                  아래로
                 </ActionButton>
                 <ActionButton
                   type="button"
-                  disabled={i === images.length - 1}
-                  onClick={() => move(i, 1)}
+                  disabled={skus.length === 1}
+                  onClick={() => {
+                    setSkus((v) => v.filter((_, n) => n !== i));
+                    setDirty(true);
+                  }}
                 >
-                  뒤로
+                  행 삭제
                 </ActionButton>
-                <ActionButton type="button" onClick={() => remove(i)}>
-                  삭제
-                </ActionButton>
-              </article>
+              </div>
             ))}
-          </div>
-          <h2>SKU</h2>
-          {skus.map((s, i) => (
-            <div className="sku" key={i}>
+            <ActionButton
+              type="button"
+              variant="neutralOutline"
+              onClick={() => {
+                setSkus((v) => [...v, emptySku()]);
+                setDirty(true);
+              }}
+            >
+              SKU 추가
+            </ActionButton>
+            <label>
               <input
-                aria-label={`SKU ${i + 1} 코드`}
-                placeholder="코드"
-                value={s.code}
-                onChange={(e) =>
-                  setSkus((v) =>
-                    v.map((x, n) =>
-                      n === i ? { ...x, code: e.target.value } : x,
-                    ),
-                  )
-                }
+                type="checkbox"
+                checked={sale}
+                onChange={(e) => setSale(e.target.checked)}
               />
+              판매 상품
+            </label>
+            <label>
               <input
-                aria-label={`SKU ${i + 1} 옵션명`}
-                placeholder="옵션명"
-                value={s.optionName}
-                onChange={(e) =>
-                  setSkus((v) =>
-                    v.map((x, n) =>
-                      n === i ? { ...x, optionName: e.target.value } : x,
-                    ),
-                  )
-                }
+                type="checkbox"
+                checked={express}
+                onChange={(e) => setExpress(e.target.checked)}
               />
-              <select
-                aria-label={`SKU ${i + 1} 색상`}
-                value={s.colorId}
-                onChange={(e) =>
-                  setSkus((v) =>
-                    v.map((x, n) =>
-                      n === i ? { ...x, colorId: e.target.value } : x,
-                    ),
-                  )
-                }
-              >
-                <option value="">색상</option>
-                {options.data?.catalogFilterOptions.colors.map((x) => (
-                  <option value={x.colorId} key={x.colorId}>
-                    {x.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label={`SKU ${i + 1} 사이즈`}
-                value={s.sizeId}
-                onChange={(e) =>
-                  setSkus((v) =>
-                    v.map((x, n) =>
-                      n === i ? { ...x, sizeId: e.target.value } : x,
-                    ),
-                  )
-                }
-              >
-                <option value="">사이즈</option>
-                {options.data?.catalogFilterOptions.sizes.map((x) => (
-                  <option value={x.sizeId} key={x.sizeId}>
-                    {x.name}
-                  </option>
-                ))}
-              </select>
-              <input
-                aria-label={`SKU ${i + 1} 가격`}
-                type="number"
-                min="0"
-                step="1"
-                value={s.price}
-                onChange={(e) =>
-                  setSkus((v) =>
-                    v.map((x, n) =>
-                      n === i ? { ...x, price: Number(e.target.value) } : x,
-                    ),
-                  )
-                }
-              />
-              <input
-                aria-label={`SKU ${i + 1} 재고`}
-                type="number"
-                min="0"
-                step="1"
-                value={s.stock}
-                onChange={(e) =>
-                  setSkus((v) =>
-                    v.map((x, n) =>
-                      n === i ? { ...x, stock: Number(e.target.value) } : x,
-                    ),
-                  )
-                }
-              />
+              빠른 배송
+            </label>
+          </fieldset>
+        </div>
+        <aside className="editor-rail" aria-label="상품 미리보기 및 작업">
+          <h2>미리보기</h2>
+          <strong>{title || "상품명"}</strong>
+          <p>
+            {images.length}개 이미지 · {skus.length}개 SKU
+          </p>
+          {error && (
+            <p role="alert" className="error">
+              {error}
+            </p>
+          )}
+          {editable && (
+            <div className="actions">
               <ActionButton
-                type="button"
-                disabled={skus.length === 1}
-                onClick={() => setSkus((v) => v.filter((_, n) => n !== i))}
+                type="submit"
+                data-action="save"
+                disabled={images.some((image) => image.progress < 100)}
               >
-                행 삭제
+                임시 저장
+              </ActionButton>
+              <ActionButton
+                type="submit"
+                data-action="submit"
+                disabled={images.some((image) => image.progress < 100)}
+              >
+                심사 요청
               </ActionButton>
             </div>
-          ))}
-          <ActionButton
-            type="button"
-            variant="neutralOutline"
-            onClick={() => setSkus((v) => [...v, emptySku()])}
-          >
-            SKU 추가
-          </ActionButton>
-          <label>
-            <input
-              type="checkbox"
-              checked={sale}
-              onChange={(e) => setSale(e.target.checked)}
-            />
-            판매 상품
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={express}
-              onChange={(e) => setExpress(e.target.checked)}
-            />
-            빠른 배송
-          </label>
-        </fieldset>
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
-        {editable && (
-          <div className="actions">
-            <ActionButton type="submit" data-action="save">
-              임시 저장
+          )}
+          {effectiveState === "APPROVED" && (
+            <ActionButton type="button" onClick={() => setConfirm(true)}>
+              판매 게시
             </ActionButton>
-            <ActionButton type="submit" data-action="submit">
-              심사 요청
-            </ActionButton>
-          </div>
-        )}
+          )}
+        </aside>
       </form>
-      {effectiveState === "APPROVED" && (
-        <ActionButton onClick={() => setConfirm(true)}>판매 게시</ActionButton>
-      )}
       {confirm && (
         <div
+          ref={dialogRef}
           className="modal"
           role="dialog"
           aria-modal="true"
           aria-labelledby="publish-title"
         >
-          <div>
+          <div aria-describedby="publish-description">
             <h2 id="publish-title">상품을 게시할까요?</h2>
-            <p>게시하면 고객에게 상품이 공개됩니다.</p>
+            <p id="publish-description">게시하면 고객에게 상품이 공개됩니다.</p>
             <ActionButton
               variant="neutralOutline"
               onClick={() => setConfirm(false)}
@@ -461,10 +680,19 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
               취소
             </ActionButton>
             <ActionButton
-              onClick={async () => {
-                await publishProduct(productId!);
-                setConfirm(false);
-                await existing.refetch();
+              loading={publishPending}
+              onClick={() => {
+                setPublishPending(true);
+                setError("");
+                publishProduct(productId!)
+                  .then(() => {
+                    setConfirm(false);
+                    return existing.refetch();
+                  })
+                  .catch((publishError: Error) =>
+                    setError(publishError.message),
+                  )
+                  .finally(() => setPublishPending(false));
               }}
             >
               게시

@@ -35,10 +35,8 @@ export const PartnerShell = ({ children }: { children: ReactNode }) => {
         파트너 정보를 불러오지 못했습니다.
       </main>
     );
-  const linked =
-    partner.data?.myPartner?.status === "APPROVED" &&
-    !!partner.data.myPartner.brand;
-  if (!linked)
+  const currentPartner = partner.data?.myPartner;
+  if (currentPartner?.status !== "APPROVED" || !currentPartner.brand)
     return (
       <main className="center">
         <div role="alert" className="gate">
@@ -59,7 +57,10 @@ export const PartnerShell = ({ children }: { children: ReactNode }) => {
   return (
     <div className="shell">
       <aside>
-        <b>다담장 파트너</b>
+        <div className="brand-block">
+          <b>다담장</b>
+          <small>PARTNER · {currentPartner.brand.name}</small>
+        </div>
         <nav>
           <Link
             className={path === "/dashboard" ? "active" : ""}
