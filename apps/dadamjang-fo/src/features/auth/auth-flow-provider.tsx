@@ -16,7 +16,7 @@ import type {
 
 export class IdentitySheetDismissedError extends Error {
   constructor() {
-    super("본인인증 선택이 취소되었습니다.");
+    super("본인 인증 선택을 취소했어요.");
     this.name = "IdentitySheetDismissedError";
   }
 }
@@ -96,6 +96,6 @@ export const AuthFlowProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAuthFlow = () => {
   const value = useContext(AuthFlowContext);
-  if (!value) throw new Error("AuthFlowProvider가 필요합니다.");
+  if (!value) throw new Error("AuthFlowProvider가 필요해요.");
   return value;
 };

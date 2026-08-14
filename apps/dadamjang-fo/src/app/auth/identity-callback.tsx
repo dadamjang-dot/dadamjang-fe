@@ -8,7 +8,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 const IdentityCallbackScreen = () => (
   <View style={s.screen}>
-    <Text style={s.label}>본인인증 결과를 확인 중입니다.</Text>
+    <Text style={s.label}>본인 인증 결과를 확인하고 있어요.</Text>
   </View>
 );
 

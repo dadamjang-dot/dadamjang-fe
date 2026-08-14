@@ -38,7 +38,7 @@ const FindPasswordScreen = () => {
       return;
     }
     if (password !== passwordConfirmation) {
-      setMessage("비밀번호가 일치하지 않습니다.");
+      setMessage("비밀번호가 서로 달라요.");
       return;
     }
     if (!verificationToken) return;
@@ -50,7 +50,7 @@ const FindPasswordScreen = () => {
         params: returnTo ? { returnTo } : undefined,
       });
     } catch (error) {
-      setMessage(authErrorMessage(error, "비밀번호를 변경하지 못했습니다."));
+      setMessage(authErrorMessage(error, "비밀번호를 변경하지 못했어요."));
     }
   };
 
@@ -58,7 +58,7 @@ const FindPasswordScreen = () => {
     <AuthScreen testID="e2e.auth.find-password">
       <View style={s.form}>
         <Text style={s.description}>
-          가입한 이메일을 확인한 뒤 새 비밀번호를 설정합니다. 계정 여부와 관계없이 요청 결과는 동일하게 안내됩니다.
+          가입한 이메일을 인증하고 새 비밀번호를 설정해요. 안전을 위해 가입 여부와 관계없이 같은 결과를 안내해요.
         </Text>
         {!verificationToken ? (
           <EmailVerificationFields
@@ -85,7 +85,7 @@ const FindPasswordScreen = () => {
             <AuthField
               error={
                 passwordConfirmation && password !== passwordConfirmation
-                  ? "비밀번호가 일치하지 않습니다."
+                  ? "비밀번호가 서로 달라요."
                   : undefined
               }
               label="새 비밀번호 재입력"

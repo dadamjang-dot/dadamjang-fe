@@ -41,7 +41,7 @@ const ProductFilterSheet = ({
         variant="secondary"
       />
       <Button
-        label={`${totalCount.toLocaleString("ko-KR")}개 상품보기`}
+        label={`${totalCount.toLocaleString("ko-KR")}개 상품 보기`}
         onPress={onViewProducts}
         style={s.viewButton}
         testID="e2e.filter.apply"

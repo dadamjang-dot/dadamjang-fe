@@ -36,7 +36,7 @@ const AuthScreenRoute = () => {
         router.replace(resolveAuthReturnTo(returnTo) as Href);
         return;
       }
-      if (!result.kakaoSignupToken) throw new Error("카카오 가입 정보를 확인하지 못했습니다.");
+      if (!result.kakaoSignupToken) throw new Error("카카오 가입 정보를 확인하지 못했어요.");
       setKakaoSignup({
         kakaoSignupToken: result.kakaoSignupToken,
         email: result.email ?? undefined,
@@ -51,8 +51,8 @@ const AuthScreenRoute = () => {
         authErrorMessage(
           error,
           error instanceof AuthSessionCancelledError
-            ? "카카오 로그인이 취소되었습니다."
-            : "카카오 로그인에 실패했습니다.",
+            ? "카카오 로그인을 취소했어요."
+            : "카카오 로그인에 실패했어요.",
         ),
       );
     } finally {
@@ -66,8 +66,8 @@ const AuthScreenRoute = () => {
     <AuthScreen centered testID="e2e.auth.home">
       <View style={s.content}>
         <View style={s.intro}>
-          <Text style={s.heading}>다담장에 오신 것을 환영해요.</Text>
-          <Text style={s.description}>로그인하고 주문과 위시 상품을 한곳에서 관리하세요.</Text>
+          <Text style={s.heading}>다담장에 오신 걸 환영해요.</Text>
+          <Text style={s.description}>로그인하면 주문 내역과 찜한 상품을 한곳에서 볼 수 있어요.</Text>
         </View>
         <View style={s.actions}>
           <Button

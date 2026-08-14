@@ -50,12 +50,12 @@ const FindEmailScreen = () => {
         ) : (
           <>
             <View style={s.intro}>
-              <Text style={s.heading}>본인인증으로 이메일을 찾아요.</Text>
-              <Text style={s.description}>가입할 때 확인한 본인정보와 일치하는 이메일만 일부 가려서 보여드립니다.</Text>
+              <Text style={s.heading}>본인 인증으로 이메일을 찾아요.</Text>
+              <Text style={s.description}>가입할 때 입력한 정보와 일치하는 이메일을 일부 가려서 보여드려요.</Text>
             </View>
             <Button
               disabled={findEmail.isPending}
-              label={findEmail.isPending ? "확인 중" : "본인 인증하기"}
+              label={findEmail.isPending ? "확인 중" : "본인 인증"}
               onPress={handleVerify}
               testID="e2e.auth.find-email.identity"
             />

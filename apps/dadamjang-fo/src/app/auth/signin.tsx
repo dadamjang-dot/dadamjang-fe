@@ -27,7 +27,7 @@ const SigninScreen = () => {
       return;
     }
     if (validateEmail(normalizedEmail)) {
-      setMessage("올바른 이메일 주소를 입력해 주세요.");
+      setMessage("이메일 주소를 다시 확인해 주세요.");
       emailRef.current?.focus();
       return;
     }

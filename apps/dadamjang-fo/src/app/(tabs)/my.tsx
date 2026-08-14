@@ -12,7 +12,7 @@ const MyScreen = () => {
 
   return (
     <View style={s.container}>
-      <TitleHeader title="MY">
+      <TitleHeader title="마이">
         <ActionButtonGroup
           variant="circularPair"
           actions={[

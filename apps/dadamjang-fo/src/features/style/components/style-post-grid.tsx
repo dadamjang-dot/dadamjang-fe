@@ -75,7 +75,7 @@ const StylePostGrid = ({
           return (
             <View style={s.state}>
               <Text style={s.stateTitle}>{isError ? "스타일 게시물을 불러오지 못했어요." : "아직 스타일 게시물이 없어요."}</Text>
-              <Text style={s.stateDescription}>{isError ? "잠시 후 다시 시도해 주세요." : "첫 번째 스타일을 공유해 보세요."}</Text>
+              <Text style={s.stateDescription}>{isError ? "잠시 후 다시 시도해 주세요." : "첫 스타일을 올려보세요."}</Text>
               {isError ? <Button label="다시 시도" onPress={onRetry} style={s.retryButton} /> : null}
             </View>
           );

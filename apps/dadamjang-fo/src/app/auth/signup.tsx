@@ -90,7 +90,7 @@ const SignupScreen = () => {
       setIdentityVerificationToken(await openIdentityProviderSheet("SIGNUP"));
     } catch (error) {
       if (!(error instanceof IdentitySheetDismissedError))
-        setMessage(authErrorMessage(error, "본인인증을 완료하지 못했습니다."));
+        setMessage(authErrorMessage(error, "본인 인증을 완료하지 못했어요."));
     } finally {
       setIsIdentityPending(false);
     }
@@ -120,7 +120,7 @@ const SignupScreen = () => {
       }
       router.replace(resolveAuthReturnTo(returnTo) as Href);
     } catch (error) {
-      setMessage(authErrorMessage(error, "가입을 완료하지 못했습니다."));
+      setMessage(authErrorMessage(error, "가입을 완료하지 못했어요."));
     }
   };
 
@@ -153,10 +153,10 @@ const SignupScreen = () => {
         />
         <View style={s.section}>
           <Text style={s.sectionTitle}>약관 동의</Text>
-          {consentsQuery.isPending ? <Text style={s.status}>약관을 불러오는 중입니다.</Text> : null}
+          {consentsQuery.isPending ? <Text style={s.status}>약관을 불러오고 있어요.</Text> : null}
           {consentsQuery.isError ? (
             <View style={s.statusGroup}>
-              <Text style={s.message}>약관을 불러오지 못했습니다.</Text>
+              <Text style={s.message}>약관을 불러오지 못했어요.</Text>
               <Button label="다시 시도" onPress={() => consentsQuery.refetch()} variant="secondary" />
             </View>
           ) : null}
@@ -182,14 +182,14 @@ const SignupScreen = () => {
                 ? "본인 인증 완료"
                 : isIdentityPending
                   ? "인증사 선택 중"
-                  : "본인 인증하기"
+                  : "본인 인증"
             }
             onPress={handleIdentity}
             testID="e2e.auth.signup.identity"
             variant={identityVerificationToken ? "secondary" : "primary"}
           />
           {identityVerificationToken ? (
-            <Text style={s.verified}>본인인증이 완료되었습니다.</Text>
+            <Text style={s.verified}>본인 인증이 마쳤어요.</Text>
           ) : null}
         </View>
         {message ? (
@@ -200,7 +200,7 @@ const SignupScreen = () => {
         {identityVerificationToken ? (
           <Button
             disabled={isSubmitting}
-            label={isSubmitting ? "가입 처리 중" : "가입하기"}
+            label={isSubmitting ? "가입하고 있어요" : "가입하기"}
             onPress={handleSubmit}
             testID="e2e.auth.signup.submit"
           />

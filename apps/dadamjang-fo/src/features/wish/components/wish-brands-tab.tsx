@@ -28,7 +28,7 @@ const WishBrandsTab = () => {
   if (!followedBrands.data?.length) {
     return (
       <WishState
-        description="상품 상세에서 관심 브랜드를 팔로우해 보세요."
+        description="상품에서 마음에 드는 브랜드를 팔로우해 보세요."
         title="팔로우한 브랜드가 없어요."
       />
     );

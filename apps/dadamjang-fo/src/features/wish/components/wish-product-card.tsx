@@ -64,14 +64,14 @@ const WishProductCard = ({ product, onPress, onRemove }: WishProductCardProps) =
       </Button>
       {onRemove ? (
         <Button
-          accessibilityLabel={`${product.title} 위시 해제`}
+          accessibilityLabel={`${product.title} 찜 해제`}
           onPress={onRemove}
           style={s.removeButton}
           testID={`e2e.wish.remove.${product.productId}`}
           variant="bare"
         >
           <Image source="sf:heart.fill" style={s.removeIcon} />
-          <Text style={s.removeLabel}>해제</Text>
+          <Text style={s.removeLabel}>찜 해제</Text>
         </Button>
       ) : null}
     </View>

@@ -40,10 +40,10 @@ describe("auth rules", () => {
 
   it("validates email and bcrypt-safe password bounds", () => {
     expect(validateEmail("member@example.com")).toBeNull();
-    expect(validateEmail("invalid")).toBe("올바른 이메일 주소를 입력해 주세요.");
-    expect(validatePassword("short")).toBe("비밀번호는 8자 이상이어야 합니다.");
+    expect(validateEmail("invalid")).toBe("이메일 주소를 다시 확인해 주세요.");
+    expect(validatePassword("short")).toBe("비밀번호를 8자 이상 입력해 주세요.");
     expect(validatePassword("가".repeat(24))).toBeNull();
-    expect(validatePassword("가".repeat(25))).toBe("비밀번호는 72바이트 이하여야 합니다.");
+    expect(validatePassword("가".repeat(25))).toBe("비밀번호를 72바이트 이하로 입력해 주세요.");
   });
 
   it("allows only known internal return paths", () => {

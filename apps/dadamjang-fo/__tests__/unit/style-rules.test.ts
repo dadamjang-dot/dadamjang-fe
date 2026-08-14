@@ -18,9 +18,9 @@ describe("style post rules", () => {
   });
 
   it("validates registration limits and normalizes tags", () => {
-    expect(validateStylePostDraft({ content: "", productCount: 1, imageCount: 1 })).toBe("본문을 입력해 주세요.");
-    expect(validateStylePostDraft({ content: "본문", productCount: 0, imageCount: 1 })).toBe("구매 상품을 1~5개 선택해 주세요.");
-    expect(validateStylePostDraft({ content: "본문", productCount: 1, imageCount: 6 })).toBe("이미지를 1~5장 선택해 주세요.");
+    expect(validateStylePostDraft({ content: "", productCount: 1, imageCount: 1 })).toBe("스타일 소개를 입력해 주세요.");
+    expect(validateStylePostDraft({ content: "본문", productCount: 0, imageCount: 1 })).toBe("구매한 상품을 1~5개 선택해 주세요.");
+    expect(validateStylePostDraft({ content: "본문", productCount: 1, imageCount: 6 })).toBe("사진을 1~5장 선택해 주세요.");
     expect(validateStylePostDraft({ content: "본문", productCount: 1, imageCount: 1 })).toBeNull();
     expect(normalizeStyleHashtag("  #daily_1 ")).toBe("daily_1");
   });

@@ -15,9 +15,9 @@ import type { IdentityVerificationProvider } from "@/features/auth/types";
 import { Button } from "@/shared/components/button";
 
 const providers: { id: IdentityVerificationProvider; label: string; description: string }[] = [
-  { id: "TOSS", label: "토스 인증", description: "토스 인증서로 본인확인" },
-  { id: "KAKAO", label: "카카오 인증", description: "카카오 인증서로 본인확인" },
-  { id: "NAVER", label: "네이버 인증", description: "네이버 인증서로 본인확인" },
+  { id: "TOSS", label: "토스 인증", description: "토스 인증서로 본인 확인" },
+  { id: "KAKAO", label: "카카오 인증", description: "카카오 인증서로 본인 확인" },
+  { id: "NAVER", label: "네이버 인증", description: "네이버 인증서로 본인 확인" },
 ];
 
 const IdentityProviderSheetRoute = () => {
@@ -52,8 +52,8 @@ const IdentityProviderSheetRoute = () => {
         authErrorMessage(
           error,
           error instanceof AuthSessionCancelledError
-            ? "본인인증이 취소되었습니다."
-            : "본인인증에 실패했습니다.",
+            ? "본인 인증을 취소했어요."
+            : "본인 인증에 실패했어요.",
         ),
       );
     } finally {
@@ -64,7 +64,7 @@ const IdentityProviderSheetRoute = () => {
   return (
     <View style={s.screen} testID="e2e.auth.identity-provider-sheet">
       <View style={s.heading}>
-        <Text style={s.title}>본인 인증하기</Text>
+        <Text style={s.title}>본인 인증</Text>
         <Text style={s.description}>사용할 인증서를 선택해 주세요.</Text>
       </View>
       <View style={s.providers}>

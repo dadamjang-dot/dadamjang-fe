@@ -78,7 +78,7 @@ const StylePostDetail = ({
                 {post.hashtags.map((tag) => <Text key={tag} style={s.hashtag}>#{tag}</Text>)}
               </View>
             ) : null}
-            <Text style={s.sectionTitle}>연결 상품 {post.products.length}</Text>
+            <Text style={s.sectionTitle}>함께 올린 상품 {post.products.length}</Text>
           </View>
         </View>
       }
