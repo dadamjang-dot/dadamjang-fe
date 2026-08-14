@@ -41,7 +41,7 @@ const TabLayout = () => (
       <NativeTabs.Trigger.Icon sf="magnifyingglass" />
     </NativeTabs.Trigger>
     <NativeTabs.Trigger name="wish" testID="e2e.navigation.wish">
-      <NativeTabs.Trigger.Label>찜</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger.Label>위시</NativeTabs.Trigger.Label>
       <NativeTabs.Trigger.Icon
         sf={{ default: "heart", selected: "heart.fill" }}
       />

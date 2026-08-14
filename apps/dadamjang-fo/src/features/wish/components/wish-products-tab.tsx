@@ -11,7 +11,7 @@ const WishProductsTab = () => {
   return (
     <WishProductList
       emptyDescription="마음에 드는 상품을 저장해 보세요."
-      emptyTitle="찜한 상품이 없어요."
+      emptyTitle="위시한 상품이 없어요."
       isError={wishlist.isError}
       isLoading={wishlist.isLoading}
       onOpenProduct={(productId) => router.push(`/product/${productId}`)}

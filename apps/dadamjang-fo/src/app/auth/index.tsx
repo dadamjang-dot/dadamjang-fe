@@ -67,7 +67,7 @@ const AuthScreenRoute = () => {
       <View style={s.content}>
         <View style={s.intro}>
           <Text style={s.heading}>다담장에 오신 걸 환영해요.</Text>
-          <Text style={s.description}>로그인하면 주문 내역과 찜한 상품을 한곳에서 볼 수 있어요.</Text>
+          <Text style={s.description}>로그인하면 주문 내역과 위시한 상품을 한곳에서 볼 수 있어요.</Text>
         </View>
         <View style={s.actions}>
           <Button
