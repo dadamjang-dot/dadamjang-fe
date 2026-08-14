@@ -192,6 +192,61 @@ describe("partner GraphQL BFF refresh", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it.each([
+    [
+      "fragment spread",
+      'mutation Signin { signin(userid: "p", password: "x") { role } ...Protected } fragment Protected on Mutation { publishPartnerProduct(productId: "product-1") { productId } }',
+    ],
+    [
+      "inline fragment",
+      'mutation Signin { signin(userid: "p", password: "x") { role } ... on Mutation { publishPartnerProduct(productId: "product-1") { productId } } }',
+    ],
+  ])(
+    "refreshes when a %s contains a protected root field",
+    async (_, query) => {
+      const fetchMock = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(
+          response({ errors: [{ extensions: { code: "UNAUTHENTICATED" } }] }),
+        )
+        .mockResolvedValueOnce(
+          response({ data: { refresh: { role: "PARTNER" } } }),
+        )
+        .mockResolvedValueOnce(
+          response({ data: { publishPartnerProduct: null } }),
+        );
+      const selected = new Request("http://partner.test/api/graphql", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+
+      await handleGraphQlPost(selected);
+
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    },
+  );
+
+  it("recognizes a public root field expressed through a fragment", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        response({ errors: [{ extensions: { code: "UNAUTHENTICATED" } }] }),
+      );
+    const selected = new Request("http://partner.test/api/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        query:
+          'mutation Signin { ...Public } fragment Public on Mutation { signin(userid: "p", password: "x") { role } }',
+      }),
+    });
+
+    await handleGraphQlPost(selected);
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
   it("rejects an oversized body without forwarding it", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch");
     const oversized = new Request("http://partner.test/api/graphql", {

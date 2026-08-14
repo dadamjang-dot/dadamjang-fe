@@ -14,6 +14,15 @@ test.beforeEach(async ({ context, baseURL }) => {
 });
 
 test.beforeEach(async ({ page }) => {
+  await page.route("https://images.test/**", (route) =>
+    route.fulfill({
+      contentType: "image/png",
+      body: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+        "base64",
+      ),
+    }),
+  );
   page.on("pageerror", (error) => {
     throw error;
   });
@@ -27,6 +36,12 @@ test.beforeEach(async ({ page }) => {
   });
   page.on("requestfailed", (request) => {
     const failure = `${request.method()} ${request.url()}`;
+    if (
+      request.resourceType() === "fetch" &&
+      new URL(request.url()).searchParams.has("_rsc") &&
+      request.failure()?.errorText.includes("ERR_ABORTED")
+    )
+      return;
     if (
       !(expectedRequestFailures.get(page) ?? []).some((pattern) =>
         pattern.test(failure),
@@ -90,8 +105,8 @@ const product = (approvalStatus = "DRAFT", status = "DRAFT") => ({
   categoryId: "tops",
   title: "테스트 셔츠",
   description: "설명",
-  imageUrls: [],
-  imageKeys: [],
+  imageUrls: ["https://images.test/product.png"],
+  imageKeys: ["products/user-1/00000000-0000-4000-8000-000000000001.png"],
   status,
   approvalStatus,
   rejectionReason:
@@ -321,14 +336,32 @@ test("create saves a draft and recovers its route when submit fails", async ({
     page,
     protectedHandlers({
       CatalogOptions: () => options,
+      ImageUpload: () => ({
+        createProductImageUpload: {
+          key: "products/user-1/00000000-0000-4000-8000-000000000002.png",
+          uploadUrl: "http://127.0.0.1:3002/upload-create",
+          originalUrl: "https://images.test/create.png",
+          imageUrl: "https://images.test/create-transformed.png",
+        },
+      }),
       CreateProduct: () => ({ createPartnerProductDraft: product() }),
       SubmitProduct: () => new Error("심사를 요청하지 못했습니다"),
       PartnerProduct: () => ({ myPartnerProduct: product() }),
     }),
   );
+  await page.route("**/upload-create", (route) =>
+    route.fulfill({ status: 204 }),
+  );
   await page.goto("/products/new");
   await page.getByLabel("카테고리").selectOption("tops");
   await page.getByLabel("상품명").fill("새 셔츠");
+  await page.getByLabel("설명").fill("새 상품 설명");
+  await page.getByLabel("이미지 선택").setInputFiles({
+    name: "create.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("image"),
+  });
+  await expect(page.getByText("100%", { exact: true })).toBeVisible();
   await page.getByLabel("SKU 1 코드").fill("NEW");
   await page.getByLabel("SKU 1 옵션명").fill("기본");
   await page.getByRole("button", { name: "심사 요청" }).click();
@@ -342,6 +375,57 @@ test("create saves a draft and recovers its route when submit fails", async ({
   expect(
     calls.some((x) => x.query.includes("submitPartnerProductForReview")),
   ).toBe(true);
+});
+
+test("create requires at least one completed image", async ({ page }) => {
+  const calls = await routeGraphQl(
+    page,
+    protectedHandlers({ CatalogOptions: () => options }),
+  );
+  await page.goto("/products/new");
+  await page.getByLabel("카테고리").selectOption("tops");
+  await page.getByLabel("상품명").fill("새 셔츠");
+  await page.getByLabel("설명").fill("새 상품 설명");
+  await page.getByLabel("SKU 1 코드").fill("NEW");
+  await page.getByLabel("SKU 1 옵션명").fill("기본");
+  await page.getByRole("button", { name: "임시 저장" }).click();
+
+  await expect(
+    page.getByText("상품 이미지를 1장 이상 등록해 주세요.", { exact: true }),
+  ).toBeVisible();
+  expect(
+    calls.some((call) => call.query.includes("createPartnerProductDraft")),
+  ).toBe(false);
+});
+
+test("missing existing image URL blocks save without rendering an empty src", async ({
+  page,
+}) => {
+  const unavailable = { ...product(), imageUrls: [] };
+  const calls = await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => ({ myPartnerProduct: unavailable }),
+    }),
+  );
+  await page.goto("/products/product-1/edit");
+  await expect(
+    page.getByRole("img", {
+      name: "상품 이미지 1을 불러올 수 없습니다.",
+    }),
+  ).toBeVisible();
+  await expect(page.locator('img[src=""]')).toHaveCount(0);
+  await page.getByRole("button", { name: "임시 저장" }).click();
+
+  await expect(
+    page.getByText("불러오지 못한 상품 이미지를 다시 등록해 주세요.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect(
+    calls.some((call) => call.query.includes("updatePartnerProductDraft")),
+  ).toBe(false);
 });
 
 test("failed image upload preserves entered form values", async ({ page }) => {
@@ -460,10 +544,7 @@ test("leaving during upload setup does not start an orphan upload", async ({
   const setupComplete = new Promise<void>((resolve) => {
     completeSetup = resolve;
   });
-  let reportUpload = () => {};
-  const uploadStarted = new Promise<boolean>((resolve) => {
-    reportUpload = () => resolve(true);
-  });
+  let uploadRequests = 0;
   const calls = await routeGraphQl(
     page,
     protectedHandlers({
@@ -483,7 +564,7 @@ test("leaving during upload setup does not start an orphan upload", async ({
     }),
   );
   await page.route("**/upload-orphan", async (route) => {
-    reportUpload();
+    uploadRequests += 1;
     await route.fulfill({ status: 204 });
   });
   await page.goto("/products/new");
@@ -495,16 +576,22 @@ test("leaving during upload setup does not start an orphan upload", async ({
   await expect
     .poll(() => calls.some((call) => call.query.includes("ImageUpload")))
     .toBe(true);
+  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("link", { name: "상품 관리" }).click();
   await expect(page).toHaveURL(/\/products$/);
+  const setupResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/graphql") &&
+      response.request().postData()?.includes("ImageUpload") === true,
+  );
   completeSetup();
+  await (await setupResponse).finished();
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
 
-  expect(
-    await Promise.race([
-      uploadStarted,
-      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 500)),
-    ]),
-  ).toBe(false);
+  expect(uploadRequests).toBe(0);
 });
 
 test("canonical product route redirects to edit", async ({ page }) => {

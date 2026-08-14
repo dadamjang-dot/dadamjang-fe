@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { Kind, parse } from "graphql";
+import {
+  Kind,
+  parse,
+  type FragmentDefinitionNode,
+  type SelectionNode,
+} from "graphql";
 
 type GraphQlPayload = {
   query?: string;
@@ -63,10 +68,48 @@ const isUnauthenticated = (payload: GraphQlPayload | null) =>
     (error) => error.extensions?.code === "UNAUTHENTICATED",
   ) ?? false;
 
+const rootFields = (
+  selections: readonly SelectionNode[],
+  fragments: ReadonlyMap<string, FragmentDefinitionNode>,
+  visited: Set<string>,
+): string[] | null => {
+  const fields: string[] = [];
+  for (const selection of selections) {
+    if (selection.kind === Kind.FIELD) {
+      fields.push(selection.name.value);
+      continue;
+    }
+    if (selection.kind === Kind.INLINE_FRAGMENT) {
+      const nested = rootFields(
+        selection.selectionSet.selections,
+        fragments,
+        visited,
+      );
+      if (!nested) return null;
+      fields.push(...nested);
+      continue;
+    }
+    const name = selection.name.value;
+    const fragment = fragments.get(name);
+    if (!fragment || visited.has(name)) return null;
+    visited.add(name);
+    const nested = rootFields(
+      fragment.selectionSet.selections,
+      fragments,
+      visited,
+    );
+    visited.delete(name);
+    if (!nested) return null;
+    fields.push(...nested);
+  }
+  return fields;
+};
+
 const isPublicOperation = (payload: GraphQlPayload) => {
   if (!payload.query) return false;
   try {
-    const operations = parse(payload.query).definitions.filter(
+    const definitions = parse(payload.query).definitions;
+    const operations = definitions.filter(
       (definition) => definition.kind === Kind.OPERATION_DEFINITION,
     );
     const operation = payload.operationName
@@ -77,10 +120,19 @@ const isPublicOperation = (payload: GraphQlPayload) => {
         ? operations[0]
         : undefined;
     if (!operation || operation.operation !== "mutation") return false;
-    const fields = operation.selectionSet.selections.filter(
-      (selection) => selection.kind === Kind.FIELD,
+    const fragments = new Map(
+      definitions
+        .filter((definition) => definition.kind === Kind.FRAGMENT_DEFINITION)
+        .map((definition) => [definition.name.value, definition]),
     );
-    return fields.length === 1 && PUBLIC_FIELDS.has(fields[0].name.value);
+    const fields = rootFields(
+      operation.selectionSet.selections,
+      fragments,
+      new Set(),
+    );
+    return (
+      !!fields?.length && fields.every((field) => PUBLIC_FIELDS.has(field))
+    );
   } catch {
     return false;
   }

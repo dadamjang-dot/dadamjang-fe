@@ -114,17 +114,14 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     const guard = (event: MouseEvent) => {
       const anchor =
         event.target instanceof Element ? event.target.closest("a") : null;
-      if (
-        !dirty ||
-        !anchor ||
-        !anchor.href ||
-        !window.confirm("저장하지 않은 변경사항이 있습니다. 이동할까요?")
-      ) {
-        if (dirty && anchor) event.preventDefault();
-      }
+      if (!dirty || !anchor?.href) return;
+      if (window.confirm("저장하지 않은 변경사항이 있습니다. 이동할까요?"))
+        return;
+      event.preventDefault();
+      event.stopPropagation();
     };
-    document.addEventListener("click", guard);
-    return () => document.removeEventListener("click", guard);
+    document.addEventListener("click", guard, true);
+    return () => document.removeEventListener("click", guard, true);
   }, [dirty]);
   useEffect(() => {
     imageRef.current = images;
@@ -267,8 +264,14 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     mutationFn: async ({ submit }: { submit: boolean }) => {
       if (images.some((image) => image.progress < 100))
         throw new Error("이미지 업로드가 끝난 뒤 저장해 주세요.");
-      if (!title.trim() || !categoryId)
-        throw new Error("카테고리와 상품명은 필수입니다.");
+      if (!title.trim() || !description.trim() || !categoryId)
+        throw new Error("카테고리, 상품명, 설명은 필수입니다.");
+      if (title.length > 200 || description.length > 2000)
+        throw new Error("상품명은 200자, 설명은 2,000자 이하여야 합니다.");
+      if (!images.length)
+        throw new Error("상품 이미지를 1장 이상 등록해 주세요.");
+      if (images.some((image) => !image.preview))
+        throw new Error("불러오지 못한 상품 이미지를 다시 등록해 주세요.");
       if (
         skus.some(
           (s) =>
@@ -283,6 +286,8 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
         throw new Error(
           "SKU 코드와 옵션명을 입력하고 가격/재고는 0 이상의 정수로 입력하세요.",
         );
+      if (new Set(skus.map((sku) => sku.code)).size !== skus.length)
+        throw new Error("SKU 코드는 중복될 수 없습니다.");
       const input = {
         categoryId,
         title,
@@ -379,6 +384,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                 setTitle(e.target.value);
                 setDirty(true);
               }}
+              maxLength={200}
               required
             />
             <PartnerTextField
@@ -394,6 +400,8 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
               label="설명"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              maxLength={2000}
+              required
             />
             <div
               className="drop"
@@ -419,13 +427,23 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
             <div className="images">
               {images.map((x, i) => (
                 <article key={x.key}>
-                  <Image
-                    src={x.preview}
-                    alt={`상품 이미지 ${i + 1}`}
-                    width={190}
-                    height={140}
-                    unoptimized
-                  />
+                  {x.preview ? (
+                    <Image
+                      src={x.preview}
+                      alt={`상품 이미지 ${i + 1}`}
+                      width={190}
+                      height={140}
+                      unoptimized
+                    />
+                  ) : (
+                    <span
+                      className="thumbnail"
+                      role="img"
+                      aria-label={`상품 이미지 ${i + 1}을 불러올 수 없습니다.`}
+                    >
+                      이미지 없음
+                    </span>
+                  )}
                   <span aria-live="polite">{x.progress}%</span>
                   <ActionButton
                     type="button"
