@@ -272,7 +272,7 @@ test("review states control editability and rejected reason", async ({
   await page.goto("/products/product-1");
   await expect(page.getByLabel("상품명")).toBeEnabled();
   await expect(
-    page.getByText("이미지를 확인해 주세요", { exact: true }),
+    page.locator(".error", { hasText: "이미지를 확인해 주세요" }),
   ).toBeVisible();
   for (state of ["PENDING", "APPROVED"]) {
     await page.reload();
