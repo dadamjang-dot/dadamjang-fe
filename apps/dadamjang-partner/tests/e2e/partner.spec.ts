@@ -10,6 +10,18 @@ test.beforeEach(async ({ context, baseURL }) => {
   ]);
 });
 
+test.beforeEach(async ({ page }) => {
+  page.on("pageerror", (error) => {
+    throw error;
+  });
+  page.on("console", (message) => {
+    if (message.type() === "error") throw new Error(message.text());
+  });
+  page.on("requestfailed", (request) => {
+    throw new Error(`${request.method()} ${request.url()}`);
+  });
+});
+
 type Handler = (variables: Record<string, unknown>) => unknown;
 const routeGraphQl = async (page: Page, handlers: Record<string, Handler>) => {
   const calls: Array<{ query: string; variables: Record<string, unknown> }> =
@@ -153,6 +165,7 @@ test("dashboard is protected by approval and linked-brand gates", async ({
   await routeGraphQl(
     page,
     protectedHandlers({
+      CatalogOptions: () => options,
       MyPartner: () => ({
         myPartner: {
           ...partner.myPartner,
@@ -177,7 +190,41 @@ test("dashboard is protected by approval and linked-brand gates", async ({
   linked = true;
   await page.reload();
   await expect(page.getByRole("heading", { name: "대시보드" })).toBeVisible();
-  await expect(page.getByText("DRAFT", { exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "임시 저장" })).toBeVisible();
+});
+
+test("dashboard renders real metrics, rejection attention, and recent products", async ({
+  page,
+}) => {
+  await routeGraphQl(
+    page,
+    protectedHandlers({
+      PartnerDashboard: () => ({
+        myPartnerDashboard: {
+          draftCount: 2,
+          pendingCount: 3,
+          rejectedCount: 1,
+          approvedCount: 4,
+          publishedCount: 5,
+        },
+      }),
+      PartnerProducts: (variables) =>
+        (variables.filter as { state?: string }).state === "REJECTED"
+          ? list([product("REJECTED")])
+          : list([product("PENDING")]),
+    }),
+  );
+  await page.goto("/dashboard");
+  await expect(page.getByRole("link", { name: "상품 등록" })).toBeVisible();
+  await expect(page.getByLabel("상품 상태 현황")).toContainText("5");
+  await expect(page.getByText(/확인이 필요한 반려 상품/)).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "반려 사유 확인" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "상품 상태 안내" }),
+  ).toBeVisible();
+  await expect(page.getByRole("cell", { name: "승인 대기" })).toBeVisible();
 });
 
 test("list submits query/state variables and navigates by cursor", async ({
@@ -186,6 +233,7 @@ test("list submits query/state variables and navigates by cursor", async ({
   const calls = await routeGraphQl(
     page,
     protectedHandlers({
+      CatalogOptions: () => options,
       PartnerProducts: (variables) => {
         const after = (variables.filter as { after?: string }).after;
         return list(
@@ -202,7 +250,8 @@ test("list submits query/state variables and navigates by cursor", async ({
   );
   await page.goto("/products");
   await page.getByLabel("상품 검색").fill("셔츠");
-  await page.getByLabel("상품 상태").selectOption("REJECTED");
+  await page.getByLabel("카테고리").selectOption("tops");
+  await page.getByLabel("상품 상태", { exact: true }).selectOption("REJECTED");
   await page.getByRole("button", { name: "검색" }).click();
   await expect
     .poll(
@@ -210,7 +259,14 @@ test("list submits query/state variables and navigates by cursor", async ({
         calls.filter((x) => x.query.includes("PartnerProducts")).at(-1)
           ?.variables,
     )
-    .toEqual({ filter: { query: "셔츠", state: "REJECTED", first: 20 } });
+    .toEqual({
+      filter: {
+        query: "셔츠",
+        state: "REJECTED",
+        categoryId: "tops",
+        first: 20,
+      },
+    });
   await page.getByRole("button", { name: "더 보기" }).click();
   await expect
     .poll(
@@ -222,6 +278,7 @@ test("list submits query/state variables and navigates by cursor", async ({
       filter: {
         query: "셔츠",
         state: "REJECTED",
+        categoryId: "tops",
         after: "cursor-2",
         first: 20,
       },
@@ -246,7 +303,7 @@ test("create saves a draft and recovers its route when submit fails", async ({
   await page.getByLabel("SKU 1 코드").fill("NEW");
   await page.getByLabel("SKU 1 옵션명").fill("기본");
   await page.getByRole("button", { name: "심사 요청" }).click();
-  await expect(page).toHaveURL(/products\/product-1/);
+  await expect(page).toHaveURL(/products\/product-1\/edit/);
   await expect(
     page.getByText("심사를 요청하지 못했습니다", { exact: true }),
   ).toBeVisible();
@@ -256,6 +313,108 @@ test("create saves a draft and recovers its route when submit fails", async ({
   expect(
     calls.some((x) => x.query.includes("submitPartnerProductForReview")),
   ).toBe(true);
+});
+
+test("failed image upload preserves entered form values", async ({ page }) => {
+  page.removeAllListeners("console");
+  page.on("console", (message) => {
+    if (message.type() === "error" && !message.text().includes("status of 503"))
+      throw new Error(message.text());
+  });
+  await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      ImageUpload: () => ({
+        createProductImageUpload: {
+          key: "products/user-1/image.png",
+          uploadUrl: "http://127.0.0.1:3002/upload-fail",
+          originalUrl: "http://images.test/image.png",
+          imageUrl: "http://images.test/transformed.png",
+        },
+      }),
+    }),
+  );
+  await page.route("**/upload-fail", (route) => route.fulfill({ status: 503 }));
+  await page.goto("/products/new");
+  await page.getByLabel("상품명").fill("보존할 상품명");
+  await page.getByLabel("이미지 선택").setInputFiles({
+    name: "failed.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("image"),
+  });
+  await expect(
+    page.getByText("이미지 업로드에 실패했습니다. (503)", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("상품명")).toHaveValue("보존할 상품명");
+  await expect(page.getByAltText("상품 이미지 1")).toHaveCount(0);
+});
+
+test("canonical product route redirects to edit", async ({ page }) => {
+  await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => ({ myPartnerProduct: product() }),
+    }),
+  );
+  await page.goto("/products/product-1");
+  await expect(page).toHaveURL(/products\/product-1\/edit$/);
+  await expect(page.getByLabel("상품명")).toHaveValue("테스트 셔츠");
+});
+
+test("SKU reorder is preserved in the update payload", async ({ page }) => {
+  const reordered = {
+    ...product(),
+    skus: [
+      product().skus[0],
+      {
+        ...product().skus[0],
+        skuId: "sku-2",
+        code: "B",
+        optionName: "흰색 L",
+      },
+    ],
+  };
+  const calls = await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => ({ myPartnerProduct: reordered }),
+      UpdateProduct: () => ({ updatePartnerProductDraft: reordered }),
+      PartnerProducts: () => list(),
+    }),
+  );
+  await page.goto("/products/product-1/edit");
+  await page.getByLabel("SKU 2 위로 이동").click();
+  await page.getByRole("button", { name: "임시 저장" }).click();
+  await expect
+    .poll(() => {
+      const variables = calls.find((call) =>
+        call.query.includes("mutation UpdateProduct"),
+      )?.variables;
+      return (
+        variables?.input as { skus?: Array<{ code: string }> } | undefined
+      )?.skus?.map(({ code }) => code);
+    })
+    .toEqual(["B", "A"]);
+});
+
+test("unsaved edits block internal navigation until confirmed", async ({
+  page,
+}) => {
+  await routeGraphQl(
+    page,
+    protectedHandlers({ CatalogOptions: () => options }),
+  );
+  await page.goto("/products/new");
+  await page.getByLabel("상품명").fill("수정 중");
+  page.once("dialog", async (dialog) => {
+    expect(dialog.message()).toContain("저장하지 않은 변경사항");
+    await dialog.dismiss();
+  });
+  await page.getByRole("link", { name: "상품 관리" }).click();
+  await expect(page).toHaveURL(/products\/new$/);
 });
 
 test("review states control editability and rejected reason", async ({
@@ -348,4 +507,9 @@ test("responsive boundary blocks 767 and supports 768", async ({ page }) => {
   await expect(page.getByText("지원하지 않는 화면 크기입니다")).toBeVisible();
   await page.setViewportSize({ width: 768, height: 900 });
   await expect(page.getByRole("heading", { name: "상품 관리" })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
 });

@@ -2,6 +2,13 @@ import { requestGraphQl } from "./graphql-client";
 export type ApprovalStatus = "DRAFT" | "PENDING" | "REJECTED" | "APPROVED";
 export type PublicationStatus = "DRAFT" | "PUBLISHED";
 export type EffectiveProductState = ApprovalStatus | "PUBLISHED";
+export type PartnerDashboard = {
+  draftCount: number;
+  pendingCount: number;
+  rejectedCount: number;
+  approvedCount: number;
+  publishedCount: number;
+};
 export const effectiveProductState = ({
   status,
   approvalStatus,
@@ -77,6 +84,10 @@ export const productInputVariables = (input: ProductInput) => ({
     })),
   },
 });
+export const getPartnerDashboard = () =>
+  requestGraphQl<{ myPartnerDashboard: PartnerDashboard }>(
+    `query PartnerDashboard { myPartnerDashboard { draftCount pendingCount rejectedCount approvedCount publishedCount } }`,
+  );
 export const listProducts = (filter: ProductFilter) =>
   requestGraphQl<{
     myPartnerProducts: {
