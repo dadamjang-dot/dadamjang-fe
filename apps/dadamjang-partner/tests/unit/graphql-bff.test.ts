@@ -247,6 +247,61 @@ describe("partner GraphQL BFF refresh", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
+  it("memoizes repeated acyclic public fragments", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        response({ errors: [{ extensions: { code: "UNAUTHENTICATED" } }] }),
+      );
+    const fragments = [
+      'fragment Public0 on Mutation { signin(userid: "p", password: "x") { role } }',
+      ...Array.from(
+        { length: 22 },
+        (_, index) =>
+          `fragment Public${index + 1} on Mutation { ...Public${index} ...Public${index} }`,
+      ),
+    ].join(" ");
+    const selected = new Request("http://partner.test/api/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        query: `mutation Signin { ...Public22 } ${fragments}`,
+      }),
+    });
+
+    await handleGraphQlPost(selected);
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("fails closed when fragment nesting exceeds the traversal limit", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        response({ errors: [{ extensions: { code: "UNAUTHENTICATED" } }] }),
+      )
+      .mockResolvedValueOnce(
+        response({ data: { refresh: { role: "PARTNER" } } }),
+      )
+      .mockResolvedValueOnce(response({ data: { signin: null } }));
+    const fragments = Array.from({ length: 80 }, (_, index) =>
+      index === 79
+        ? 'fragment Deep79 on Mutation { signin(userid: "p", password: "x") { role } }'
+        : `fragment Deep${index} on Mutation { ...Deep${index + 1} }`,
+    ).join(" ");
+    const selected = new Request("http://partner.test/api/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        query: `mutation Signin { ...Deep0 } ${fragments}`,
+      }),
+    });
+
+    await handleGraphQlPost(selected);
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("rejects an oversized body without forwarding it", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch");
     const oversized = new Request("http://partner.test/api/graphql", {

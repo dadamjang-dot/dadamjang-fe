@@ -16,6 +16,9 @@ type GraphQlPayload = {
 
 const MAX_BODY_BYTES = 1024 * 1024;
 const PUBLIC_FIELDS = new Set(["signin", "refresh"]);
+const PUBLIC_ROOT_FIELD = 1;
+const PROTECTED_ROOT_FIELD = 2;
+const MAX_FRAGMENT_DEPTH = 64;
 
 const upstreamUrl = () => {
   const value = process.env.DADAMJANG_API_URL;
@@ -68,41 +71,51 @@ const isUnauthenticated = (payload: GraphQlPayload | null) =>
     (error) => error.extensions?.code === "UNAUTHENTICATED",
   ) ?? false;
 
-const rootFields = (
+const rootFieldMask = (
   selections: readonly SelectionNode[],
   fragments: ReadonlyMap<string, FragmentDefinitionNode>,
-  visited: Set<string>,
-): string[] | null => {
-  const fields: string[] = [];
+  active: Set<string>,
+  memo: Map<string, number>,
+) => {
+  let mask = 0;
   for (const selection of selections) {
     if (selection.kind === Kind.FIELD) {
-      fields.push(selection.name.value);
+      mask |= PUBLIC_FIELDS.has(selection.name.value)
+        ? PUBLIC_ROOT_FIELD
+        : PROTECTED_ROOT_FIELD;
+      if (mask & PROTECTED_ROOT_FIELD) return mask;
       continue;
     }
     if (selection.kind === Kind.INLINE_FRAGMENT) {
-      const nested = rootFields(
+      mask |= rootFieldMask(
         selection.selectionSet.selections,
         fragments,
-        visited,
+        active,
+        memo,
       );
-      if (!nested) return null;
-      fields.push(...nested);
+      if (mask & PROTECTED_ROOT_FIELD) return mask;
       continue;
     }
     const name = selection.name.value;
     const fragment = fragments.get(name);
-    if (!fragment || visited.has(name)) return null;
-    visited.add(name);
-    const nested = rootFields(
-      fragment.selectionSet.selections,
-      fragments,
-      visited,
-    );
-    visited.delete(name);
-    if (!nested) return null;
-    fields.push(...nested);
+    if (!fragment || active.has(name) || active.size >= MAX_FRAGMENT_DEPTH)
+      return mask | PROTECTED_ROOT_FIELD;
+    let nested = memo.get(name);
+    if (nested === undefined) {
+      active.add(name);
+      nested = rootFieldMask(
+        fragment.selectionSet.selections,
+        fragments,
+        active,
+        memo,
+      );
+      active.delete(name);
+      memo.set(name, nested);
+    }
+    mask |= nested;
+    if (mask & PROTECTED_ROOT_FIELD) return mask;
   }
-  return fields;
+  return mask;
 };
 
 const isPublicOperation = (payload: GraphQlPayload) => {
@@ -125,13 +138,13 @@ const isPublicOperation = (payload: GraphQlPayload) => {
         .filter((definition) => definition.kind === Kind.FRAGMENT_DEFINITION)
         .map((definition) => [definition.name.value, definition]),
     );
-    const fields = rootFields(
-      operation.selectionSet.selections,
-      fragments,
-      new Set(),
-    );
     return (
-      !!fields?.length && fields.every((field) => PUBLIC_FIELDS.has(field))
+      rootFieldMask(
+        operation.selectionSet.selections,
+        fragments,
+        new Set(),
+        new Map(),
+      ) === PUBLIC_ROOT_FIELD
     );
   } catch {
     return false;
