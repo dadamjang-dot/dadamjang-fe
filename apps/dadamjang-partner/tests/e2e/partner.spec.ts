@@ -1,5 +1,7 @@
 import { expect, Page, test } from "@playwright/test";
 
+const expectedConsoleErrors = new WeakMap<Page, RegExp[]>();
+
 test.beforeEach(async ({ context, baseURL }) => {
   await context.addCookies([
     {
@@ -15,7 +17,12 @@ test.beforeEach(async ({ page }) => {
     throw error;
   });
   page.on("console", (message) => {
-    if (message.type() === "error") throw new Error(message.text());
+    const expected = expectedConsoleErrors.get(page) ?? [];
+    if (
+      message.type() === "error" &&
+      !expected.some((pattern) => pattern.test(message.text()))
+    )
+      throw new Error(message.text());
   });
   page.on("requestfailed", (request) => {
     throw new Error(`${request.method()} ${request.url()}`);
@@ -217,7 +224,20 @@ test("dashboard renders real metrics, rejection attention, and recent products",
   await page.goto("/dashboard");
   await expect(page.getByRole("link", { name: "상품 등록" })).toBeVisible();
   await expect(page.getByLabel("상품 상태 현황")).toContainText("5");
+  await expect(page.getByLabel("상품 상태 현황")).toContainText("승인 완료");
+  await expect(page.getByLabel("상품 상태 현황")).toContainText("4");
   await expect(page.getByText(/확인이 필요한 반려 상품/)).toBeVisible();
+  expect(
+    await page.locator(".attention").evaluate((element) => ({
+      height: element.getBoundingClientRect().height,
+      position: getComputedStyle(element).position,
+    })),
+  ).toMatchObject({ position: "static" });
+  expect(
+    await page
+      .locator(".attention")
+      .evaluate((element) => element.getBoundingClientRect().height),
+  ).toBeLessThan(300);
   await expect(
     page.getByRole("link", { name: "반려 사유 확인" }),
   ).toBeVisible();
@@ -316,11 +336,7 @@ test("create saves a draft and recovers its route when submit fails", async ({
 });
 
 test("failed image upload preserves entered form values", async ({ page }) => {
-  page.removeAllListeners("console");
-  page.on("console", (message) => {
-    if (message.type() === "error" && !message.text().includes("status of 503"))
-      throw new Error(message.text());
-  });
+  expectedConsoleErrors.set(page, [/status of 503/]);
   await routeGraphQl(
     page,
     protectedHandlers({
@@ -350,6 +366,44 @@ test("failed image upload preserves entered form values", async ({ page }) => {
   await expect(page.getByAltText("상품 이미지 1")).toHaveCount(0);
 });
 
+test("save actions remain disabled until image upload completes", async ({
+  page,
+}) => {
+  let completeUpload = () => {};
+  const uploadComplete = new Promise<void>((resolve) => {
+    completeUpload = resolve;
+  });
+  await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      ImageUpload: () => ({
+        createProductImageUpload: {
+          key: "products/user-1/pending.png",
+          uploadUrl: "http://127.0.0.1:3002/upload-pending",
+          originalUrl: "http://images.test/pending.png",
+          imageUrl: "http://images.test/pending-transformed.png",
+        },
+      }),
+    }),
+  );
+  await page.route("**/upload-pending", async (route) => {
+    await uploadComplete;
+    await route.fulfill({ status: 204 });
+  });
+  await page.goto("/products/new");
+  await page.getByLabel("이미지 선택").setInputFiles({
+    name: "pending.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("image"),
+  });
+  await expect(page.getByRole("button", { name: "임시 저장" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "심사 요청" })).toBeDisabled();
+  completeUpload();
+  await expect(page.getByRole("button", { name: "임시 저장" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "심사 요청" })).toBeEnabled();
+});
+
 test("canonical product route redirects to edit", async ({ page }) => {
   await routeGraphQl(
     page,
@@ -361,6 +415,13 @@ test("canonical product route redirects to edit", async ({ page }) => {
   await page.goto("/products/product-1");
   await expect(page).toHaveURL(/products\/product-1\/edit$/);
   await expect(page.getByLabel("상품명")).toHaveValue("테스트 셔츠");
+  const rail = page.getByLabel("상품 미리보기 및 작업");
+  expect(
+    await rail.evaluate((element) => getComputedStyle(element).position),
+  ).toBe(page.viewportSize()!.width > 1024 ? "sticky" : "static");
+  expect(
+    await rail.evaluate((element) => element.getBoundingClientRect().height),
+  ).toBeLessThan(page.viewportSize()!.height / 2);
 });
 
 test("SKU reorder is preserved in the update payload", async ({ page }) => {
@@ -408,7 +469,7 @@ test("unsaved edits block internal navigation until confirmed", async ({
     protectedHandlers({ CatalogOptions: () => options }),
   );
   await page.goto("/products/new");
-  await page.getByLabel("상품명").fill("수정 중");
+  await page.getByRole("button", { name: "SKU 추가" }).click();
   page.once("dialog", async (dialog) => {
     expect(dialog.message()).toContain("저장하지 않은 변경사항");
     await dialog.dismiss();
@@ -471,8 +532,16 @@ test("approved product publishes only after confirmation", async ({ page }) => {
     }),
   );
   await page.goto("/products/product-1");
-  await page.getByRole("button", { name: "판매 게시" }).click();
+  const publish = page.getByRole("button", { name: "판매 게시" });
+  await publish.click();
   await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(
+    page.getByRole("dialog").getByRole("button", { name: "취소" }),
+  ).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(publish).toBeFocused();
+  await publish.click();
   expect(calls.some((x) => x.query.includes("publishPartnerProduct"))).toBe(
     false,
   );

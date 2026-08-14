@@ -9,6 +9,7 @@ class MockRequest {
   listeners: Record<string, () => void> = {};
   open = vi.fn();
   setRequestHeader = vi.fn();
+  abort = () => this.listeners.abort?.();
   addEventListener = (name: string, listener: () => void) => {
     this.listeners[name] = listener;
   };
@@ -53,5 +54,21 @@ describe("uploadFile", () => {
         vi.fn(),
       ),
     ).rejects.toThrow();
+  });
+
+  it("aborts the request when its signal is cancelled", async () => {
+    const controller = new AbortController();
+    vi.stubGlobal("XMLHttpRequest", MockRequest);
+    MockRequest.event = "pending";
+    const upload = uploadFile(
+      "https://upload.test",
+      new File(["x"], "x.png", { type: "image/png" }),
+      vi.fn(),
+      controller.signal,
+    );
+
+    controller.abort();
+
+    await expect(upload).rejects.toThrow("취소");
   });
 });

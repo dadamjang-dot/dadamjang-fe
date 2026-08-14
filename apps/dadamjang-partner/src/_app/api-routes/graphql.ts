@@ -9,7 +9,8 @@ type GraphQlPayload = {
 };
 
 const MAX_BODY_BYTES = 1024 * 1024;
-const PUBLIC_OPERATION = /\b(signin|refresh)\b/;
+const PUBLIC_OPERATION =
+  /^(?:\s|#[^\r\n]*(?:\r?\n|$))*mutation\s+(?:Signin|Refresh)\b/;
 
 const upstreamUrl = () => {
   const value = process.env.DADAMJANG_API_URL;
@@ -62,6 +63,24 @@ const isUnauthenticated = (payload: GraphQlPayload | null) =>
     (error) => error.extensions?.code === "UNAUTHENTICATED",
   ) ?? false;
 
+const readBody = async (request: Request) => {
+  const reader = request.body?.getReader();
+  if (!reader) return "";
+  const decoder = new TextDecoder();
+  let body = "";
+  let bytes = 0;
+  while (true) {
+    const chunk = await reader.read();
+    if (chunk.done) return body + decoder.decode();
+    bytes += chunk.value.byteLength;
+    if (bytes > MAX_BODY_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    body += decoder.decode(chunk.value, { stream: true });
+  }
+};
+
 const responseWithCookies = (
   body: string,
   status: number,
@@ -109,8 +128,8 @@ export const handleGraphQlPost = async (request: Request) => {
       { error: "Request body too large" },
       { status: 413 },
     );
-  const body = await request.text();
-  if (new TextEncoder().encode(body).byteLength > MAX_BODY_BYTES)
+  const body = await readBody(request);
+  if (body === null)
     return NextResponse.json(
       { error: "Request body too large" },
       { status: 413 },

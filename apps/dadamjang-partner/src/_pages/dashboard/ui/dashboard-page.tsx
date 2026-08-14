@@ -9,6 +9,7 @@ const labels = [
   ["draftCount", "임시 저장"],
   ["pendingCount", "승인 대기"],
   ["rejectedCount", "승인 반려"],
+  ["approvedCount", "승인 완료"],
   ["publishedCount", "판매 중"],
 ] as const;
 const stateLabel = {

@@ -60,6 +60,9 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const [categoryId, setCategory] = useState("");
   const [images, setImages] = useState<ImageItem[]>([]);
   const imageRef = useRef<ImageItem[]>([]);
+  const uploadControllers = useRef(new Map<string, AbortController>());
+  const mounted = useRef(true);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [skus, setSkus] = useState<Sku[]>([emptySku()]);
   const [sale, setSale] = useState(false);
   const [express, setExpress] = useState(false);
@@ -126,13 +129,55 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   useEffect(() => {
     imageRef.current = images;
   }, [images]);
-  useEffect(
-    () => () =>
+  useEffect(() => {
+    const controllers = uploadControllers.current;
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      controllers.forEach((controller) => controller.abort());
       imageRef.current
         .filter((x) => x.local)
-        .forEach((x) => URL.revokeObjectURL(x.preview)),
-    [],
-  );
+        .forEach((x) => URL.revokeObjectURL(x.preview));
+    };
+  }, []);
+  useEffect(() => {
+    if (!confirm) return;
+    const previous =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const focusable = () =>
+      Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(
+          "button:not([disabled])",
+        ) ?? [],
+      );
+    focusable()[0]?.focus();
+    const guard = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setConfirm(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", guard);
+    return () => {
+      document.removeEventListener("keydown", guard);
+      previous?.focus();
+    };
+  }, [confirm]);
   const editable =
     !productId ||
     (!!existing.data &&
@@ -159,30 +204,47 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
           contentType: file.type,
           fileSize: file.size,
         });
+        const controller = new AbortController();
+        uploadControllers.current.set(u.key, controller);
         setImages((value) => [
           ...value,
           { key: u.key, preview, local: true, progress: 0 },
         ]);
-        await uploadFile(u.uploadUrl, file, (progress) =>
-          setImages((value) =>
-            value.map((item) =>
-              item.key === u.key ? { ...item, progress } : item,
-            ),
-          ),
-        );
-        setDirty(true);
+        try {
+          await uploadFile(
+            u.uploadUrl,
+            file,
+            (progress) => {
+              if (!mounted.current) return;
+              setImages((value) =>
+                value.map((item) =>
+                  item.key === u.key ? { ...item, progress } : item,
+                ),
+              );
+            },
+            controller.signal,
+          );
+        } finally {
+          uploadControllers.current.delete(u.key);
+        }
+        if (mounted.current) setDirty(true);
       } catch (e) {
-        setImages((value) => value.filter((item) => item.preview !== preview));
+        if (mounted.current) {
+          setImages((value) =>
+            value.filter((item) => item.preview !== preview),
+          );
+          setError(
+            e instanceof Error ? e.message : "이미지 업로드에 실패했습니다.",
+          );
+        }
         URL.revokeObjectURL(preview);
-        setError(
-          e instanceof Error ? e.message : "이미지 업로드에 실패했습니다.",
-        );
       }
     }
   };
   const remove = (i: number) =>
     setImages((v) => {
       const item = v[i];
+      uploadControllers.current.get(item.key)?.abort();
       if (item.local) URL.revokeObjectURL(item.preview);
       setDirty(true);
       return v.filter((_, n) => n !== i);
@@ -197,6 +259,8 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     });
   const mutation = useMutation({
     mutationFn: async ({ submit }: { submit: boolean }) => {
+      if (images.some((image) => image.progress < 100))
+        throw new Error("이미지 업로드가 끝난 뒤 저장해 주세요.");
       if (!title.trim() || !categoryId)
         throw new Error("카테고리와 상품명은 필수입니다.");
       if (
@@ -501,7 +565,10 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                 <ActionButton
                   type="button"
                   disabled={skus.length === 1}
-                  onClick={() => setSkus((v) => v.filter((_, n) => n !== i))}
+                  onClick={() => {
+                    setSkus((v) => v.filter((_, n) => n !== i));
+                    setDirty(true);
+                  }}
                 >
                   행 삭제
                 </ActionButton>
@@ -510,7 +577,10 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
             <ActionButton
               type="button"
               variant="neutralOutline"
-              onClick={() => setSkus((v) => [...v, emptySku()])}
+              onClick={() => {
+                setSkus((v) => [...v, emptySku()]);
+                setDirty(true);
+              }}
             >
               SKU 추가
             </ActionButton>
@@ -545,10 +615,18 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
           )}
           {editable && (
             <div className="actions">
-              <ActionButton type="submit" data-action="save">
+              <ActionButton
+                type="submit"
+                data-action="save"
+                disabled={images.some((image) => image.progress < 100)}
+              >
                 임시 저장
               </ActionButton>
-              <ActionButton type="submit" data-action="submit">
+              <ActionButton
+                type="submit"
+                data-action="submit"
+                disabled={images.some((image) => image.progress < 100)}
+              >
                 심사 요청
               </ActionButton>
             </div>
@@ -562,14 +640,15 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       </form>
       {confirm && (
         <div
+          ref={dialogRef}
           className="modal"
           role="dialog"
           aria-modal="true"
           aria-labelledby="publish-title"
         >
-          <div>
+          <div aria-describedby="publish-description">
             <h2 id="publish-title">상품을 게시할까요?</h2>
-            <p>게시하면 고객에게 상품이 공개됩니다.</p>
+            <p id="publish-description">게시하면 고객에게 상품이 공개됩니다.</p>
             <ActionButton
               variant="neutralOutline"
               onClick={() => setConfirm(false)}

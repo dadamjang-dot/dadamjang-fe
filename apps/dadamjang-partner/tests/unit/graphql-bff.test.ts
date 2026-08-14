@@ -92,4 +92,43 @@ describe("partner GraphQL BFF refresh", () => {
 
     expect(fetchMock).toHaveBeenCalledOnce();
   });
+
+  it("does not treat a protected alias containing signin as public", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        response({ errors: [{ extensions: { code: "UNAUTHENTICATED" } }] }),
+      )
+      .mockResolvedValueOnce(
+        response({ data: { refresh: { role: "PARTNER" } } }),
+      )
+      .mockResolvedValueOnce(
+        response({ data: { signin: { role: "PARTNER" } } }),
+      );
+    const aliased = new Request("http://partner.test/api/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        query: "query PartnerMe { signin: me { role } }",
+      }),
+    });
+
+    await handleGraphQlPost(aliased);
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("rejects an oversized body without forwarding it", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const oversized = new Request("http://partner.test/api/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "x".repeat(1024 * 1024 + 1),
+    });
+
+    const result = await handleGraphQlPost(oversized);
+
+    expect(result.status).toBe(413);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
