@@ -20,8 +20,12 @@ const routeGraphQl = async (page: Page, handlers: Record<string, Handler>) => {
       variables?: Record<string, unknown>;
     };
     calls.push({ query: body.query, variables: body.variables ?? {} });
-    const key = Object.keys(handlers).find((name) => body.query.includes(name));
-    const response = key ? handlers[key](body.variables ?? {}) : undefined;
+    const operationName = body.query.match(
+      /\b(?:query|mutation)\s+([_A-Za-z][_0-9A-Za-z]*)/,
+    )?.[1];
+    const response = operationName
+      ? handlers[operationName]?.(body.variables ?? {})
+      : undefined;
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify(
@@ -126,14 +130,20 @@ test("login succeeds, reports API errors, and rejects non-partners", async ({
   await page.getByLabel("아이디").fill("bad");
   await page.getByLabel("비밀번호").fill("bad");
   await page.getByRole("button", { name: "로그인" }).click();
-  await expect(page.getByRole("alert")).toContainText("올바르지 않습니다");
+  await expect(
+    page.getByText("아이디 또는 비밀번호가 올바르지 않습니다", {
+      exact: true,
+    }),
+  ).toBeVisible();
 
   signinError = false;
   role = "USER";
   await page.getByLabel("아이디").fill("customer");
   await page.getByLabel("비밀번호").fill("password");
   await page.getByRole("button", { name: "로그인" }).click();
-  await expect(page.getByRole("alert")).toContainText("파트너 계정");
+  await expect(
+    page.getByText("파트너 계정으로 로그인해 주세요.", { exact: true }),
+  ).toBeVisible();
 });
 
 test("dashboard is protected by approval and linked-brand gates", async ({
@@ -162,7 +172,7 @@ test("dashboard is protected by approval and linked-brand gates", async ({
     }),
   );
   await page.goto("/dashboard");
-  await expect(page.getByRole("alert")).toContainText("연결 브랜드");
+  await expect(page.locator(".gate")).toContainText("연결 브랜드");
   await expect(page.getByRole("heading", { name: "대시보드" })).toHaveCount(0);
   linked = true;
   await page.reload();
@@ -176,17 +186,18 @@ test("list submits query/state variables and navigates by cursor", async ({
   const calls = await routeGraphQl(
     page,
     protectedHandlers({
-      PartnerProducts: (variables) =>
-        list(
+      PartnerProducts: (variables) => {
+        const after = (variables.filter as { after?: string }).after;
+        return list(
           [
-            product(
-              variables.filter && (variables.filter as { after?: string }).after
-                ? "REJECTED"
-                : "DRAFT",
-            ),
+            {
+              ...product(after ? "REJECTED" : "DRAFT"),
+              productId: after ? "product-2" : "product-1",
+            },
           ],
-          !(variables.filter as { after?: string }).after,
-        ),
+          !after,
+        );
+      },
     }),
   );
   await page.goto("/products");
@@ -236,9 +247,9 @@ test("create saves a draft and recovers its route when submit fails", async ({
   await page.getByLabel("SKU 1 옵션명").fill("기본");
   await page.getByRole("button", { name: "심사 요청" }).click();
   await expect(page).toHaveURL(/products\/product-1/);
-  await expect(page.getByRole("alert")).toContainText(
-    "심사를 요청하지 못했습니다",
-  );
+  await expect(
+    page.getByText("심사를 요청하지 못했습니다", { exact: true }),
+  ).toBeVisible();
   expect(calls.some((x) => x.query.includes("createPartnerProductDraft"))).toBe(
     true,
   );
@@ -260,7 +271,9 @@ test("review states control editability and rejected reason", async ({
   );
   await page.goto("/products/product-1");
   await expect(page.getByLabel("상품명")).toBeEnabled();
-  await expect(page.getByRole("alert")).toContainText("이미지를 확인");
+  await expect(
+    page.getByText("이미지를 확인해 주세요", { exact: true }),
+  ).toBeVisible();
   for (state of ["PENDING", "APPROVED"]) {
     await page.reload();
     await expect(page.getByLabel("상품명")).toBeDisabled();
