@@ -1,3 +1,5 @@
+import type { ApprovalStatus, PublicationStatus } from "@/shared/api";
+
 export const PRODUCT_STATES = [
   "DRAFT",
   "PENDING",
@@ -6,6 +8,7 @@ export const PRODUCT_STATES = [
   "PUBLISHED",
 ] as const;
 export type ProductState = (typeof PRODUCT_STATES)[number];
+export { effectiveProductState } from "@/shared/api";
 export const isProductEditable = (state: ProductState) =>
   state === "DRAFT" || state === "REJECTED";
 export type ProductSku = {
@@ -27,8 +30,8 @@ export type PartnerProduct = {
   description: string;
   imageUrls: string[];
   imageKeys: string[];
-  status: ProductState;
-  approvalStatus: string;
+  status: PublicationStatus;
+  approvalStatus: ApprovalStatus;
   rejectionReason: string | null;
   isOnSale: boolean;
   isExpressDelivery: boolean;

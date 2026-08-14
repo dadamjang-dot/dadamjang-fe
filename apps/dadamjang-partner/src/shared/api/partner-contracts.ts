@@ -1,4 +1,12 @@
 import { requestGraphQl } from "./graphql-client";
+export type ApprovalStatus = "DRAFT" | "PENDING" | "REJECTED" | "APPROVED";
+export type PublicationStatus = "UNPUBLISHED" | "PUBLISHED";
+export type EffectiveProductState = ApprovalStatus | "PUBLISHED";
+export const effectiveProductState = ({
+  status,
+  approvalStatus,
+}: Pick<PartnerProduct, "status" | "approvalStatus">): EffectiveProductState =>
+  status === "PUBLISHED" ? "PUBLISHED" : approvalStatus;
 
 export type PartnerProduct = {
   productId: string;
@@ -10,8 +18,8 @@ export type PartnerProduct = {
   description: string;
   imageUrls: string[];
   imageKeys: string[];
-  status: "DRAFT" | "PENDING" | "REJECTED" | "APPROVED" | "PUBLISHED";
-  approvalStatus: string;
+  status: PublicationStatus;
+  approvalStatus: ApprovalStatus;
   rejectionReason: string | null;
   isOnSale: boolean;
   isExpressDelivery: boolean;
@@ -52,6 +60,12 @@ export type ProductInput = {
   isExpressDelivery: boolean;
 };
 const PRODUCT_FIELDS = `productId partnerId brandId brand { brandId name slug } categoryId title description imageUrls imageKeys status approvalStatus rejectionReason isOnSale isExpressDelivery skus { skuId code colorId sizeId optionName price stock } createdAt updatedAt`;
+export const PARTNER_PRODUCT_MUTATION_FIELDS = {
+  create: "createPartnerProductDraft",
+  update: "updatePartnerProductDraft",
+  submit: "submitPartnerProductForReview",
+  publish: "publishPartnerProduct",
+} as const;
 export const productFilterVariables = (filter: ProductFilter) => ({ filter });
 export const productInputVariables = (input: ProductInput) => ({ input });
 export const listProducts = (filter: ProductFilter) =>
@@ -86,22 +100,22 @@ export const saveProduct = (
   input: ProductInput,
 ) =>
   productId
-    ? requestGraphQl<{ updateMyPartnerProduct: PartnerProduct }>(
-        `mutation UpdateProduct($productId: String!, $input: PartnerProductInput!) { updateMyPartnerProduct(productId: $productId, input: $input) { ${PRODUCT_FIELDS} } }`,
+    ? requestGraphQl<{ updatePartnerProductDraft: PartnerProduct }>(
+        `mutation UpdateProduct($productId: String!, $input: PartnerProductInput!) { updatePartnerProductDraft(productId: $productId, input: $input) { ${PRODUCT_FIELDS} } }`,
         { productId, ...productInputVariables(input) },
       )
-    : requestGraphQl<{ createMyPartnerProduct: PartnerProduct }>(
-        `mutation CreateProduct($input: PartnerProductInput!) { createMyPartnerProduct(input: $input) { ${PRODUCT_FIELDS} } }`,
+    : requestGraphQl<{ createPartnerProductDraft: PartnerProduct }>(
+        `mutation CreateProduct($input: PartnerProductInput!) { createPartnerProductDraft(input: $input) { ${PRODUCT_FIELDS} } }`,
         productInputVariables(input),
       );
 export const submitProduct = (productId: string) =>
-  requestGraphQl(
-    `mutation SubmitProduct($productId: String!) { submitMyPartnerProduct(productId: $productId) { productId status } }`,
+  requestGraphQl<{ submitPartnerProductForReview: PartnerProduct }>(
+    `mutation SubmitProduct($productId: String!) { submitPartnerProductForReview(productId: $productId) { ${PRODUCT_FIELDS} } }`,
     { productId },
   );
 export const publishProduct = (productId: string) =>
-  requestGraphQl(
-    `mutation PublishProduct($productId: String!) { publishMyPartnerProduct(productId: $productId) { productId status } }`,
+  requestGraphQl<{ publishPartnerProduct: PartnerProduct }>(
+    `mutation PublishProduct($productId: String!) { publishPartnerProduct(productId: $productId) { ${PRODUCT_FIELDS} } }`,
     { productId },
   );
 export const createImageUpload = (input: {

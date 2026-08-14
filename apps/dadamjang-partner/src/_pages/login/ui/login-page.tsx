@@ -3,6 +3,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ActionButton } from "@seed-design/react";
+import { PartnerTextField } from "@/shared/ui";
 import { sessionQuery, signin } from "@/shared/auth";
 export const LoginPage = () => {
   const router = useRouter();
@@ -36,19 +37,19 @@ export const LoginPage = () => {
       <form onSubmit={submit}>
         <h1>다담장 파트너</h1>
         <p>상품과 판매 상태를 관리하세요.</p>
-        <label>
-          아이디
-          <input name="userid" required autoComplete="username" />
-        </label>
-        <label>
-          비밀번호
-          <input
-            name="password"
-            type="password"
-            required
-            autoComplete="current-password"
-          />
-        </label>
+        <PartnerTextField
+          label="아이디"
+          name="userid"
+          required
+          autoComplete="username"
+        />
+        <PartnerTextField
+          label="비밀번호"
+          name="password"
+          type="password"
+          required
+          autoComplete="current-password"
+        />
         {error && (
           <p role="alert" className="error">
             {error}

@@ -3,8 +3,9 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { ActionButton } from "@seed-design/react";
+import { PartnerTextField } from "@/shared/ui";
 import { listProducts } from "@/shared/api";
-import { PRODUCT_STATES } from "@/entities/product";
+import { effectiveProductState, PRODUCT_STATES } from "@/entities/product";
 export const ProductsPage = () => {
   const [filter, setFilter] = useState({ query: "", state: "" });
   const products = useInfiniteQuery({
@@ -39,7 +40,11 @@ export const ProductsPage = () => {
         </Link>
       </header>
       <form className="filters" onSubmit={submit}>
-        <input name="query" aria-label="상품 검색" placeholder="상품명 검색" />
+        <PartnerTextField
+          label="상품 검색"
+          name="query"
+          placeholder="상품명 검색"
+        />
         <select name="state" aria-label="상품 상태">
           <option value="">전체 상태</option>
           {PRODUCT_STATES.map((s) => (
@@ -59,7 +64,7 @@ export const ProductsPage = () => {
             >
               <span>{p.title}</span>
               <span>{p.brand?.name ?? "연결 브랜드 없음"}</span>
-              <b>{p.status}</b>
+              <b>{effectiveProductState(p)}</b>
             </Link>
           ))}
         {products.hasNextPage && (

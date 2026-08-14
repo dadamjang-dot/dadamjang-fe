@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { isProductEditable } from "@/entities/product";
-import { productFilterVariables, productInputVariables } from "@/shared/api";
+import { effectiveProductState, isProductEditable } from "@/entities/product";
+import {
+  PARTNER_PRODUCT_MUTATION_FIELDS,
+  productFilterVariables,
+  productInputVariables,
+} from "@/shared/api";
 describe("partner product contract", () => {
   it.each([
     ["DRAFT", true],
@@ -11,6 +15,25 @@ describe("partner product contract", () => {
   ] as const)("%s editable is %s", (state, value) =>
     expect(isProductEditable(state)).toBe(value),
   );
+  it.each([
+    ["UNPUBLISHED", "DRAFT", "DRAFT"],
+    ["UNPUBLISHED", "REJECTED", "REJECTED"],
+    ["UNPUBLISHED", "APPROVED", "APPROVED"],
+    ["PUBLISHED", "APPROVED", "PUBLISHED"],
+  ] as const)("derives %s / %s as %s", (status, approvalStatus, expected) => {
+    expect(effectiveProductState({ status, approvalStatus })).toBe(expected);
+  });
+  it("uses the authoritative mutation fields", () => {
+    expect(PARTNER_PRODUCT_MUTATION_FIELDS).toEqual({
+      create: "createPartnerProductDraft",
+      update: "updatePartnerProductDraft",
+      submit: "submitPartnerProductForReview",
+      publish: "publishPartnerProduct",
+    });
+    expect(
+      Object.values(PARTNER_PRODUCT_MUTATION_FIELDS).join(" "),
+    ).not.toMatch(/MyPartnerProduct/);
+  });
   it("uses exact filter names", () => {
     const variables = productFilterVariables({
       query: "셔츠",

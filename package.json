@@ -10,6 +10,7 @@
     "partner:test": "pnpm --dir apps/dadamjang-partner test",
     "partner:test:e2e": "pnpm --dir apps/dadamjang-partner test:e2e",
     "partner:fsd": "pnpm --dir apps/dadamjang-partner fsd",
+    "partner:format": "pnpm --dir apps/dadamjang-partner format:check",
     "bo:dev": "pnpm --dir apps/dadamjang-bo dev",
     "bo:build": "pnpm --dir apps/dadamjang-bo build",
     "bo:lint": "pnpm --dir apps/dadamjang-bo lint",

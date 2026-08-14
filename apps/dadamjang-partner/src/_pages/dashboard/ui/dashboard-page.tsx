@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { listProducts, requestGraphQl } from "@/shared/api";
+import { effectiveProductState } from "@/entities/product";
 export const DashboardPage = () => {
   const counts = useQuery({
     queryKey: ["dashboard"],
@@ -51,7 +52,7 @@ export const DashboardPage = () => {
             key={p.productId}
           >
             <span>{p.title}</span>
-            <b>{p.status}</b>
+            <b>{effectiveProductState(p)}</b>
           </Link>
         ))}
       </div>

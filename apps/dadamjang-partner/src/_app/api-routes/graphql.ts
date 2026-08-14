@@ -9,7 +9,7 @@ type GraphQlPayload = {
 };
 
 const MAX_BODY_BYTES = 1024 * 1024;
-const PUBLIC_OPERATION = /\b(signin|refresh|)\b/;
+const PUBLIC_OPERATION = /\b(signin|refresh)\b/;
 
 const upstreamUrl = () => {
   const value = process.env.DADAMJANG_API_URL;

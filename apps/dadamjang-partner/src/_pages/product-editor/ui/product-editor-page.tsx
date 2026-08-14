@@ -11,6 +11,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ActionButton } from "@seed-design/react";
+import { PartnerTextarea, PartnerTextField } from "@/shared/ui";
 import {
   catalogOptions,
   createImageUpload,
@@ -20,7 +21,7 @@ import {
   submitProduct,
   ProductInput,
 } from "@/shared/api";
-import { isProductEditable } from "@/entities/product";
+import { effectiveProductState, isProductEditable } from "@/entities/product";
 type ImageItem = { key: string; preview: string; local: boolean };
 type Sku = ProductInput["skus"][number];
 const emptySku = (): Sku => ({
@@ -94,7 +95,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const editable =
     !productId ||
     (!!existing.data &&
-      isProductEditable(existing.data.myPartnerProduct.status));
+      isProductEditable(effectiveProductState(existing.data.myPartnerProduct)));
   const addFiles = async (files: FileList | File[]) => {
     setError("");
     for (const file of Array.from(files)) {
@@ -170,9 +171,9 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       };
       const saved = await saveProduct(productId, input);
       const draft =
-        "createMyPartnerProduct" in saved
-          ? saved.createMyPartnerProduct
-          : saved.updateMyPartnerProduct;
+        "createPartnerProductDraft" in saved
+          ? saved.createPartnerProductDraft
+          : saved.updatePartnerProductDraft;
       if (submit) {
         try {
           await submitProduct(draft.productId);
@@ -200,13 +201,14 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   };
   if (productId && existing.isPending) return <p>상품을 불러오고 있습니다.</p>;
   const p = existing.data?.myPartnerProduct;
+  const effectiveState = p ? effectiveProductState(p) : undefined;
   return (
     <section>
       <header>
         <h1>{productId ? "상품 상세" : "상품 등록"}</h1>
-        {p && <b>{p.status}</b>}
+        {effectiveState && <b>{effectiveState}</b>}
       </header>
-      {p?.rejectionReason && (
+      {effectiveState === "REJECTED" && p?.rejectionReason && (
         <div role="alert" className="error">
           반려 사유: {p.rejectionReason}
         </div>
@@ -228,21 +230,17 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
               ))}
             </select>
           </label>
-          <label>
-            상품명
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-            />
-          </label>
-          <label>
-            설명
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </label>
+          <PartnerTextField
+            label="상품명"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+          />
+          <PartnerTextarea
+            label="설명"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
           <div
             className="drop"
             onDragOver={(e) => e.preventDefault()}
@@ -434,7 +432,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
           </div>
         )}
       </form>
-      {p?.status === "APPROVED" && (
+      {effectiveState === "APPROVED" && (
         <ActionButton onClick={() => setConfirm(true)}>판매 게시</ActionButton>
       )}
       {confirm && (

@@ -6,7 +6,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: process.env.BO_E2E_BASE_URL ?? "http://127.0.0.1:3001",
+    baseURL: process.env.PARTNER_E2E_BASE_URL ?? "http://127.0.0.1:3002",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
@@ -26,11 +26,11 @@ export default defineConfig({
       },
     },
   ],
-  webServer: process.env.BO_E2E_BASE_URL
+  webServer: process.env.PARTNER_E2E_BASE_URL
     ? undefined
     : {
         command: "pnpm dev",
-        url: "http://127.0.0.1:3001/login",
+        url: "http://127.0.0.1:3002/login",
         reuseExistingServer: !process.env.CI,
       },
 });
