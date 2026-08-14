@@ -64,10 +64,10 @@ export const EmailVerificationFields = ({
       await requestCode(normalizedEmail);
       setCodeSent(true);
       setCooldown(60);
-      setMessage("인증번호를 보냈습니다.");
+      setMessage("인증번호를 보냈어요.");
       requestAnimationFrame(() => codeRef.current?.focus());
     } catch (error) {
-      setMessage(authErrorMessage(error, "인증번호를 보내지 못했습니다."));
+      setMessage(authErrorMessage(error, "인증번호를 보내지 못했어요."));
     } finally {
       setIsRequesting(false);
     }
@@ -83,9 +83,9 @@ export const EmailVerificationFields = ({
     try {
       const result = await verifyCode({ email: email.trim().toLowerCase(), code });
       onVerified(result.emailVerificationToken);
-      setMessage("이메일 인증이 완료되었습니다.");
+      setMessage("이메일 인증을 마쳤어요.");
     } catch (error) {
-      setMessage(authErrorMessage(error, "인증번호가 올바르지 않습니다."));
+      setMessage(authErrorMessage(error, "인증번호가 맞지 않아요."));
     } finally {
       setIsVerifying(false);
     }
@@ -96,14 +96,14 @@ export const EmailVerificationFields = ({
     : cooldown > 0
       ? `${cooldown}초`
       : codeSent
-        ? "재요청"
+        ? "다시 받기"
         : "인증번호 받기";
 
   return (
     <>
       <AuthField
         actionDisabled={Boolean(verificationToken) || cooldown > 0 || isRequesting}
-        actionLabel={isRequesting ? "전송 중" : requestLabel}
+        actionLabel={isRequesting ? "보내는 중" : requestLabel}
         autoCapitalize="none"
         autoComplete="email"
         autoCorrect={false}

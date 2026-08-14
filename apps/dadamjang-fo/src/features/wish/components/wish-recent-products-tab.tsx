@@ -9,7 +9,7 @@ const WishRecentProductsTab = () => {
 
   return (
     <WishProductList
-      emptyDescription="상품을 둘러보면 최근 본 상품이 여기에 쌓여요."
+      emptyDescription="상품을 둘러보면 최근 본 상품을 여기서 다시 볼 수 있어요."
       emptyTitle="최근 본 상품이 없어요."
       isError={recentProducts.isError}
       isLoading={recentProducts.isLoading}

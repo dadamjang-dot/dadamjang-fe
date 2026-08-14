@@ -46,13 +46,13 @@ const priceRanges = [
   },
   {
     id: "30000-60000",
-    label: "3만원 - 6만원",
+    label: "3만원~6만원",
     minPrice: 30_000,
     maxPrice: 60_000,
   },
   {
     id: "60000-100000",
-    label: "6만원 - 10만원",
+    label: "6만원~10만원",
     minPrice: 60_000,
     maxPrice: 100_000,
   },

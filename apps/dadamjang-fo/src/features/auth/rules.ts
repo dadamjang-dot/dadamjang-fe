@@ -5,7 +5,7 @@ export type ConsentSelectionState = "checked" | "mixed" | "unchecked";
 export const validateEmail = (email: string) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email.trim()) && email.trim().length <= 255
     ? null
-    : "올바른 이메일 주소를 입력해 주세요.";
+    : "이메일 주소를 다시 확인해 주세요.";
 
 const utf8ByteLength = (value: string) => {
   let bytes = 0;
@@ -17,8 +17,8 @@ const utf8ByteLength = (value: string) => {
 };
 
 export const validatePassword = (password: string) => {
-  if (password.length < 8) return "비밀번호는 8자 이상이어야 합니다.";
-  if (utf8ByteLength(password) > 72) return "비밀번호는 72바이트 이하여야 합니다.";
+  if (password.length < 8) return "비밀번호를 8자 이상 입력해 주세요.";
+  if (utf8ByteLength(password) > 72) return "비밀번호를 72바이트 이하로 입력해 주세요.";
   return null;
 };
 

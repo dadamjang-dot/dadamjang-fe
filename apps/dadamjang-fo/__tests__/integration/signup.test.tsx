@@ -114,7 +114,7 @@ describe("email signup", () => {
       fireEvent.press(screen.getByTestId("e2e.auth.signup.identity"));
     });
     await waitFor(() => expect(mockOpenIdentityProviderSheet).toHaveBeenCalledWith("SIGNUP"));
-    await screen.findByText("본인인증이 완료되었습니다.");
+    await screen.findByText("본인 인증이 마쳤어요.");
 
     await act(async () => {
       fireEvent.press(screen.getByTestId("e2e.auth.signup.submit"));

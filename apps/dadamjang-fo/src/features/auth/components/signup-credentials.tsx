@@ -51,7 +51,7 @@ export const SignupCredentials = ({
       ) : (
         <AuthField
           editable={false}
-          helper="카카오에서 확인된 이메일입니다."
+          helper="카카오에서 확인한 이메일이에요."
           label="이메일 주소"
           testID="e2e.auth.signup.email"
           value={email}
@@ -72,7 +72,7 @@ export const SignupCredentials = ({
           <AuthField
             error={
               passwordConfirmation && password !== passwordConfirmation
-                ? "비밀번호가 일치하지 않습니다."
+                ? "비밀번호가 서로 달라요."
                 : undefined
             }
             label="비밀번호 재입력"

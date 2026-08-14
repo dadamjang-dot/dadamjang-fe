@@ -50,7 +50,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
     const tag = normalizeStyleHashtag(tagDraft);
     if (!tag) return;
     if (!/^[가-힣A-Za-z0-9_]{1,20}$/.test(tag)) {
-      setMessage("해시태그는 한글, 영문, 숫자, underscore만 사용할 수 있어요.");
+      setMessage("해시태그에는 한글, 영문, 숫자, 밑줄(_)만 쓸 수 있어요.");
       return;
     }
     if (hashtags.includes(tag)) {
@@ -89,7 +89,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
       const ImagePicker = await import("expo-image-picker");
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        setMessage("사진 보관함 접근 권한이 필요해요.");
+        setMessage("사진을 추가하려면 사진 보관함 접근을 허용해 주세요.");
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -108,7 +108,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
         setMessage(undefined);
       }
     } catch (error) {
-      setMessage(error instanceof Error && error.message.includes("ExponentImagePicker") ? "사진 선택 기능을 사용하려면 앱을 다시 빌드해 주세요." : "사진을 불러오지 못했어요.");
+      setMessage(error instanceof Error && error.message.includes("ExponentImagePicker") ? "사진을 선택하려면 앱을 다시 설치해 주세요." : "사진을 불러오지 못했어요.");
     }
   };
 
@@ -136,7 +136,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
       });
       onClose();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "등록에 실패했어요. 입력 내용을 확인해 주세요.");
+      setMessage(error instanceof Error ? error.message : "스타일을 등록하지 못했어요. 입력한 내용을 확인해 주세요.");
     } finally {
       setIsSubmitting(false);
     }
@@ -144,7 +144,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
 
   return (
     <View style={s.container}>
-      <TitleHeader title="스타일 등록">
+      <TitleHeader title="스타일 올리기">
         <Button label="닫기" onPress={onClose} style={s.closeButton} variant="bare" />
       </TitleHeader>
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -155,14 +155,14 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
           ))}
         </View>
         <View style={s.sectionHeader}>
-          <Text style={s.sectionTitle}>구매 상품 {selectedProducts.length}/5</Text>
-          <Button label="상품 선택" onPress={() => setIsProductPickerOpen(true)} style={s.textButton} variant="bare" />
+          <Text style={s.sectionTitle}>구매한 상품 {selectedProducts.length}/5</Text>
+          <Button label="상품 고르기" onPress={() => setIsProductPickerOpen(true)} style={s.textButton} variant="bare" />
         </View>
         {selectedProducts.length ? (
           <View style={s.selectedProductList}>
             {selectedProducts.map((product) => <Text key={product.productId} style={s.selectedProduct}>• {product.brandName ? `${product.brandName} · ` : ""}{product.title}</Text>)}
           </View>
-        ) : <Text style={s.helper}>구매 내역에서 연결할 상품을 선택해 주세요.</Text>}
+        ) : <Text style={s.helper}>구매 내역에서 함께 올릴 상품을 골라주세요.</Text>}
         <View style={s.sectionHeader}>
           <Text style={s.sectionTitle}>이미지 {images.length}/5</Text>
           <Button label="사진 추가" disabled={images.length >= 5} onPress={pickImages} style={s.textButton} variant="bare" />
@@ -171,18 +171,18 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
           {images.map((image, index) => (
             <View key={`${image.uri}-${index}`} style={s.imageItem}>
               <Image contentFit="cover" source={image.uri} style={s.preview} />
-              <Button accessibilityLabel="이미지 삭제" onPress={() => setImages((current) => current.filter((_, imageIndex) => imageIndex !== index))} style={s.removeImage} variant="bare">
+              <Button accessibilityLabel="사진 삭제" onPress={() => setImages((current) => current.filter((_, imageIndex) => imageIndex !== index))} style={s.removeImage} variant="bare">
                 <Text style={s.removeImageLabel}>×</Text>
               </Button>
             </View>
           ))}
         </View>
-        <Text style={s.sectionTitle}>본문</Text>
+        <Text style={s.sectionTitle}>스타일 소개</Text>
         <TextInput
-          accessibilityLabel="스타일 게시물 본문"
+          accessibilityLabel="스타일 소개"
           multiline
           onChangeText={setBody}
-          placeholder="오늘의 스타일을 공유해 주세요. @를 입력하면 구매 상품 브랜드를 태그할 수 있어요."
+          placeholder="어떤 스타일인지 알려주세요. @를 입력하면 구매한 상품의 브랜드를 태그할 수 있어요."
           style={s.bodyInput}
           textAlignVertical="top"
           value={body}
@@ -209,11 +209,11 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
           {hashtags.map((tag) => <Button key={tag} label={`#${tag}  ×`} onPress={() => setHashtags((current) => current.filter((item) => item !== tag))} style={s.tagChip} variant="secondary" />)}
         </View>
         {message ? <Text style={s.error}>{message}</Text> : null}
-        <Button disabled={isSubmitting || createMutation.isPending} label={isSubmitting ? "등록 중" : "스타일 등록"} onPress={handleSubmit} style={s.submitButton} />
+        <Button disabled={isSubmitting || createMutation.isPending} label={isSubmitting ? "등록 중" : "스타일 올리기"} onPress={handleSubmit} style={s.submitButton} />
       </ScrollView>
       <Modal animationType="slide" onRequestClose={() => setIsProductPickerOpen(false)} presentationStyle="formSheet" visible={isProductPickerOpen}>
         <View style={s.modalContainer}>
-          <TitleHeader title="구매 상품 선택">
+          <TitleHeader title="구매한 상품 고르기">
             <Button label="완료" onPress={() => setIsProductPickerOpen(false)} style={s.closeButton} variant="bare" />
           </TitleHeader>
           {purchasedProducts.isLoading ? <Text style={s.helper}>구매 내역을 불러오는 중이에요.</Text> : null}

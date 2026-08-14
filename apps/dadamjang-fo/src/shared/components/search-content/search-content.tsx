@@ -12,7 +12,7 @@ const SearchContent = ({ keyword }: SearchContentProps) => {
       ) : (
         <>
           <Text style={s.title}>최근 검색어</Text>
-          <Text style={s.emptyText}>최근 검색 내역이 없습니다.</Text>
+          <Text style={s.emptyText}>최근 검색어가 없어요.</Text>
         </>
       )}
     </View>

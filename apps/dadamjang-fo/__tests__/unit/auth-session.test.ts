@@ -73,7 +73,7 @@ describe("auth browser sessions", () => {
       expiresAt: "2026-08-13T00:00:00.000Z",
     });
     await expect(runIdentityVerificationSession("SIGNUP", "NAVER")).rejects.toThrow(
-      "본인인증 시간이 만료되었습니다. 다시 시도해 주세요.",
+      "본인 인증 시간이 만료되었습니다. 다시 시도해 주세요.",
     );
   });
 
