@@ -118,6 +118,80 @@ describe("partner GraphQL BFF refresh", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it("does not trust a public operation name with a protected root field", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        response({ errors: [{ extensions: { code: "UNAUTHENTICATED" } }] }),
+      )
+      .mockResolvedValueOnce(
+        response({ data: { refresh: { role: "PARTNER" } } }),
+      )
+      .mockResolvedValueOnce(
+        response({ data: { publishPartnerProduct: null } }),
+      );
+    const forged = new Request("http://partner.test/api/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        query:
+          'mutation Signin { publishPartnerProduct(productId: "product-1") { productId } }',
+      }),
+    });
+
+    await handleGraphQlPost(forged);
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("uses operationName to select the actual public operation", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        response({ errors: [{ extensions: { code: "UNAUTHENTICATED" } }] }),
+      );
+    const selected = new Request("http://partner.test/api/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        operationName: "Signin",
+        query:
+          'mutation Protected { publishPartnerProduct(productId: "product-1") { productId } } mutation Signin { signin(userid: "p", password: "x") { role } }',
+      }),
+    });
+
+    await handleGraphQlPost(selected);
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("refreshes the selected protected operation after a public definition", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        response({ errors: [{ extensions: { code: "UNAUTHENTICATED" } }] }),
+      )
+      .mockResolvedValueOnce(
+        response({ data: { refresh: { role: "PARTNER" } } }),
+      )
+      .mockResolvedValueOnce(
+        response({ data: { publishPartnerProduct: null } }),
+      );
+    const selected = new Request("http://partner.test/api/graphql", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        operationName: "Protected",
+        query:
+          'mutation Signin { signin(userid: "p", password: "x") { role } } mutation Protected { publishPartnerProduct(productId: "product-1") { productId } }',
+      }),
+    });
+
+    await handleGraphQlPost(selected);
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("rejects an oversized body without forwarding it", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch");
     const oversized = new Request("http://partner.test/api/graphql", {

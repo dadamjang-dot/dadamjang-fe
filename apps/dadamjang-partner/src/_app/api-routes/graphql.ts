@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Kind, parse } from "graphql";
 
 type GraphQlPayload = {
   query?: string;
@@ -9,8 +10,7 @@ type GraphQlPayload = {
 };
 
 const MAX_BODY_BYTES = 1024 * 1024;
-const PUBLIC_OPERATION =
-  /^(?:\s|#[^\r\n]*(?:\r?\n|$))*mutation\s+(?:Signin|Refresh)\b/;
+const PUBLIC_FIELDS = new Set(["signin", "refresh"]);
 
 const upstreamUrl = () => {
   const value = process.env.DADAMJANG_API_URL;
@@ -62,6 +62,29 @@ const isUnauthenticated = (payload: GraphQlPayload | null) =>
   payload?.errors?.some(
     (error) => error.extensions?.code === "UNAUTHENTICATED",
   ) ?? false;
+
+const isPublicOperation = (payload: GraphQlPayload) => {
+  if (!payload.query) return false;
+  try {
+    const operations = parse(payload.query).definitions.filter(
+      (definition) => definition.kind === Kind.OPERATION_DEFINITION,
+    );
+    const operation = payload.operationName
+      ? operations.find(
+          (definition) => definition.name?.value === payload.operationName,
+        )
+      : operations.length === 1
+        ? operations[0]
+        : undefined;
+    if (!operation || operation.operation !== "mutation") return false;
+    const fields = operation.selectionSet.selections.filter(
+      (selection) => selection.kind === Kind.FIELD,
+    );
+    return fields.length === 1 && PUBLIC_FIELDS.has(fields[0].name.value);
+  } catch {
+    return false;
+  }
+};
 
 const readBody = async (request: Request) => {
   const reader = request.body?.getReader();
@@ -148,10 +171,7 @@ export const handleGraphQlPost = async (request: Request) => {
   const initial = await forward(body, cookieHeader, deviceId);
   const initialBody = await initial.text();
   const initialCookies = setCookies(initial.headers);
-  if (
-    !isUnauthenticated(readPayload(initialBody)) ||
-    PUBLIC_OPERATION.test(input.query)
-  )
+  if (!isUnauthenticated(readPayload(initialBody)) || isPublicOperation(input))
     return responseWithCookies(
       initialBody,
       initial.status,

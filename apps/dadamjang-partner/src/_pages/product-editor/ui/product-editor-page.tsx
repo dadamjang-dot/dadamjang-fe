@@ -198,13 +198,18 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
         continue;
       }
       const preview = URL.createObjectURL(file);
+      let controller: AbortController | undefined;
       try {
         const { createProductImageUpload: u } = await createImageUpload({
           filename: file.name,
           contentType: file.type,
           fileSize: file.size,
         });
-        const controller = new AbortController();
+        if (!mounted.current) {
+          URL.revokeObjectURL(preview);
+          return;
+        }
+        controller = new AbortController();
         uploadControllers.current.set(u.key, controller);
         setImages((value) => [
           ...value,
@@ -233,9 +238,10 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
           setImages((value) =>
             value.filter((item) => item.preview !== preview),
           );
-          setError(
-            e instanceof Error ? e.message : "이미지 업로드에 실패했습니다.",
-          );
+          if (!controller?.signal.aborted)
+            setError(
+              e instanceof Error ? e.message : "이미지 업로드에 실패했습니다.",
+            );
         }
         URL.revokeObjectURL(preview);
       }

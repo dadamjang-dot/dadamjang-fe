@@ -1,6 +1,7 @@
 import { expect, Page, test } from "@playwright/test";
 
 const expectedConsoleErrors = new WeakMap<Page, RegExp[]>();
+const expectedRequestFailures = new WeakMap<Page, RegExp[]>();
 
 test.beforeEach(async ({ context, baseURL }) => {
   await context.addCookies([
@@ -25,11 +26,19 @@ test.beforeEach(async ({ page }) => {
       throw new Error(message.text());
   });
   page.on("requestfailed", (request) => {
-    throw new Error(`${request.method()} ${request.url()}`);
+    const failure = `${request.method()} ${request.url()}`;
+    if (
+      !(expectedRequestFailures.get(page) ?? []).some((pattern) =>
+        pattern.test(failure),
+      )
+    )
+      throw new Error(failure);
   });
 });
 
-type Handler = (variables: Record<string, unknown>) => unknown;
+type Handler = (
+  variables: Record<string, unknown>,
+) => unknown | Promise<unknown>;
 const routeGraphQl = async (page: Page, handlers: Record<string, Handler>) => {
   const calls: Array<{ query: string; variables: Record<string, unknown> }> =
     [];
@@ -43,7 +52,7 @@ const routeGraphQl = async (page: Page, handlers: Record<string, Handler>) => {
       /\b(?:query|mutation)\s+([_A-Za-z][_0-9A-Za-z]*)/,
     )?.[1];
     const response = operationName
-      ? handlers[operationName]?.(body.variables ?? {})
+      ? await handlers[operationName]?.(body.variables ?? {})
       : undefined;
     await route.fulfill({
       contentType: "application/json",
@@ -402,6 +411,100 @@ test("save actions remain disabled until image upload completes", async ({
   completeUpload();
   await expect(page.getByRole("button", { name: "임시 저장" })).toBeEnabled();
   await expect(page.getByRole("button", { name: "심사 요청" })).toBeEnabled();
+});
+
+test("removing an uploading image does not show a cancellation error", async ({
+  page,
+}) => {
+  expectedRequestFailures.set(page, [/PUT .*\/upload-cancelled$/]);
+  let completeUpload = () => {};
+  const uploadComplete = new Promise<void>((resolve) => {
+    completeUpload = resolve;
+  });
+  await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      ImageUpload: () => ({
+        createProductImageUpload: {
+          key: "products/user-1/cancelled.png",
+          uploadUrl: "http://127.0.0.1:3002/upload-cancelled",
+          originalUrl: "http://images.test/cancelled.png",
+          imageUrl: "http://images.test/cancelled-transformed.png",
+        },
+      }),
+    }),
+  );
+  await page.route("**/upload-cancelled", async (route) => {
+    await uploadComplete;
+    await route.fulfill({ status: 204 });
+  });
+  await page.goto("/products/new");
+  await page.getByLabel("이미지 선택").setInputFiles({
+    name: "cancelled.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("image"),
+  });
+  await page.getByRole("button", { name: "삭제", exact: true }).click();
+  completeUpload();
+  await expect(page.getByAltText("상품 이미지 1")).toHaveCount(0);
+  await expect(page.getByText("이미지 업로드가 취소되었습니다.")).toHaveCount(
+    0,
+  );
+});
+
+test("leaving during upload setup does not start an orphan upload", async ({
+  page,
+}) => {
+  let completeSetup = () => {};
+  const setupComplete = new Promise<void>((resolve) => {
+    completeSetup = resolve;
+  });
+  let reportUpload = () => {};
+  const uploadStarted = new Promise<boolean>((resolve) => {
+    reportUpload = () => resolve(true);
+  });
+  const calls = await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProducts: () => list(),
+      ImageUpload: async () => {
+        await setupComplete;
+        return {
+          createProductImageUpload: {
+            key: "products/user-1/orphan.png",
+            uploadUrl: "http://127.0.0.1:3002/upload-orphan",
+            originalUrl: "http://images.test/orphan.png",
+            imageUrl: "http://images.test/orphan-transformed.png",
+          },
+        };
+      },
+    }),
+  );
+  await page.route("**/upload-orphan", async (route) => {
+    reportUpload();
+    await route.fulfill({ status: 204 });
+  });
+  await page.goto("/products/new");
+  await page.getByLabel("이미지 선택").setInputFiles({
+    name: "orphan.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("image"),
+  });
+  await expect
+    .poll(() => calls.some((call) => call.query.includes("ImageUpload")))
+    .toBe(true);
+  await page.getByRole("link", { name: "상품 관리" }).click();
+  await expect(page).toHaveURL(/\/products$/);
+  completeSetup();
+
+  expect(
+    await Promise.race([
+      uploadStarted,
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 500)),
+    ]),
+  ).toBe(false);
 });
 
 test("canonical product route redirects to edit", async ({ page }) => {
