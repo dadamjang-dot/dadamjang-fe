@@ -1,11 +1,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, waitFor } from "@testing-library/react";
-import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AppProviders } from "@/_app/providers/app-providers";
 import { PartnerShell } from "@/_app/shell/partner-shell";
-import { subscribeToSessionInvalidation } from "@/shared/auth";
 
 const auth = vi.hoisted(() => ({
+  initialSession: null as null | {
+    userId: string;
+    userid: string;
+    email: string;
+    role: string;
+  },
   session: vi.fn(),
   partner: vi.fn(),
 }));
@@ -17,11 +23,22 @@ vi.mock("next/navigation", () => ({
   useRouter: () => navigation.router,
 }));
 
-vi.mock("@seed-design/react", () => ({
-  ActionButton: (props: ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button {...props} />
-  ),
-}));
+vi.mock("@seed-design/react", () => {
+  const Wrapper = ({ children }: { children?: ReactNode }) => <>{children}</>;
+  return {
+    ActionButton: (props: ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <button {...props} />
+    ),
+    Snackbar: {
+      HiddenCloseButton: () => null,
+      Region: Wrapper,
+      Renderer: () => null,
+      Root: Wrapper,
+      RootProvider: Wrapper,
+    },
+    useSnackbarAdapter: () => ({ visible: false }),
+  };
+});
 
 vi.mock("@/shared/auth", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/shared/auth")>();
@@ -33,12 +50,17 @@ vi.mock("@/shared/auth", async (importOriginal) => {
       queryKey: ["partner-session"],
       queryFn: auth.session,
       retry: false,
+      initialData: auth.initialSession ?? undefined,
     }),
   };
 });
 
 describe("PartnerShell", () => {
-  afterEach(() => vi.clearAllMocks());
+  afterEach(() => {
+    auth.initialSession = null;
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
+  });
 
   it("starts session and partner gates in parallel", async () => {
     auth.session.mockImplementation(() => new Promise(() => {}));
@@ -67,27 +89,21 @@ describe("PartnerShell", () => {
     }
   });
 
-  it("invalidates every tab when the session role is not partner", async () => {
-    auth.session.mockResolvedValue({
+  it("invalidates through the provider when the initial role is not partner", async () => {
+    auth.initialSession = {
       userId: "user-1",
       userid: "admin",
       email: "admin@example.com",
       role: "ADMIN",
-    });
+    };
+    auth.session.mockImplementation(() => new Promise(() => {}));
     auth.partner.mockResolvedValue({ myPartner: null });
-    const client = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    const clear = vi.spyOn(client, "clear");
+    const clear = vi.spyOn(QueryClient.prototype, "clear");
     const storage = vi.spyOn(Storage.prototype, "setItem");
-    const unsubscribe = subscribeToSessionInvalidation(() => {
-      client.clear();
-      navigation.router.replace("/login");
-    });
     const view = render(
-      <QueryClientProvider client={client}>
+      <AppProviders>
         <PartnerShell>대시보드</PartnerShell>
-      </QueryClientProvider>,
+      </AppProviders>,
     );
 
     try {
@@ -96,9 +112,7 @@ describe("PartnerShell", () => {
       expect(navigation.router.replace).toHaveBeenCalledOnce();
       expect(navigation.router.replace).toHaveBeenCalledWith("/login");
     } finally {
-      unsubscribe();
       view.unmount();
-      client.clear();
     }
   });
 });

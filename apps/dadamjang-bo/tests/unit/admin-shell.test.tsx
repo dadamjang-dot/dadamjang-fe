@@ -3,7 +3,7 @@ import { act, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AdminShell } from "@/_app/admin-shell/admin-shell";
-import { subscribeToSessionInvalidation } from "@/shared/auth";
+import { AppProviders } from "@/_app/providers/app-providers";
 
 const state = vi.hoisted(() => ({
   router: { replace: vi.fn() },
@@ -45,8 +45,16 @@ vi.mock("@seed-design/react", () => {
       Title: Wrapper,
       Description: Wrapper,
     },
+    Snackbar: {
+      HiddenCloseButton: () => null,
+      Region: Wrapper,
+      Renderer: () => null,
+      Root: Wrapper,
+      RootProvider: Wrapper,
+    },
     SidePanel: {},
     Skeleton: () => null,
+    useSnackbarAdapter: () => ({ visible: false }),
   };
 });
 
@@ -58,25 +66,27 @@ describe("AdminShell session boundary", () => {
     vi.restoreAllMocks();
   });
 
-  it("invalidates every tab when the session role is not admin", async () => {
-    const client = new QueryClient();
-    const clear = vi.spyOn(client, "clear");
+  it("invalidates through the provider when the initial role is not admin", async () => {
+    const clear = vi.spyOn(QueryClient.prototype, "clear");
     const storage = vi.spyOn(Storage.prototype, "setItem");
-    const unsubscribe = subscribeToSessionInvalidation(() => {
-      client.clear();
-      state.router.replace("/login");
-    });
     const container = document.createElement("div");
     const root = createRoot(container);
 
-    await act(async () => root.render(<AdminShell>관리자</AdminShell>));
+    try {
+      await act(async () =>
+        root.render(
+          <AppProviders>
+            <AdminShell>관리자</AdminShell>
+          </AppProviders>,
+        ),
+      );
 
-    expect(clear).toHaveBeenCalledOnce();
-    expect(state.router.replace).toHaveBeenCalledOnce();
-    expect(state.router.replace).toHaveBeenCalledWith("/login");
-    expect(storage).toHaveBeenCalledOnce();
-
-    await act(async () => root.unmount());
-    unsubscribe();
+      expect(clear).toHaveBeenCalledOnce();
+      expect(state.router.replace).toHaveBeenCalledOnce();
+      expect(state.router.replace).toHaveBeenCalledWith("/login");
+      expect(storage).toHaveBeenCalledOnce();
+    } finally {
+      await act(async () => root.unmount());
+    }
   });
 });

@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { Snackbar, useSnackbarAdapter } from "@seed-design/react";
 import { useRouter } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useLayoutEffect, useState } from "react";
 import { subscribeToSessionInvalidation } from "@/shared/auth";
 
 const SnackbarViewport = () => {
@@ -36,7 +36,7 @@ export const AppProviders = ({ children }: { children: ReactNode }) => {
         },
       }),
   );
-  useEffect(() => {
+  useLayoutEffect(() => {
     const expireSession = () => {
       queryClient.clear();
       router.replace("/login");
