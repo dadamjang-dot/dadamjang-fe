@@ -474,6 +474,103 @@ test("failed image upload preserves entered form values", async ({ page }) => {
   await expect(page.getByAltText("상품 이미지 1")).toHaveCount(0);
 });
 
+test("multi-image uploads are bounded, ordered, and keep successful files", async ({
+  page,
+}) => {
+  expectedConsoleErrors.set(page, [/status of 503/]);
+  const started: string[] = [];
+  const releases = new Map<string, () => void>();
+  let activeReservations = 0;
+  let maxActiveReservations = 0;
+  const calls = await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => ({ myPartnerProduct: product() }),
+      ImageUpload: async (variables) => {
+        const filename = (variables.input as { filename: string }).filename;
+        started.push(filename);
+        activeReservations += 1;
+        maxActiveReservations = Math.max(
+          maxActiveReservations,
+          activeReservations,
+        );
+        await new Promise<void>((resolve) => releases.set(filename, resolve));
+        activeReservations -= 1;
+        return {
+          createProductImageUpload: {
+            key: `products/user-1/${filename}`,
+            uploadUrl: `http://127.0.0.1:3002/upload-${filename}`,
+            originalUrl: `https://images.test/${filename}`,
+            imageUrl: `https://images.test/${filename}`,
+          },
+        };
+      },
+      UpdateProduct: (variables) => {
+        const imageKeys = (variables.input as { imageKeys: string[] })
+          .imageKeys;
+        return {
+          updatePartnerProductDraft: {
+            ...product(),
+            imageKeys,
+            imageUrls: imageKeys.map(
+              (key) => `https://images.test/${key.split("/").at(-1)}`,
+            ),
+          },
+        };
+      },
+      PartnerProducts: () => list(),
+    }),
+  );
+  await page.route("**/upload-*", (route) =>
+    route.request().url().endsWith("upload-four.png")
+      ? route.fulfill({ status: 503 })
+      : route.fulfill({ status: 204 }),
+  );
+  await page.goto("/products/product-1/edit");
+
+  await page.getByLabel("이미지 선택").setInputFiles(
+    ["one", "two", "three", "four", "five"].map((name) => ({
+      name: `${name}.png`,
+      mimeType: "image/png",
+      buffer: Buffer.from(name),
+    })),
+  );
+
+  await expect.poll(() => started).toEqual(["one.png", "two.png", "three.png"]);
+  releases.get("three.png")?.();
+  await expect.poll(() => started).toContain("four.png");
+  releases.get("two.png")?.();
+  await expect.poll(() => started).toContain("five.png");
+  for (const name of ["five.png", "four.png", "one.png"])
+    releases.get(name)?.();
+
+  await expect(page.locator(".images article")).toHaveCount(5);
+  await expect(
+    page.getByText("이미지 업로드에 실패했습니다. (503)", { exact: true }),
+  ).toBeVisible();
+  expect(maxActiveReservations).toBe(3);
+
+  await page.getByRole("button", { name: "임시 저장" }).click();
+  await expect
+    .poll(
+      () =>
+        calls.find((call) => call.query.includes("mutation UpdateProduct"))
+          ?.variables,
+    )
+    .toMatchObject({
+      input: {
+        imageKeys: [
+          "products/user-1/00000000-0000-4000-8000-000000000001.png",
+          "products/user-1/one.png",
+          "products/user-1/two.png",
+          "products/user-1/three.png",
+          "products/user-1/five.png",
+        ],
+      },
+    });
+});
+
 test("save actions remain disabled until image upload completes", async ({
   page,
 }) => {
@@ -700,6 +797,30 @@ test("canonical product route redirects to edit", async ({ page }) => {
   expect(
     await rail.evaluate((element) => element.getBoundingClientRect().height),
   ).toBeLessThan(page.viewportSize()!.height / 2);
+});
+
+test("failed product detail can be retried", async ({ page }) => {
+  let attempts = 0;
+  await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => {
+        attempts += 1;
+        return attempts <= 2
+          ? new Error("상품 조회 실패")
+          : { myPartnerProduct: product() };
+      },
+    }),
+  );
+
+  await page.goto("/products/product-1/edit");
+  await expect(
+    page.getByRole("alert").getByText("상품을 불러오지 못했습니다."),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "다시 시도" }).click();
+
+  await expect(page.getByLabel("상품명")).toHaveValue("테스트 셔츠");
 });
 
 test("SKU reorder is preserved in the update payload", async ({ page }) => {
@@ -976,6 +1097,63 @@ test("unsaved edits block internal navigation until confirmed", async ({
   });
   await page.getByRole("link", { name: "상품 관리" }).click();
   await expect(page).toHaveURL(/products\/new$/);
+});
+
+test("unsaved edits block browser Back and recover after cancellation", async ({
+  page,
+}) => {
+  await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerDashboard: () => ({
+        myPartnerDashboard: {
+          draftCount: 0,
+          pendingCount: 0,
+          rejectedCount: 0,
+          approvedCount: 0,
+          publishedCount: 0,
+        },
+      }),
+      PartnerProducts: () => list([]),
+    }),
+  );
+  await page.goto("/products");
+  await page.getByRole("link", { name: "상품 등록" }).click();
+  await page.getByRole("button", { name: "SKU 추가" }).click();
+  const messages: string[] = [];
+  page.once("dialog", async (dialog) => {
+    messages.push(dialog.message());
+    await dialog.dismiss();
+  });
+
+  await page.evaluate(() => history.back());
+
+  await expect(page).toHaveURL(/products\/new$/);
+  expect(messages).toEqual(["저장하지 않은 변경사항이 있습니다. 이동할까요?"]);
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.evaluate(() => history.back());
+  await expect(page).toHaveURL(/\/products$/);
+});
+
+test("publish dialog owns its accessible description", async ({ page }) => {
+  await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => ({
+        myPartnerProduct: product("APPROVED"),
+      }),
+    }),
+  );
+  await page.goto("/products/product-1/edit");
+  await page.getByRole("button", { name: "판매 게시" }).click();
+
+  await expect(page.getByRole("dialog")).toHaveAttribute(
+    "aria-describedby",
+    "publish-description",
+  );
 });
 
 test("review states control editability and rejected reason", async ({

@@ -3,6 +3,7 @@ import {
   ChangeEvent,
   DragEvent,
   FormEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -34,9 +35,14 @@ type ImageItem = {
   preview: string;
   local: boolean;
   progress: number;
+  order: number;
 };
 type Sku = ProductInput["skus"][number] & { identity: string };
 type SkuPatch = Partial<Omit<Sku, "identity">>;
+const UNSAVED_CHANGES_MESSAGE =
+  "저장하지 않은 변경사항이 있습니다. 이동할까요?";
+const HISTORY_GUARD_KEY = "__dadamjangProductEditorGuard";
+const MAX_CONCURRENT_UPLOADS = 3;
 let nextSkuIdentity = 0;
 const emptySku = (): Sku => ({
   identity: `new-sku-${nextSkuIdentity++}`,
@@ -82,6 +88,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const imageRef = useRef<ImageItem[]>([]);
   const occupiedImageKeys = useRef(new Set<string>());
   const pendingImageSlots = useRef(0);
+  const nextImageOrder = useRef(0);
   const uploadControllers = useRef(new Map<string, AbortController>());
   const mounted = useRef(true);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -93,8 +100,23 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   );
   const [confirm, setConfirm] = useState(false);
   const [publishPending, setPublishPending] = useState(false);
-  const [dirty, setDirty] = useState(false);
+  const dirty = useRef(false);
   const hydrated = useRef(false);
+  const historyGuardArmed = useRef(false);
+  const markDirty = useCallback(() => {
+    dirty.current = true;
+    if (historyGuardArmed.current) return;
+    historyGuardArmed.current = true;
+    const currentState =
+      typeof history.state === "object" && history.state !== null
+        ? history.state
+        : {};
+    history.pushState(
+      { ...currentState, [HISTORY_GUARD_KEY]: true },
+      "",
+      location.href,
+    );
+  }, []);
   useEffect(() => {
     const p = existing.data?.myPartnerProduct;
     if (!p || existing.isFetching || hydrated.current) return;
@@ -103,12 +125,14 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     setDescription(p.description);
     setCategory(p.categoryId);
     occupiedImageKeys.current = new Set(p.imageKeys);
+    nextImageOrder.current = p.imageKeys.length;
     setImages(
       p.imageKeys.map((key, i) => ({
         key,
         preview: p.imageUrls[i] ?? "",
         local: false,
         progress: 100,
+        order: i,
       })),
     );
     setSkus(
@@ -127,25 +151,39 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   }, [existing.data, existing.isFetching]);
   useEffect(() => {
     const guard = (event: BeforeUnloadEvent) => {
-      if (!dirty) return;
+      if (!dirty.current) return;
       event.preventDefault();
     };
     window.addEventListener("beforeunload", guard);
     return () => window.removeEventListener("beforeunload", guard);
-  }, [dirty]);
+  }, []);
   useEffect(() => {
     const guard = (event: MouseEvent) => {
       const anchor =
         event.target instanceof Element ? event.target.closest("a") : null;
-      if (!dirty || !anchor?.href) return;
-      if (window.confirm("저장하지 않은 변경사항이 있습니다. 이동할까요?"))
-        return;
+      if (!dirty.current || !anchor?.href) return;
+      if (window.confirm(UNSAVED_CHANGES_MESSAGE)) return;
       event.preventDefault();
       event.stopPropagation();
     };
     document.addEventListener("click", guard, true);
     return () => document.removeEventListener("click", guard, true);
-  }, [dirty]);
+  }, []);
+  useEffect(() => {
+    const guard = () => {
+      if (!historyGuardArmed.current) return;
+      historyGuardArmed.current = false;
+      if (!dirty.current) return;
+      if (window.confirm(UNSAVED_CHANGES_MESSAGE)) {
+        dirty.current = false;
+        history.back();
+        return;
+      }
+      markDirty();
+    };
+    window.addEventListener("popstate", guard, true);
+    return () => window.removeEventListener("popstate", guard, true);
+  }, [markDirty]);
   useEffect(() => {
     imageRef.current = images;
   }, [images]);
@@ -213,6 +251,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     ]);
   const addFiles = async (files: FileList | File[]) => {
     setError("");
+    const tasks: Array<{ file: File; preview: string; order: number }> = [];
     for (const file of Array.from(files)) {
       if (
         !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
@@ -229,61 +268,86 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       }
       const preview = URL.createObjectURL(file);
       pendingImageSlots.current += 1;
-      let controller: AbortController | undefined;
-      let uploadKey: string | undefined;
-      try {
-        const { createProductImageUpload: u } = await createImageUpload({
-          filename: file.name,
-          contentType: file.type,
-          fileSize: file.size,
-        });
-        if (!mounted.current) {
-          pendingImageSlots.current -= 1;
-          URL.revokeObjectURL(preview);
-          return;
-        }
-        pendingImageSlots.current -= 1;
-        uploadKey = u.key;
-        occupiedImageKeys.current.add(uploadKey);
-        controller = new AbortController();
-        uploadControllers.current.set(u.key, controller);
-        setImages((value) => [
-          ...value,
-          { key: u.key, preview, local: true, progress: 0 },
-        ]);
-        try {
-          await uploadFile(
-            u.uploadUrl,
-            file,
-            (progress) => {
-              if (!mounted.current) return;
-              setImages((value) =>
-                value.map((item) =>
-                  item.key === u.key ? { ...item, progress } : item,
-                ),
-              );
-            },
-            controller.signal,
-          );
-        } finally {
-          uploadControllers.current.delete(u.key);
-        }
-        if (mounted.current) setDirty(true);
-      } catch (e) {
-        if (uploadKey) occupiedImageKeys.current.delete(uploadKey);
-        else pendingImageSlots.current -= 1;
-        if (mounted.current) {
-          setImages((value) =>
-            value.filter((item) => item.preview !== preview),
-          );
-          if (!controller?.signal.aborted)
-            setError(
-              e instanceof Error ? e.message : "이미지 업로드에 실패했습니다.",
-            );
-        }
-        URL.revokeObjectURL(preview);
-      }
+      tasks.push({ file, preview, order: nextImageOrder.current++ });
     }
+    let nextTask = 0;
+    const uploadNext = async () => {
+      while (nextTask < tasks.length) {
+        const task = tasks[nextTask++];
+        if (!task) return;
+        const { file, preview, order } = task;
+        let pendingSlot = true;
+        const releasePendingSlot = () => {
+          if (!pendingSlot) return;
+          pendingImageSlots.current -= 1;
+          pendingSlot = false;
+        };
+        let controller: AbortController | undefined;
+        let uploadKey: string | undefined;
+        let uploadSucceeded = false;
+        try {
+          if (!mounted.current) continue;
+          const { createProductImageUpload: u } = await createImageUpload({
+            filename: file.name,
+            contentType: file.type,
+            fileSize: file.size,
+          });
+          releasePendingSlot();
+          if (!mounted.current) continue;
+          uploadKey = u.key;
+          occupiedImageKeys.current.add(uploadKey);
+          controller = new AbortController();
+          uploadControllers.current.set(u.key, controller);
+          setImages((value) =>
+            [
+              ...value,
+              { key: u.key, preview, local: true, progress: 0, order },
+            ].sort((left, right) => left.order - right.order),
+          );
+          try {
+            await uploadFile(
+              u.uploadUrl,
+              file,
+              (progress) => {
+                if (!mounted.current) return;
+                setImages((value) =>
+                  value.map((item) =>
+                    item.key === u.key ? { ...item, progress } : item,
+                  ),
+                );
+              },
+              controller.signal,
+            );
+            uploadSucceeded = true;
+          } finally {
+            uploadControllers.current.delete(u.key);
+          }
+          if (mounted.current) markDirty();
+        } catch (e) {
+          if (uploadKey) occupiedImageKeys.current.delete(uploadKey);
+          if (mounted.current) {
+            setImages((value) =>
+              value.filter((item) => item.preview !== preview),
+            );
+            if (!controller?.signal.aborted)
+              setError(
+                e instanceof Error
+                  ? e.message
+                  : "이미지 업로드에 실패했습니다.",
+              );
+          }
+        } finally {
+          releasePendingSlot();
+          if (!uploadSucceeded) URL.revokeObjectURL(preview);
+        }
+      }
+    };
+    await Promise.all(
+      Array.from(
+        { length: Math.min(MAX_CONCURRENT_UPLOADS, tasks.length) },
+        uploadNext,
+      ),
+    );
   };
   const removeImage = (key: string) =>
     setImages((v) => {
@@ -293,21 +357,21 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       occupiedImageKeys.current.delete(item.key);
       uploadControllers.current.get(item.key)?.abort();
       if (item.local) URL.revokeObjectURL(item.preview);
-      setDirty(true);
+      markDirty();
       return v.filter((_, currentIndex) => currentIndex !== index);
     });
   const moveImage = (key: string, direction: -1 | 1) =>
     setImages((v) => {
       const next = moveItem(v, "key", key, direction);
       if (next === v) return v;
-      setDirty(true);
+      markDirty();
       return next;
     });
   const moveSku = (identity: string, direction: -1 | 1) =>
     setSkus((value) => {
       const next = moveItem(value, "identity", identity, direction);
       if (next === value) return value;
-      setDirty(true);
+      markDirty();
       return next;
     });
   const removeSku = (identity: string) =>
@@ -315,7 +379,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       if (value.length <= 1) return value;
       const index = value.findIndex((sku) => sku.identity === identity);
       if (index < 0) return value;
-      setDirty(true);
+      markDirty();
       return value.filter((_, currentIndex) => currentIndex !== index);
     });
   const updateSku = (identity: string, patch: SkuPatch) =>
@@ -393,7 +457,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       return draft;
     },
     onSuccess: async (draft) => {
-      setDirty(false);
+      dirty.current = false;
       await invalidateProductCaches(draft.productId);
       router.push("/products");
     },
@@ -421,6 +485,19 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       .finally(() => setPublishPending(false));
   };
   if (productId && existing.isPending) return <p>상품을 불러오고 있습니다.</p>;
+  if (productId && existing.isError)
+    return (
+      <section>
+        <p role="alert">상품을 불러오지 못했습니다.</p>
+        <ActionButton
+          type="button"
+          loading={existing.isFetching}
+          onClick={() => void existing.refetch()}
+        >
+          다시 시도
+        </ActionButton>
+      </section>
+    );
   const p = existing.data?.myPartnerProduct;
   const effectiveState = p ? effectiveProductState(p) : undefined;
   return (
@@ -434,11 +511,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
           반려 사유: {p.rejectionReason}
         </div>
       )}
-      <form
-        className="editor-grid"
-        onSubmit={onSubmit}
-        onChange={() => setDirty(true)}
-      >
+      <form className="editor-grid" onSubmit={onSubmit} onChange={markDirty}>
         <div className="editor-main">
           <fieldset disabled={!editable || mutation.isPending}>
             <label>
@@ -461,7 +534,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
-                setDirty(true);
+                markDirty();
               }}
               maxLength={200}
               required
@@ -650,7 +723,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
               variant="neutralOutline"
               onClick={() => {
                 setSkus((v) => [...v, emptySku()]);
-                setDirty(true);
+                markDirty();
               }}
             >
               SKU 추가
@@ -716,8 +789,9 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
           role="dialog"
           aria-modal="true"
           aria-labelledby="publish-title"
+          aria-describedby="publish-description"
         >
-          <div aria-describedby="publish-description">
+          <div>
             <h2 id="publish-title">상품을 게시할까요?</h2>
             <p id="publish-description">게시하면 고객에게 상품이 공개됩니다.</p>
             <ActionButton
