@@ -25,6 +25,10 @@ type RefreshPayload = {
   refresh: AuthTokens;
 };
 
+type SessionExpiredHandler = () => void | Promise<void>;
+
+let sessionExpiredHandler: SessionExpiredHandler | undefined;
+
 export const getAccessToken = () => SecureStore.getItemAsync(accessTokenKey);
 
 export const getRefreshToken = () => SecureStore.getItemAsync(refreshTokenKey);
@@ -43,7 +47,23 @@ export const clearAccessToken = async () => {
   await SecureStore.deleteItemAsync(refreshTokenKey);
 };
 
+export const setSessionExpiredHandler = (handler: SessionExpiredHandler) => {
+  sessionExpiredHandler = handler;
+  return () => {
+    if (sessionExpiredHandler === handler) sessionExpiredHandler = undefined;
+  };
+};
+
+const expireSession = async () => {
+  await clearAccessToken();
+  await sessionExpiredHandler?.();
+};
+
 const getErrorMessage = (error: ClientError) => error.response.errors?.[0]?.message ?? 'GraphQL 요청에 실패했어요.';
+
+const isUnauthorizedError = (error: ClientError) =>
+  error.response.status === 401 ||
+  error.response.errors?.some(({ extensions }) => extensions?.code === 'UNAUTHENTICATED') === true;
 
 const createGraphqlClient = (headers?: HeadersInit) =>
   new GraphQLClient(apiUrl, {
@@ -52,7 +72,10 @@ const createGraphqlClient = (headers?: HeadersInit) =>
 
 const refreshAccessToken = async () => {
   const refreshToken = await getRefreshToken();
-  if (!refreshToken) return null;
+  if (!refreshToken) {
+    await expireSession();
+    return null;
+  }
 
   try {
     const client = createGraphqlClient({
@@ -63,9 +86,17 @@ const refreshAccessToken = async () => {
     await setAuthTokens(data.refresh);
     return data.refresh.accessToken;
   } catch {
+    await expireSession();
     return null;
   }
 };
+
+let refreshPromise: Promise<string | null> | undefined;
+
+const refreshAccessTokenOnce = () =>
+  (refreshPromise ??= refreshAccessToken().finally(() => {
+    refreshPromise = undefined;
+  }));
 
 export const graphqlRequest = async <T>(
   query: string,
@@ -87,8 +118,8 @@ export const graphqlRequest = async <T>(
       throw error;
     }
 
-    if (retryOnUnauthorized && token) {
-      const refreshedToken = await refreshAccessToken();
+    if (retryOnUnauthorized && token && isUnauthorizedError(error)) {
+      const refreshedToken = await refreshAccessTokenOnce();
 
       if (refreshedToken) {
         return graphqlRequest<T>(

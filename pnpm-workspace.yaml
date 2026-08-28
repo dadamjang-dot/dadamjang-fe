@@ -7,7 +7,16 @@ allowBuilds:
   esbuild: true
   unrs-resolver: true
 
+minimumReleaseAgeExclude:
+  - '@expo/cli@57.0.20'
+  - '@expo/env@2.4.3'
+  - '@expo/fingerprint@0.20.11'
+  - '@expo/metro-config@57.0.12'
+  - expo-constants@57.0.16
+  - expo-font@57.0.2
+  - expo@57.0.18
+
 packageExtensions:
   '@sentry/react-native@*':
     dependencies:
-      '@expo/config-plugins': '^55.0.10'
+      '@expo/config-plugins': '57.0.9'

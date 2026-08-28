@@ -6,6 +6,8 @@ import {
 import NetInfo from "@react-native-community/netinfo";
 import { useEffect, type ReactNode } from "react";
 
+import { setSessionExpiredHandler } from "@dadamjang/graphql-client";
+
 import { AuthFlowProvider } from "@/features/auth";
 
 const queryClient = new QueryClient({
@@ -17,6 +19,7 @@ const queryClient = new QueryClient({
 type AppProvidersProps = { children: ReactNode };
 
 export const AppProviders = ({ children }: AppProvidersProps) => {
+  useEffect(() => setSessionExpiredHandler(() => queryClient.clear()), []);
   useEffect(
     () =>
       onlineManager.setEventListener((setOnline) =>
