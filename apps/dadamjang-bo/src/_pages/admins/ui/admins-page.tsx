@@ -236,7 +236,9 @@ export const AdminsPage = () => {
         confirmLabel="초대 취소"
         critical
         pending={revoke.isPending}
-        onConfirm={() => revokeTarget && revoke.mutate(revokeTarget.inviteId)}
+        onConfirm={() => {
+          if (revokeTarget) revoke.mutate(revokeTarget.inviteId);
+        }}
       >
         {revoke.error ? (
           <ApiCallout

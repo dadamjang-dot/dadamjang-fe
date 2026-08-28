@@ -106,15 +106,15 @@ test("review dialogs discard stale input and mutation errors", async ({
 
 test("review dialogs stay open while a review is pending", async ({ page }) => {
   await authenticateAdmin(page);
-  let reviewStarted = false;
+  let reviewRequests = 0;
   let releaseReview = () => {};
   const reviewReleased = new Promise<void>((resolve) => {
     releaseReview = resolve;
   });
   await page.route("**/api/graphql", async (route) => {
     const payload = route.request().postDataJSON() as { query: string };
-    if (!reviewStarted && payload.query.includes("mutation ReviewProduct")) {
-      reviewStarted = true;
+    if (payload.query.includes("mutation ReviewProduct")) {
+      reviewRequests += 1;
       await reviewReleased;
       await route.fallback();
       return;
@@ -127,13 +127,22 @@ test("review dialogs stay open while a review is pending", async ({ page }) => {
   await page.getByRole("button", { name: "승인", exact: true }).click();
   const dialog = page.getByRole("alertdialog");
   const confirm = dialog.getByRole("button", { name: "승인", exact: true });
-  await confirm.click();
-  await expect.poll(() => reviewStarted).toBe(true);
+  await confirm.dblclick();
 
   try {
+    await expect.poll(() => reviewRequests).toBe(1);
     await expect(confirm).toBeDisabled();
     await page.keyboard.press("Escape");
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        }),
+    );
+    await expect(dialog).toHaveAttribute("data-open", "");
     await expect(dialog).toBeVisible();
+    await expect(confirm).toBeDisabled();
+    await expect.poll(() => reviewRequests).toBe(1);
   } finally {
     releaseReview();
   }
