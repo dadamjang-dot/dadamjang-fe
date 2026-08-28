@@ -203,4 +203,81 @@ describe("expired auth session", () => {
     );
     unmount();
   });
+
+  it("cancels an in-flight account query before clearing A data for B", async () => {
+    const { result, unmount } = renderHook(useProviderState, {
+      wrapper: AppProvidersWrapper,
+    });
+    await act(async () => {
+      await setAuthTokens({
+        accessToken: "access-a",
+        refreshToken: "refresh-a",
+      });
+    });
+    result.current.queryClient.setQueryData(["cart"], { owner: "viewer-a" });
+
+    const cancellationOrder: string[] = [];
+    const cancelQueries = result.current.queryClient.cancelQueries.bind(
+      result.current.queryClient,
+    );
+    const clear = result.current.queryClient.clear.bind(
+      result.current.queryClient,
+    );
+    const cancelSpy = jest
+      .spyOn(result.current.queryClient, "cancelQueries")
+      .mockImplementation(async () => {
+        cancellationOrder.push("cancel");
+        await cancelQueries();
+        cancellationOrder.push("cancelled");
+      });
+    const clearSpy = jest
+      .spyOn(result.current.queryClient, "clear")
+      .mockImplementation(() => {
+        cancellationOrder.push("clear");
+        clear();
+      });
+
+    let querySignal: AbortSignal | undefined;
+    let resolveAccountAQuery: ((value: { owner: string }) => void) | undefined;
+    const accountAQuery = result.current.queryClient
+      .fetchQuery({
+        queryKey: ["orders"],
+        queryFn: ({ signal }) => {
+          querySignal = signal;
+          return new Promise<{ owner: string }>((resolve) => {
+            resolveAccountAQuery = resolve;
+          });
+        },
+      })
+      .catch((error: unknown) => error);
+
+    expect(querySignal).toBeDefined();
+
+    await act(async () => {
+      await setAuthTokens({
+        accessToken: "access-b",
+        refreshToken: "refresh-b",
+      });
+    });
+
+    expect(querySignal?.aborted).toBe(true);
+    expect(cancellationOrder).toEqual(["cancel", "cancelled", "clear"]);
+    expect(result.current.queryClient.getQueryCache().getAll()).toHaveLength(0);
+
+    resolveAccountAQuery?.({ owner: "viewer-a" });
+    await accountAQuery;
+    expect(result.current.queryClient.getQueryData(["orders"])).toBeUndefined();
+
+    result.current.queryClient.setQueryData(["orders"], {
+      owner: "viewer-b",
+    });
+    expect(result.current.queryClient.getQueryData(["orders"])).toEqual({
+      owner: "viewer-b",
+    });
+
+    cancelSpy.mockRestore();
+    clearSpy.mockRestore();
+    result.current.queryClient.clear();
+    unmount();
+  });
 });

@@ -22,7 +22,8 @@ const SessionResetBoundary = ({ children }: AppProvidersProps) => {
   const { resetAuthFlow } = useAuthFlow();
   useEffect(
     () =>
-      setSessionResetHandler(() => {
+      setSessionResetHandler(async () => {
+        await queryClient.cancelQueries();
         queryClient.clear();
         resetAuthFlow();
       }),
