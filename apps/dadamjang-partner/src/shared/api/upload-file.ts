@@ -24,8 +24,10 @@ export const uploadFile = (
   file: File,
   onProgress: UploadProgress,
   signal?: AbortSignal,
-) =>
-  new Promise<void>((resolve, reject) => {
+) => {
+  if (signal?.aborted)
+    return Promise.reject(new Error("이미지 업로드가 취소되었습니다."));
+  return new Promise<void>((resolve, reject) => {
     const request = new XMLHttpRequest();
     const abort = () => request.abort();
     const cleanup = () => signal?.removeEventListener("abort", abort);
@@ -62,10 +64,7 @@ export const uploadFile = (
       fail(new Error("이미지 업로드 시간이 초과되었습니다."));
       request.abort();
     };
-    if (signal?.aborted) {
-      request.abort();
-      return;
-    }
     signal?.addEventListener("abort", abort, { once: true });
     request.send(file);
   });
+};
