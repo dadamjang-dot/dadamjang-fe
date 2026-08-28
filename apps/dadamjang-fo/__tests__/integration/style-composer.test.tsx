@@ -10,6 +10,7 @@ import type { PressableProps } from "react-native";
 
 import StyleComposer from "@/features/style/components/style-composer";
 import type { StylePostImageAsset } from "@/features/style/types";
+import { layoutLegendList } from "../helpers/layout-legend-list";
 
 const mockCreateStylePost = jest.fn();
 const mockUploadStylePostImage = jest.fn();
@@ -58,9 +59,8 @@ jest.mock("@/features/style/hooks", () => ({
 
 jest.mock("@/shared/components", () => {
   const React = jest.requireActual<typeof import("react")>("react");
-  const ReactNative = jest.requireActual<typeof import("react-native")>(
-    "react-native",
-  );
+  const ReactNative =
+    jest.requireActual<typeof import("react-native")>("react-native");
 
   return {
     Button: ({
@@ -146,9 +146,9 @@ const prepareValidDraft = async (assets: StylePostImageAsset[]) => {
   render(<StyleComposer onClose={mockClose} />);
 
   await user.press(screen.getByRole("button", { name: "상품 고르기" }));
-  await user.press(
-    await screen.findByRole("button", { name: /테스트 상품/ }),
-  );
+  await screen.findByLabelText("구매한 상품 목록");
+  layoutLegendList("구매한 상품 목록");
+  await user.press(await screen.findByRole("button", { name: /테스트 상품/ }));
   await user.press(screen.getByRole("button", { name: "완료" }));
   await user.press(screen.getByRole("button", { name: "사진 추가" }));
   expect(mockRequestMediaLibraryPermissions).toHaveBeenCalledTimes(1);
@@ -156,10 +156,7 @@ const prepareValidDraft = async (assets: StylePostImageAsset[]) => {
   expect(await screen.findAllByLabelText("사진 삭제")).toHaveLength(
     assets.length,
   );
-  await user.type(
-    screen.getByLabelText("스타일 소개"),
-    "오늘의 테스트 스타일",
-  );
+  await user.type(screen.getByLabelText("스타일 소개"), "오늘의 테스트 스타일");
   return user;
 };
 
@@ -188,9 +185,7 @@ describe("style composer upload flow", () => {
     );
     const user = await prepareValidDraft([imageAsset(1), imageAsset(2)]);
 
-    await user.press(
-      screen.getByRole("button", { name: "스타일 올리기" }),
-    );
+    await user.press(screen.getByRole("button", { name: "스타일 올리기" }));
     const startedIndexes = mockUploadStylePostImage.mock.calls.map(
       ([, index]) => index,
     );

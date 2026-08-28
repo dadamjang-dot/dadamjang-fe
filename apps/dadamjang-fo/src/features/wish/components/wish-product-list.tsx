@@ -1,5 +1,6 @@
+import { LegendList } from "@legendapp/list/react-native";
 import { useMemo, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import type { Product } from "@/features/catalog";
@@ -74,27 +75,33 @@ const WishProductList = ({
         }
       />
       {visibleProducts.length ? (
-        <ScrollView
+        <LegendList
+          accessibilityLabel="위시 상품 목록"
           contentContainerStyle={s.content}
           contentInsetAdjustmentBehavior="automatic"
-          showsVerticalScrollIndicator={false}
-        >
-          {visibleProducts.map((product) => (
+          data={visibleProducts}
+          extraData={onRemoveWish}
+          keyExtractor={(product) => product.productId}
+          recycleItems
+          renderItem={({ item: product }) => (
             <WishProductCard
-              key={product.productId}
               onPress={() => onOpenProduct(product.productId)}
               onRemove={
-                onRemoveWish
-                  ? () => onRemoveWish(product.productId)
-                  : undefined
+                onRemoveWish ? () => onRemoveWish(product.productId) : undefined
               }
               product={product}
             />
-          ))}
-        </ScrollView>
+          )}
+          showsVerticalScrollIndicator={false}
+          style={s.list}
+        />
       ) : (
         <WishState
-          description={products.length ? "필터를 바꾸면 다른 상품을 확인할 수 있어요." : emptyDescription}
+          description={
+            products.length
+              ? "필터를 바꾸면 다른 상품을 확인할 수 있어요."
+              : emptyDescription
+          }
           title={products.length ? "조건에 맞는 상품이 없어요." : emptyTitle}
         />
       )}
@@ -113,7 +120,13 @@ const WishProductList = ({
 
 const s = StyleSheet.create({
   container: { flex: 1 },
-  content: { gap: 20, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32 },
+  list: { flex: 1 },
+  content: {
+    gap: 20,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 32,
+  },
 });
 
 export default WishProductList;

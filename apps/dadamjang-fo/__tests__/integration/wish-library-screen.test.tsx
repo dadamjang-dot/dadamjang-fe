@@ -1,5 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
 import { GraphqlError } from "@dadamjang/graphql-client";
@@ -16,9 +21,12 @@ import {
 } from "@/features/wish/api";
 import { getLikedStylePosts, unlikeStylePost } from "@/features/style/api";
 import type { StylePost } from "@/features/style/types";
+import { layoutLegendList } from "../helpers/layout-legend-list";
 
 const navigation: { path?: string } = {};
-const actionButtonCalls: { actions: { icon?: string; onPress: () => void }[] }[] = [];
+const actionButtonCalls: {
+  actions: { icon?: string; onPress: () => void }[];
+}[] = [];
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({
@@ -30,10 +38,15 @@ jest.mock("expo-router", () => ({
 
 jest.mock("@/shared/components", () => {
   const React = jest.requireActual<typeof import("react")>("react");
-  const { Pressable, Text, View } = jest.requireActual<typeof import("react-native")>("react-native");
+  const { Pressable, Text, View } =
+    jest.requireActual<typeof import("react-native")>("react-native");
 
   return {
-    ActionButton: ({ actions }: { actions: { icon?: string; onPress: () => void }[] }) => {
+    ActionButton: ({
+      actions,
+    }: {
+      actions: { icon?: string; onPress: () => void }[];
+    }) => {
       actionButtonCalls.push({ actions });
       const action = actions[0];
       return action
@@ -44,13 +57,29 @@ jest.mock("@/shared/components", () => {
           )
         : null;
     },
-    Button: ({ children, label, onPress, testID }: { children?: ReactNode; label?: string; onPress: () => void; testID?: string }) =>
+    Button: ({
+      children,
+      label,
+      onPress,
+      testID,
+    }: {
+      children?: ReactNode;
+      label?: string;
+      onPress: () => void;
+      testID?: string;
+    }) =>
       React.createElement(
         Pressable,
         { onPress, testID },
         children ?? React.createElement(Text, null, label),
       ),
-    TitleHeader: ({ children, title }: { children?: ReactNode; title: string }) =>
+    TitleHeader: ({
+      children,
+      title,
+    }: {
+      children?: ReactNode;
+      title: string;
+    }) =>
       React.createElement(
         View,
         null,
@@ -159,20 +188,31 @@ describe("WISH library screen", () => {
       email: "buyer@example.com",
       role: "USER",
     });
-    jest.mocked(getWishlist).mockResolvedValue([
-      { wishId: "wish-1", productId: product.productId, createdAt: product.createdAt, product },
-    ]);
+    jest
+      .mocked(getWishlist)
+      .mockResolvedValue([
+        {
+          wishId: "wish-1",
+          productId: product.productId,
+          createdAt: product.createdAt,
+          product,
+        },
+      ]);
     jest.mocked(getLikedStylePosts).mockResolvedValue({
       hasNextPage: false,
       nextCursor: null,
       nodes: [savedStylePost],
     });
-    jest.mocked(getFollowedBrands).mockResolvedValue([
-      { brandId: "brand-1", name: "테스트 브랜드", slug: "test-brand" },
-    ]);
-    jest.mocked(getRecentlyViewedProducts).mockResolvedValue([
-      { productId: product.productId, viewedAt: product.createdAt, product },
-    ]);
+    jest
+      .mocked(getFollowedBrands)
+      .mockResolvedValue([
+        { brandId: "brand-1", name: "테스트 브랜드", slug: "test-brand" },
+      ]);
+    jest
+      .mocked(getRecentlyViewedProducts)
+      .mockResolvedValue([
+        { productId: product.productId, viewedAt: product.createdAt, product },
+      ]);
     jest.mocked(removeWish).mockResolvedValue(undefined);
     jest.mocked(unfollowBrand).mockResolvedValue(undefined);
     jest.mocked(unlikeStylePost).mockResolvedValue(savedStylePost);
@@ -181,9 +221,13 @@ describe("WISH library screen", () => {
   it("uses one cart ActionButton and supports WISH tabs, controls, navigation, and removal", async () => {
     render(<WishScreen />, { wrapper: createWrapper() });
 
+    await screen.findByLabelText("위시 상품 목록");
+    layoutLegendList("위시 상품 목록");
     await screen.findByTestId("e2e.product.open.product-1");
     expect(actionButtonCalls.length).toBeGreaterThan(0);
-    expect(actionButtonCalls.every(({ actions }) => actions.length === 1)).toBe(true);
+    expect(actionButtonCalls.every(({ actions }) => actions.length === 1)).toBe(
+      true,
+    );
     expect(actionButtonCalls.at(-1)?.actions[0]?.icon).toBe("cart");
 
     await fireEvent.press(screen.getByTestId("e2e.wish.cart"));
@@ -197,25 +241,43 @@ describe("WISH library screen", () => {
     expect(navigation.path).toBe("/product/product-1");
 
     await fireEvent.press(screen.getByTestId("e2e.wish.remove.product-1"));
-    await waitFor(() => expect(jest.mocked(removeWish).mock.calls[0]?.[0]).toBe("product-1"));
+    await waitFor(() =>
+      expect(jest.mocked(removeWish).mock.calls[0]?.[0]).toBe("product-1"),
+    );
 
     await fireEvent.press(screen.getByTestId("e2e.wish.tab.styles"));
+    await screen.findByLabelText("위시한 스타일 목록");
+    layoutLegendList("위시한 스타일 목록");
     await fireEvent.press(await screen.findByLabelText("스타일 게시물 이미지"));
     expect(navigation.path).toBe("/style/style-1");
     await fireEvent.press(screen.getByLabelText("좋아요 취소"));
-    await waitFor(() => expect(jest.mocked(unlikeStylePost).mock.calls[0]?.[0]).toBe("style-1"));
+    await waitFor(() =>
+      expect(jest.mocked(unlikeStylePost).mock.calls[0]?.[0]).toBe("style-1"),
+    );
 
     await fireEvent.press(screen.getByTestId("e2e.wish.tab.brands"));
-    await fireEvent.press(await screen.findByTestId("e2e.wish.brand.unfollow.brand-1"));
-    await waitFor(() => expect(jest.mocked(unfollowBrand).mock.calls[0]?.[0]).toBe("brand-1"));
+    await screen.findByLabelText("팔로우한 브랜드 목록");
+    layoutLegendList("팔로우한 브랜드 목록");
+    await fireEvent.press(
+      await screen.findByTestId("e2e.wish.brand.unfollow.brand-1"),
+    );
+    await waitFor(() =>
+      expect(jest.mocked(unfollowBrand).mock.calls[0]?.[0]).toBe("brand-1"),
+    );
 
     await fireEvent.press(screen.getByTestId("e2e.wish.tab.recent"));
-    await fireEvent.press(await screen.findByTestId("e2e.product.open.product-1"));
+    await screen.findByLabelText("위시 상품 목록");
+    layoutLegendList("위시 상품 목록");
+    await fireEvent.press(
+      await screen.findByTestId("e2e.product.open.product-1"),
+    );
     expect(navigation.path).toBe("/product/product-1");
   });
 
   it("shows a sign-in CTA for signed-out users", async () => {
-    jest.mocked(getCurrentUser).mockRejectedValueOnce(new GraphqlError("not authenticated", 401));
+    jest
+      .mocked(getCurrentUser)
+      .mockRejectedValueOnce(new GraphqlError("not authenticated", 401));
     render(<WishScreen />, { wrapper: createWrapper() });
 
     await fireEvent.press(await screen.findByTestId("e2e.wish.login"));

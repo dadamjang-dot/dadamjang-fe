@@ -1,13 +1,20 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import {
+  fireEvent,
+  render,
+  screen,
+  userEvent,
+  waitFor,
+} from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
 import { getCurrentUser } from "@/features/auth/api";
 import { AuthSessionStateProvider } from "@/features/auth/auth-session-state";
-import { getCart, checkoutCart } from "@/features/cart/api";
+import { checkoutCart, getCart, removeCartItem } from "@/features/cart/api";
 import CartScreen from "@/app/cart";
 import WishScreen from "@/app/(tabs)/wish";
 import { getWishlist } from "@/features/wish/api";
+import { layoutLegendList } from "../helpers/layout-legend-list";
 
 const mockNavigation: { path?: string } = {};
 
@@ -25,10 +32,15 @@ jest.mock("expo-router", () => ({
 
 jest.mock("@/shared/components", () => {
   const React = jest.requireActual<typeof import("react")>("react");
-  const { Pressable, Text, View } = jest.requireActual<typeof import("react-native")>("react-native");
+  const { Pressable, Text, View } =
+    jest.requireActual<typeof import("react-native")>("react-native");
 
   return {
-    ActionButton: ({ actions }: { actions: { icon?: string; label?: string; onPress: () => void }[] }) => {
+    ActionButton: ({
+      actions,
+    }: {
+      actions: { icon?: string; label?: string; onPress: () => void }[];
+    }) => {
       const action = actions[0];
       return action
         ? React.createElement(
@@ -38,13 +50,29 @@ jest.mock("@/shared/components", () => {
           )
         : null;
     },
-    Button: ({ children, label, onPress, testID }: { children?: ReactNode; label?: string; onPress: () => void; testID?: string }) =>
+    Button: ({
+      children,
+      label,
+      onPress,
+      testID,
+    }: {
+      children?: ReactNode;
+      label?: string;
+      onPress: () => void;
+      testID?: string;
+    }) =>
       React.createElement(
         Pressable,
         { onPress, testID },
         children ?? React.createElement(Text, null, label),
       ),
-    TitleHeader: ({ children, title }: { children?: ReactNode; title: string }) =>
+    TitleHeader: ({
+      children,
+      title,
+    }: {
+      children?: ReactNode;
+      title: string;
+    }) =>
       React.createElement(
         View,
         null,
@@ -102,6 +130,17 @@ const cart = {
       product: { productId: "product-1", title: "테스트 상품", imageUrls: [] },
     },
   ],
+};
+
+const secondCartItem = {
+  cartItemId: "cart-item-2",
+  quantity: 2,
+  sku: { skuId: "sku-2", optionName: "아이보리 / L", price: 12_000 },
+  product: {
+    productId: "product-2",
+    title: "두 번째 상품",
+    imageUrls: [],
+  },
 };
 
 const wishlist = [
@@ -170,7 +209,9 @@ describe("cart and wish screens", () => {
   });
 
   it("shows the checkout failure state when payment is rejected", async () => {
-    jest.mocked(checkoutCart).mockRejectedValueOnce(new Error("payment failed"));
+    jest
+      .mocked(checkoutCart)
+      .mockRejectedValueOnce(new Error("payment failed"));
     render(<CartScreen />, { wrapper: createWrapper() });
 
     await fireEvent.press(await screen.findByTestId("e2e.checkout.submit"));
@@ -178,10 +219,61 @@ describe("cart and wish screens", () => {
     expect(await screen.findByTestId("e2e.checkout.failure")).toBeVisible();
   });
 
+  it("keeps the remaining cart cell identity after an item is removed", async () => {
+    const user = userEvent.setup();
+    jest
+      .mocked(getCart)
+      .mockResolvedValueOnce({
+        ...cart,
+        items: [...cart.items, secondCartItem],
+        totalAmount: 32_000,
+      })
+      .mockResolvedValueOnce({
+        ...cart,
+        items: [secondCartItem],
+        totalAmount: 24_000,
+      });
+    jest.mocked(removeCartItem).mockResolvedValue(undefined);
+    render(<CartScreen />, { wrapper: createWrapper() });
+
+    await screen.findByLabelText("장바구니 상품 목록");
+    layoutLegendList("장바구니 상품 목록");
+    fireEvent(screen.getByTestId("e2e.cart.item.sku-1"), "layout", {
+      nativeEvent: {
+        layout: { height: 104, width: 350, x: 0, y: 0 },
+      },
+    });
+    fireEvent(screen.getByTestId("e2e.cart.item.sku-2"), "layout", {
+      nativeEvent: {
+        layout: { height: 104, width: 350, x: 0, y: 104 },
+      },
+    });
+    expect(await screen.findByText("테스트 상품")).toBeVisible();
+    expect(screen.getByText("두 번째 상품")).toBeVisible();
+    await user.press(screen.getByTestId("e2e.cart.remove.sku-1"));
+
+    await waitFor(() =>
+      expect(screen.queryByText("테스트 상품")).not.toBeOnTheScreen(),
+    );
+    expect(screen.getByText("두 번째 상품")).toBeVisible();
+    expect(screen.getByText("아이보리 / L")).toBeVisible();
+    expect(removeCartItem).toHaveBeenCalledTimes(1);
+    expect(jest.mocked(removeCartItem).mock.calls[0]?.[0]).toBe("sku-1");
+  });
+
   it("opens a product route from a rendered wish item", async () => {
     render(<WishScreen />, { wrapper: createWrapper() });
 
-    await fireEvent.press(await screen.findByTestId("e2e.product.open.product-1"));
+    await screen.findByLabelText("위시 상품 목록");
+    layoutLegendList("위시 상품 목록");
+    fireEvent(screen.getByTestId("e2e.product.open.product-1"), "layout", {
+      nativeEvent: {
+        layout: { height: 320, width: 358, x: 0, y: 0 },
+      },
+    });
+    await fireEvent.press(
+      await screen.findByTestId("e2e.product.open.product-1"),
+    );
 
     expect(mockNavigation.path).toBe("/product/product-1");
     expect(screen.getByText("테스트 상품")).toBeVisible();
