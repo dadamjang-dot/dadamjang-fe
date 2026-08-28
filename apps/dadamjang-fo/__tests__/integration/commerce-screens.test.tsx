@@ -217,7 +217,7 @@ describe("cart and wish screens", () => {
     expect(screen.queryByTestId("e2e.checkout.pending")).toBeNull();
   });
 
-  it("does not show checkout success for a cancelled order with an approved payment", async () => {
+  it("distinguishes a cancelled order from a cancelled payment", async () => {
     mockSearchParams["order-id"] = "order-1";
     jest.mocked(getOrder).mockResolvedValue({
       orderId: "order-1",
@@ -232,9 +232,31 @@ describe("cart and wish screens", () => {
 
     render(<OrderDetailScreen />, { wrapper: createWrapper() });
 
+    expect(await screen.findByTestId("e2e.order.cancelled")).toBeVisible();
+    expect(screen.getByText("주문이 취소됐어요. 결제 취소/환불 상태를 확인해 주세요.")).toBeVisible();
+    expect(screen.queryByTestId("e2e.checkout.success")).toBeNull();
+    expect(screen.queryByTestId("e2e.checkout.cancelled")).toBeNull();
+    expect(screen.queryByText("결제가 취소됐어요.")).toBeNull();
+  });
+
+  it("shows payment-cancelled copy when the payment is cancelled", async () => {
+    mockSearchParams["order-id"] = "order-1";
+    jest.mocked(getOrder).mockResolvedValue({
+      orderId: "order-1",
+      orderNumber: "20260812-1",
+      status: "PAID",
+      paymentStatus: "CANCELLED",
+      paymentFailureReason: null,
+      totalAmount: 8_000,
+      items: [],
+      createdAt: "2026-08-12T00:00:00.000Z",
+    });
+
+    render(<OrderDetailScreen />, { wrapper: createWrapper() });
+
     expect(await screen.findByTestId("e2e.checkout.cancelled")).toBeVisible();
     expect(screen.getByText("결제가 취소됐어요.")).toBeVisible();
-    expect(screen.queryByTestId("e2e.checkout.success")).toBeNull();
+    expect(screen.queryByTestId("e2e.order.cancelled")).toBeNull();
   });
 
   it("does not forward checkout test controls from deep links", async () => {

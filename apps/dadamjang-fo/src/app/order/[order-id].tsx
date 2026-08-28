@@ -12,8 +12,13 @@ import {
 import { useOrder } from "@/features/order";
 
 const checkoutState = (status: OrderStatus, paymentStatus: PaymentStatus) => {
-  if (status === "CANCELLED" || paymentStatus === "CANCELLED")
+  if (paymentStatus === "CANCELLED")
     return { message: "결제가 취소됐어요.", testID: "e2e.checkout.cancelled" };
+  if (status === "CANCELLED")
+    return {
+      message: "주문이 취소됐어요. 결제 취소/환불 상태를 확인해 주세요.",
+      testID: "e2e.order.cancelled",
+    };
   if (status === "FAILED" || paymentStatus === "FAILED")
     return { message: "결제에 실패했어요.", testID: "e2e.checkout.failure" };
   if (status === "PAYMENT_PENDING" && paymentStatus === "PENDING")
