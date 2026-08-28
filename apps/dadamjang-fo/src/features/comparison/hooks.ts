@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { trackCommerceEvent } from "@/features/analytics";
 import { priceEvidenceQueryKeys } from "@/features/price-evidence";
 
 import { addComparisonItem, getComparison, removeComparisonItem } from "./api";
@@ -25,14 +24,7 @@ export const useComparisonActions = () => {
     add: useMutation({ mutationFn: addComparisonItem, onSuccess: invalidate }),
     remove: useMutation({
       mutationFn: removeComparisonItem,
-      onSuccess: (_data, productId) => {
-        trackCommerceEvent({
-          eventType: "COMPARISON_REMOVED",
-          subjectType: "PRODUCT",
-          subjectId: productId,
-        });
-        return invalidate();
-      },
+      onSuccess: invalidate,
     }),
   };
 };
