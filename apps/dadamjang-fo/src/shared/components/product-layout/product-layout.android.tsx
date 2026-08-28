@@ -2,15 +2,16 @@ import { useCallback, useState } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
-import {
-  ActionButton,
-  ProductHeader,
-  SearchContent,
-} from "@/shared/components";
+import { ProductHeader, SearchContent } from "@/shared/components";
 import { colors } from "@dadamjang/design-tokens";
+import { ActionButtonGroup } from "@dadamjang/mobile";
 import type { ProductLayoutProps } from "./product-layout.types";
 
-const ProductLayout = ({ headerActions, variant: _variant, children }: ProductLayoutProps) => {
+const ProductLayout = ({
+  headerActions,
+  variant,
+  children,
+}: ProductLayoutProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
@@ -28,7 +29,7 @@ const ProductLayout = ({ headerActions, variant: _variant, children }: ProductLa
         searchValue={searchValue}
         onSearchValueChange={setSearchValue}
       >
-        <ActionButton actions={headerActions} iconOnly />
+        <ActionButtonGroup actions={headerActions} variant={variant} />
       </ProductHeader>
 
       {isSearching ? <SearchContent keyword={searchValue} /> : children}

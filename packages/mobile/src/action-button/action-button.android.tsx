@@ -1,15 +1,10 @@
 import { useEffect, useState } from "react";
 import type { ImageSourcePropType } from "react-native";
 import {
-  unstable_getMaterialSymbolSourceAsync,
-  type AndroidSymbol,
-} from "expo-symbols";
-import {
   Host,
   Row,
   FilledTonalButton,
   FilledTonalIconButton,
-  IconButton,
   Icon,
   Text,
   Shape,
@@ -23,13 +18,7 @@ import {
 import { colors } from "@dadamjang/design-tokens";
 
 import type { Action, ActionButtonProps } from "./action-button.types";
-
-const getMaterialSymbolSourceAsync =
-  unstable_getMaterialSymbolSourceAsync as unknown as (
-    symbol: AndroidSymbol,
-    size: number,
-    color: string,
-  ) => Promise<ImageSourcePropType | null>;
+import { getMaterialSymbolSourceAsync } from "./material-symbol-source";
 
 interface ActionButtonContentProps {
   action: Action;
@@ -121,35 +110,30 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
 
   return (
     <Host matchContents>
-      <FilledTonalButton
-        shape={Shape.Pill({})}
-        colors={{
-          containerColor: colors.surface,
-          contentColor: colors.ink,
-        }}
-        modifiers={[height(40)]}
-      >
-        <Row modifiers={[paddingAll(0)]}>
-          {actions.map((action, idx) => {
-            const itemModifiers =
-              action.label && !action.icon ? [height(32)] : [size(32, 32)];
-            return (
-              <IconButton
-                key={action.accessibilityLabel ?? action.label ?? idx}
-                onClick={action.onPress}
-                modifiers={itemModifiers}
-              >
-                <Row modifiers={[paddingAll(0)]}>
-                  {action.icon ? (
-                    <ActionButtonContent action={action} />
-                  ) : null}
-                  {action.label ? <Text>{action.label}</Text> : null}
-                </Row>
-              </IconButton>
-            );
-          })}
-        </Row>
-      </FilledTonalButton>
+      <Row modifiers={[paddingAll(0)]}>
+        {actions.map((action) => {
+          const itemModifiers = action.icon
+            ? [size(40, 40)]
+            : [width(72), height(40)];
+          return (
+            <FilledTonalIconButton
+              key={action.accessibilityLabel ?? action.label}
+              onClick={action.onPress}
+              shape={Shape.Pill({})}
+              colors={{
+                containerColor: colors.surface,
+                contentColor: colors.ink,
+              }}
+              modifiers={itemModifiers}
+            >
+              <Row modifiers={[paddingAll(0)]}>
+                {action.icon ? <ActionButtonContent action={action} /> : null}
+                {action.label ? <Text>{action.label}</Text> : null}
+              </Row>
+            </FilledTonalIconButton>
+          );
+        })}
+      </Row>
     </Host>
   );
 };

@@ -5,13 +5,24 @@ export interface ActionIcon {
   sf: SFSymbol;
 }
 
-export interface Action {
-  accessibilityLabel?: string;
-  icon?: ActionIcon;
+interface ActionBase {
   iconSize?: number;
-  label?: string;
   onPress: () => void;
 }
+
+export interface IconAction extends ActionBase {
+  accessibilityLabel: string;
+  icon: ActionIcon;
+  label?: string;
+}
+
+export interface TextAction extends ActionBase {
+  accessibilityLabel?: string;
+  icon?: never;
+  label: string;
+}
+
+export type Action = IconAction | TextAction;
 
 export interface ActionButtonProps {
   actions: Action[];

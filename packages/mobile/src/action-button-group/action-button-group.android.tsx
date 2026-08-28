@@ -9,49 +9,24 @@ const ActionButtonGroup = ({
   variant = "capsule",
   actions,
 }: ActionButtonGroupProps) => {
-  if (variant === "circularPair") {
-    return (
-      <Host matchContents>
-        <Row>
-          {actions.map((action, idx) => (
-            <FilledTonalIconButton
-              key={action.accessibilityLabel ?? action.label ?? idx}
-              onClick={action.onPress}
-              shape={Shape.Circle({})}
-              colors={{
-                containerColor: colors.surface,
-                contentColor: colors.ink,
-              }}
-              modifiers={[size(40, 40)]}
-            >
-              {action.icon ? (
-                <ActionButtonContent action={action} />
-              ) : null}
-            </FilledTonalIconButton>
-          ))}
-        </Row>
-      </Host>
-    );
-  }
+  const shape =
+    variant === "circularPair" ? Shape.Circle({}) : Shape.Pill({});
 
-  // capsule: actions in one button
   return (
     <Host matchContents>
       <Row>
-        {actions.map((action, idx) => (
+        {actions.map((action) => (
           <FilledTonalIconButton
-            key={action.accessibilityLabel ?? action.label ?? idx}
+            key={action.accessibilityLabel ?? action.label}
             onClick={action.onPress}
-            shape={Shape.Pill({})}
+            shape={shape}
             colors={{
               containerColor: colors.surface,
               contentColor: colors.ink,
             }}
             modifiers={[size(40, 40)]}
           >
-            {action.icon ? (
-              <ActionButtonContent action={action} />
-            ) : null}
+            <ActionButtonContent action={action} />
           </FilledTonalIconButton>
         ))}
       </Row>
