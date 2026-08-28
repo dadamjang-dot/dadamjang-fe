@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -18,7 +18,7 @@ import {
 } from "@/features/shop";
 import { useWishActions, useWishlist } from "@/features/wish";
 import { ProductLayout } from "@/shared/components";
-import { uniqueBy } from "@/shared/lib";
+import { fetchUntilRowsGrow, uniqueBy } from "@/shared/lib";
 import type { IconAction } from "@dadamjang/mobile";
 
 const ShopScreen = () => {
@@ -33,6 +33,7 @@ const ShopScreen = () => {
   );
   const productFilter = useMemo(() => toProductFilter(filters), [filters]);
   const productsQuery = useProductPriceSummaries(productFilter);
+  const isLoadingMore = useRef(false);
   const products = useMemo(
     () =>
       uniqueBy(
@@ -95,6 +96,27 @@ const ShopScreen = () => {
     });
   };
 
+  const handleLoadMore = async () => {
+    if (
+      isLoadingMore.current ||
+      productsQuery.isFetchingNextPage ||
+      !productsQuery.hasNextPage
+    )
+      return;
+
+    isLoadingMore.current = true;
+    try {
+      await fetchUntilRowsGrow(
+        productsQuery.data,
+        productsQuery.fetchNextPage,
+        (product) => product.productId,
+        2,
+      );
+    } finally {
+      isLoadingMore.current = false;
+    }
+  };
+
   return (
     <ProductLayout headerActions={headerActions} variant="capsule">
       <View style={s.content}>
@@ -125,7 +147,7 @@ const ShopScreen = () => {
           isFetchingNextPage={productsQuery.isFetchingNextPage}
           isLoading={productsQuery.isLoading}
           likedProductIds={likedProductIds}
-          onLoadMore={() => productsQuery.fetchNextPage()}
+          onLoadMore={handleLoadMore}
           onProductPress={(productId) => router.push(`/product/${productId}`)}
           onRetry={() => productsQuery.refetch()}
           onToggleLike={handleToggleLike}

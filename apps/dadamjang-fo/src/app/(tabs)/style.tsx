@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import type { IconAction } from "@dadamjang/mobile";
 
@@ -17,7 +17,7 @@ import {
 } from "@/features/style";
 import type { StylePostSort } from "@/features/style";
 import { ProductLayout } from "@/shared/components";
-import { uniqueBy } from "@/shared/lib";
+import { fetchUntilRowsGrow, uniqueBy } from "@/shared/lib";
 
 const StyleScreen = () => {
   const router = useRouter();
@@ -29,6 +29,7 @@ const StyleScreen = () => {
   const isRanking = selectedCategory === "RANKING";
   const feedFilter = getStyleFeedFilter(selectedCategory, selectedSort);
   const postsQuery = useStylePosts(feedFilter.category, feedFilter.sort);
+  const isLoadingMore = useRef(false);
   const likeMutation = useToggleStylePostLike();
   const posts = useMemo(
     () =>
@@ -49,6 +50,27 @@ const StyleScreen = () => {
 
   const handleCreatePress = () => {
     if (requireSignIn("/style-compose")) router.push("/style-compose");
+  };
+
+  const handleLoadMore = async () => {
+    if (
+      isLoadingMore.current ||
+      postsQuery.isFetchingNextPage ||
+      !postsQuery.hasNextPage
+    )
+      return;
+
+    isLoadingMore.current = true;
+    try {
+      await fetchUntilRowsGrow(
+        postsQuery.data,
+        postsQuery.fetchNextPage,
+        (post) => post.stylePostId,
+        2,
+      );
+    } finally {
+      isLoadingMore.current = false;
+    }
   };
 
   const headerActions: IconAction[] = [
@@ -77,7 +99,7 @@ const StyleScreen = () => {
         isError={postsQuery.isError}
         isFetchingNextPage={postsQuery.isFetchingNextPage}
         isLoading={postsQuery.isLoading}
-        onLoadMore={() => postsQuery.fetchNextPage()}
+        onLoadMore={handleLoadMore}
         onPostPress={(stylePostId) => router.push(`/style/${stylePostId}`)}
         onRetry={() => postsQuery.refetch()}
         onToggleLike={(stylePostId, nextLiked) => {

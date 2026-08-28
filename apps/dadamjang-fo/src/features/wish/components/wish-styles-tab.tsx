@@ -1,6 +1,6 @@
 import { LegendList } from "@legendapp/list/react-native";
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -16,6 +16,7 @@ const WishStylesTab = () => {
   const router = useRouter();
   const likedPosts = useLikedStylePosts();
   const likeMutation = useToggleStylePostLike();
+  const isLoadingMore = useRef(false);
   const posts = useMemo(
     () =>
       uniqueBy(
@@ -24,13 +25,22 @@ const WishStylesTab = () => {
       ),
     [likedPosts.data?.pages],
   );
-  const rows = useMemo(
-    () =>
-      Array.from({ length: Math.ceil(posts.length / 2) }, (_, index) =>
-        posts.slice(index * 2, index * 2 + 2),
-      ),
-    [posts],
-  );
+
+  const handleLoadMore = async () => {
+    if (
+      isLoadingMore.current ||
+      likedPosts.isFetchingNextPage ||
+      !likedPosts.hasNextPage
+    )
+      return;
+
+    isLoadingMore.current = true;
+    try {
+      await likedPosts.fetchNextPage();
+    } finally {
+      isLoadingMore.current = false;
+    }
+  };
 
   if (likedPosts.isLoading) {
     return <WishState isLoading title="위시한 스타일을 불러오는 중이에요." />;
@@ -58,17 +68,19 @@ const WishStylesTab = () => {
   return (
     <LegendList
       accessibilityLabel="위시한 스타일 목록"
+      columnWrapperStyle={s.columns}
       contentContainerStyle={s.content}
       contentInsetAdjustmentBehavior="automatic"
-      data={rows}
-      keyExtractor={(row) => row.map((post) => post.stylePostId).join("-")}
+      data={posts}
+      keyExtractor={(post) => post.stylePostId}
       ListFooterComponent={
         likedPosts.hasNextPage || likedPosts.isFetchingNextPage ? (
           <View style={s.footer}>
             {likedPosts.hasNextPage ? (
               <Button
+                disabled={likedPosts.isFetchingNextPage}
                 label="더 보기"
-                onPress={() => likedPosts.fetchNextPage()}
+                onPress={handleLoadMore}
                 style={s.moreButton}
                 variant="secondary"
               />
@@ -79,26 +91,23 @@ const WishStylesTab = () => {
           </View>
         ) : null
       }
+      numColumns={2}
       recycleItems
-      renderItem={({ item: row, index: rowIndex }) => (
-        <View style={[s.row, rowIndex < rows.length - 1 && s.rowGap]}>
-          {row.map((post) => (
-            <View key={post.stylePostId} style={s.card}>
-              <StylePostCard
-                author={post.author.userid}
-                content={post.content}
-                hashtags={post.hashtags}
-                imageUrl={post.thumbnailUrl}
-                isLiked={post.isLiked}
-                likeCount={post.likeCount}
-                onPress={(stylePostId) => router.push(`/style/${stylePostId}`)}
-                onToggleLike={(stylePostId, nextLiked) =>
-                  likeMutation.mutate({ stylePostId, nextLiked })
-                }
-                stylePostId={post.stylePostId}
-              />
-            </View>
-          ))}
+      renderItem={({ item: post }) => (
+        <View style={s.card}>
+          <StylePostCard
+            author={post.author.userid}
+            content={post.content}
+            hashtags={post.hashtags}
+            imageUrl={post.thumbnailUrl}
+            isLiked={post.isLiked}
+            likeCount={post.likeCount}
+            onPress={(stylePostId) => router.push(`/style/${stylePostId}`)}
+            onToggleLike={(stylePostId, nextLiked) =>
+              likeMutation.mutate({ stylePostId, nextLiked })
+            }
+            stylePostId={post.stylePostId}
+          />
         </View>
       )}
       showsVerticalScrollIndicator={false}
@@ -110,9 +119,8 @@ const WishStylesTab = () => {
 const s = StyleSheet.create({
   list: { flex: 1 },
   content: { padding: 16, paddingBottom: 32 },
-  row: { flexDirection: "row", gap: 16 },
-  rowGap: { marginBottom: 16 },
-  card: { width: "47.5%", minWidth: 0 },
+  columns: { columnGap: 16, rowGap: 16 },
+  card: { width: "100%", minWidth: 0 },
   footer: { gap: 20, paddingTop: 20 },
   moreButton: { minHeight: 44, borderRadius: 22 },
   loading: { paddingVertical: 8 },
