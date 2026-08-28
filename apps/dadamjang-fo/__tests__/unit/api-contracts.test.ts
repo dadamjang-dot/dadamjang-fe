@@ -174,4 +174,77 @@ describe("feature API contracts", () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(mockRequests).toHaveLength(0);
   });
+
+  it.each([
+    ["unknown", null],
+    ["underreported", 1],
+  ])(
+    "rejects an oversized style image with %s metadata before presigning",
+    async (_, fileSize) => {
+      const oversizedBlob = { size: 10 * 1024 * 1024 + 1 } as Blob;
+      const fetchMock = jest.fn(async () => ({
+        ok: true,
+        blob: async () => oversizedBlob,
+      }));
+      global.fetch = fetchMock as unknown as typeof fetch;
+      mockResponses.push({
+        createStylePostImageUpload: {
+          imageUrl: "https://cdn.example.com/style.jpg",
+          key: "style-posts/user-1/style.jpg",
+          uploadUrl: "https://upload.example.com/style.jpg",
+        },
+      });
+
+      await expect(
+        uploadStylePostImage(
+          {
+            uri: "file:///oversized.jpg",
+            fileName: "oversized.jpg",
+            fileSize,
+            mimeType: "image/jpeg",
+          },
+          0,
+        ),
+      ).rejects.toThrow("10 MiB");
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(mockRequests).toHaveLength(0);
+    },
+  );
+
+  it("presigns an accepted style image with its actual blob size", async () => {
+    const file = { size: 2048 } as Blob;
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, blob: async () => file })
+      .mockResolvedValueOnce({ ok: true });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    mockResponses.push({
+      createStylePostImageUpload: {
+        imageUrl: "https://cdn.example.com/style.jpg",
+        key: "style-posts/user-1/style.jpg",
+        uploadUrl: "https://upload.example.com/style.jpg",
+      },
+    });
+
+    await expect(
+      uploadStylePostImage(
+        {
+          uri: "file:///style.jpg",
+          fileName: "style.jpg",
+          fileSize: 1,
+          mimeType: "image/jpeg",
+        },
+        0,
+      ),
+    ).resolves.toBe("style-posts/user-1/style.jpg");
+
+    expect(mockRequests[0]?.variables).toEqual({
+      input: {
+        contentType: "image/jpeg",
+        fileSize: 2048,
+        filename: "style.jpg",
+      },
+    });
+  });
 });

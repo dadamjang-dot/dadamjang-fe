@@ -102,11 +102,12 @@ export const uploadStylePostImage = async (asset: StylePostImageAsset, index: nu
   const fileResponse = await fetch(asset.uri);
   if (!fileResponse.ok) throw new Error("이미지 파일을 불러오지 못했어요.");
   const file = await fileResponse.blob();
+  if (file.size > maxStylePostImageSize) throw new Error(oversizedStylePostImageMessage);
   const data = await graphqlRequest<{ createStylePostImageUpload: ImageUploadTarget }>(
     `mutation CreateStylePostImageUpload($input: CreateStylePostImageUploadInput!) {
       createStylePostImageUpload(input: $input) { key uploadUrl imageUrl }
     }`,
-    { input: { filename, contentType, fileSize: asset.fileSize ?? file.size } },
+    { input: { filename, contentType, fileSize: file.size } },
   );
   const response = await fetch(data.createStylePostImageUpload.uploadUrl, {
     method: "PUT",
