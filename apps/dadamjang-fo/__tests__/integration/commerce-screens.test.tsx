@@ -4,13 +4,15 @@ import type { ReactNode } from "react";
 
 import { getCurrentUser } from "@/features/auth/api";
 import { getCart, checkoutCart } from "@/features/cart/api";
+import { getOrder } from "@/features/order/api";
 import CartScreen from "@/app/cart";
 import WishScreen from "@/app/(tabs)/wish";
+import OrderDetailScreen from "@/app/order/[order-id]";
 import { getWishlist } from "@/features/wish/api";
 import type { Action } from "@dadamjang/mobile";
 
 const mockNavigation: { path?: string } = {};
-const mockSearchParams: { forcePaymentFailure?: string } = {};
+const mockSearchParams: { "order-id"?: string; forcePaymentFailure?: string } = {};
 
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockSearchParams,
@@ -68,6 +70,11 @@ jest.mock("@/features/cart/api", () => ({
   getCart: jest.fn(),
   removeCartItem: jest.fn(),
   upsertCartItem: jest.fn(),
+}));
+
+jest.mock("@/features/order/api", () => ({
+  getOrder: jest.fn(),
+  getOrders: jest.fn(),
 }));
 
 jest.mock("@/features/wish/api", () => ({
@@ -139,6 +146,7 @@ const wishlist = [
 describe("cart and wish screens", () => {
   beforeEach(() => {
     mockNavigation.path = undefined;
+    delete mockSearchParams["order-id"];
     delete mockSearchParams.forcePaymentFailure;
     jest.mocked(getCurrentUser).mockResolvedValue({
       userId: "user-1",
@@ -154,7 +162,7 @@ describe("cart and wish screens", () => {
     delete mockNavigation.path;
   });
 
-  it("opens an order route after a successful cart checkout", async () => {
+  it("opens a payment-pending order route after checkout", async () => {
     jest.mocked(checkoutCart).mockResolvedValue({
       orderId: "order-1",
       orderNumber: "20260812-1",
@@ -167,6 +175,46 @@ describe("cart and wish screens", () => {
     await fireEvent.press(await screen.findByTestId("e2e.checkout.submit"));
 
     await waitFor(() => expect(mockNavigation.path).toBe("/order/order-1"));
+  });
+
+  it("shows payment-pending checkout separately from verified success", async () => {
+    mockSearchParams["order-id"] = "order-1";
+    jest.mocked(getOrder).mockResolvedValue({
+      orderId: "order-1",
+      orderNumber: "20260812-1",
+      status: "PAYMENT_PENDING",
+      paymentStatus: "PENDING",
+      paymentFailureReason: null,
+      totalAmount: 8_000,
+      items: [],
+      createdAt: "2026-08-12T00:00:00.000Z",
+    });
+
+    render(<OrderDetailScreen />, { wrapper: createWrapper() });
+
+    expect(await screen.findByTestId("e2e.checkout.pending")).toBeVisible();
+    expect(screen.getByText("결제 승인을 기다리고 있어요.")).toBeVisible();
+    expect(screen.queryByTestId("e2e.checkout.success")).toBeNull();
+  });
+
+  it("reserves checkout success for an approved payment", async () => {
+    mockSearchParams["order-id"] = "order-1";
+    jest.mocked(getOrder).mockResolvedValue({
+      orderId: "order-1",
+      orderNumber: "20260812-1",
+      status: "PAID",
+      paymentStatus: "APPROVED",
+      paymentFailureReason: null,
+      totalAmount: 8_000,
+      items: [],
+      createdAt: "2026-08-12T00:00:00.000Z",
+    });
+
+    render(<OrderDetailScreen />, { wrapper: createWrapper() });
+
+    expect(await screen.findByTestId("e2e.checkout.success")).toBeVisible();
+    expect(screen.getByText("결제가 완료됐어요.")).toBeVisible();
+    expect(screen.queryByTestId("e2e.checkout.pending")).toBeNull();
   });
 
   it("does not forward checkout test controls from deep links", async () => {

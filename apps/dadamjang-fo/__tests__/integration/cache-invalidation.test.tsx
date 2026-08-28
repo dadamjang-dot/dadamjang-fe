@@ -44,7 +44,7 @@ describe("mutation cache invalidation", () => {
     jest.mocked(checkoutCart).mockResolvedValueOnce({
       orderId: "order-1",
       orderNumber: "20260812-1",
-      paymentStatus: "PAID",
+      paymentStatus: "APPROVED",
       status: "PAID",
       totalAmount: 10_000,
     });

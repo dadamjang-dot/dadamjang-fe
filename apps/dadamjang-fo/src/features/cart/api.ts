@@ -1,6 +1,6 @@
 import { graphqlRequest } from "@dadamjang/graphql-client";
 
-import type { Cart, CheckoutCartInput } from "./types";
+import type { Cart, CheckoutCartInput, CheckoutCartResult } from "./types";
 
 export const getCart = async () => {
   const data = await graphqlRequest<{ cart: Cart }>(
@@ -36,15 +36,7 @@ export const removeCartItem = async (skuId: string) =>
   );
 
 export const checkoutCart = async (input: CheckoutCartInput) => {
-  const data = await graphqlRequest<{
-    checkoutCart: {
-      orderId: string;
-      orderNumber: string;
-      status: string;
-      paymentStatus: string;
-      totalAmount: number;
-    };
-  }>(
+  const data = await graphqlRequest<{ checkoutCart: CheckoutCartResult }>(
     `mutation CheckoutCart($input: CheckoutCartInput!) {
       checkoutCart(input: $input) {
         orderId

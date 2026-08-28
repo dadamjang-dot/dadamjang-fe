@@ -33,7 +33,7 @@ name: iOS authenticated commerce journey
 - tapOn:
     id: e2e.checkout.submit
 - assertVisible:
-    id: e2e.checkout.success
+    id: e2e.checkout.pending
 - openLink: dadamjang://orders
 - assertVisible:
     id: e2e.order.history

@@ -1,10 +1,11 @@
 import { graphqlRequest } from "@dadamjang/graphql-client";
+import type { OrderStatus, PaymentStatus } from "@dadamjang/domain";
 
 export type Order = {
   orderId: string;
   orderNumber: string;
-  status: string;
-  paymentStatus: string;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
   totalAmount: number;
   paymentFailureReason?: string | null;
   items: {

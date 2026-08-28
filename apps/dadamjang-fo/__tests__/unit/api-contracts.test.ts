@@ -93,7 +93,13 @@ describe("feature API contracts", () => {
   });
 
   it("maps cart, wish, checkout, and order identifiers to API inputs", async () => {
-    const checkout = { orderId: "order-1" };
+    const checkout = {
+      orderId: "order-1",
+      orderNumber: "DJ-1",
+      status: "PAYMENT_PENDING" as const,
+      paymentStatus: "PENDING" as const,
+      totalAmount: 8_000,
+    };
     const order = { orderId: "order-1" };
     mockResponses.push({}, {}, { checkoutCart: checkout }, { order });
 
