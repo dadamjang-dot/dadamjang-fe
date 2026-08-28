@@ -36,6 +36,7 @@ type ImageItem = {
   progress: number;
 };
 type Sku = ProductInput["skus"][number] & { identity: string };
+type SkuPatch = Partial<Omit<Sku, "identity">>;
 let nextSkuIdentity = 0;
 const emptySku = (): Sku => ({
   identity: `new-sku-${nextSkuIdentity++}`,
@@ -295,6 +296,15 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       setDirty(true);
       return value.filter((_, currentIndex) => currentIndex !== index);
     });
+  const updateSku = (identity: string, patch: SkuPatch) =>
+    setSkus((value) => {
+      const index = value.findIndex((sku) => sku.identity === identity);
+      const current = value[index];
+      if (!current) return value;
+      const next = [...value];
+      next[index] = { ...current, ...patch };
+      return next;
+    });
   const mutation = useMutation({
     mutationFn: async ({ submit }: { submit: boolean }) => {
       if (images.some((image) => image.progress < 100))
@@ -521,36 +531,27 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   aria-label={`SKU ${i + 1} 코드`}
                   placeholder="코드"
                   value={s.code}
-                  onChange={(e) =>
-                    setSkus((v) =>
-                      v.map((x, n) =>
-                        n === i ? { ...x, code: e.target.value } : x,
-                      ),
-                    )
-                  }
+                  onChange={(event) => {
+                    const code = event.currentTarget.value;
+                    updateSku(s.identity, { code });
+                  }}
                 />
                 <input
                   aria-label={`SKU ${i + 1} 옵션명`}
                   placeholder="옵션명"
                   value={s.optionName}
-                  onChange={(e) =>
-                    setSkus((v) =>
-                      v.map((x, n) =>
-                        n === i ? { ...x, optionName: e.target.value } : x,
-                      ),
-                    )
-                  }
+                  onChange={(event) => {
+                    const optionName = event.currentTarget.value;
+                    updateSku(s.identity, { optionName });
+                  }}
                 />
                 <select
                   aria-label={`SKU ${i + 1} 색상`}
                   value={s.colorId}
-                  onChange={(e) =>
-                    setSkus((v) =>
-                      v.map((x, n) =>
-                        n === i ? { ...x, colorId: e.target.value } : x,
-                      ),
-                    )
-                  }
+                  onChange={(event) => {
+                    const colorId = event.currentTarget.value;
+                    updateSku(s.identity, { colorId });
+                  }}
                 >
                   <option value="">색상</option>
                   {options.data?.catalogFilterOptions?.colors?.map((x) => (
@@ -562,13 +563,10 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                 <select
                   aria-label={`SKU ${i + 1} 사이즈`}
                   value={s.sizeId}
-                  onChange={(e) =>
-                    setSkus((v) =>
-                      v.map((x, n) =>
-                        n === i ? { ...x, sizeId: e.target.value } : x,
-                      ),
-                    )
-                  }
+                  onChange={(event) => {
+                    const sizeId = event.currentTarget.value;
+                    updateSku(s.identity, { sizeId });
+                  }}
                 >
                   <option value="">사이즈</option>
                   {options.data?.catalogFilterOptions?.sizes?.map((x) => (
@@ -583,13 +581,10 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   min="0"
                   step="1"
                   value={s.price}
-                  onChange={(e) =>
-                    setSkus((v) =>
-                      v.map((x, n) =>
-                        n === i ? { ...x, price: Number(e.target.value) } : x,
-                      ),
-                    )
-                  }
+                  onChange={(event) => {
+                    const price = Number(event.currentTarget.value);
+                    updateSku(s.identity, { price });
+                  }}
                 />
                 <input
                   aria-label={`SKU ${i + 1} 재고`}
@@ -597,13 +592,10 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   min="0"
                   step="1"
                   value={s.stock}
-                  onChange={(e) =>
-                    setSkus((v) =>
-                      v.map((x, n) =>
-                        n === i ? { ...x, stock: Number(e.target.value) } : x,
-                      ),
-                    )
-                  }
+                  onChange={(event) => {
+                    const stock = Number(event.currentTarget.value);
+                    updateSku(s.identity, { stock });
+                  }}
                 />
                 <ActionButton
                   aria-label={`SKU ${i + 1} 위로 이동`}

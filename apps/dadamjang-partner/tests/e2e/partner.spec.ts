@@ -701,6 +701,87 @@ test("repeated stale SKU delete and move keep sibling order", async ({
   await expect(page.getByLabel("SKU 2 코드")).toHaveValue("C");
 });
 
+test("stale SKU field events after deletion do not mutate the successor", async ({
+  page,
+}) => {
+  await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => ({
+        myPartnerProduct: productWithReorderableItems(),
+      }),
+    }),
+  );
+  await page.goto("/products/product-1/edit");
+  await page
+    .locator(".sku")
+    .nth(1)
+    .evaluate((row) => {
+      const code = row.querySelector<HTMLInputElement>(
+        'input[aria-label="SKU 2 코드"]',
+      );
+      const optionName = row.querySelector<HTMLInputElement>(
+        'input[aria-label="SKU 2 옵션명"]',
+      );
+      const color = row.querySelector<HTMLSelectElement>(
+        'select[aria-label="SKU 2 색상"]',
+      );
+      const size = row.querySelector<HTMLSelectElement>(
+        'select[aria-label="SKU 2 사이즈"]',
+      );
+      const price = row.querySelector<HTMLInputElement>(
+        'input[aria-label="SKU 2 가격"]',
+      );
+      const stock = row.querySelector<HTMLInputElement>(
+        'input[aria-label="SKU 2 재고"]',
+      );
+      const remove = Array.from(row.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "행 삭제",
+      );
+      if (
+        !code ||
+        !optionName ||
+        !color ||
+        !size ||
+        !price ||
+        !stock ||
+        !remove
+      )
+        throw new Error("Expected SKU row fields and removal control");
+      const dispatchValue = (
+        element: HTMLInputElement | HTMLSelectElement,
+        value: string,
+        eventType: "input" | "change",
+      ) => {
+        const prototype =
+          element instanceof HTMLSelectElement
+            ? HTMLSelectElement.prototype
+            : HTMLInputElement.prototype;
+        const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+        if (!setter) throw new Error("Expected a native value setter");
+        setter.call(element, value);
+        element.dispatchEvent(new Event(eventType, { bubbles: true }));
+      };
+
+      remove.click();
+      dispatchValue(code, "STALE-B", "input");
+      dispatchValue(optionName, "오래된 B", "input");
+      dispatchValue(color, "", "change");
+      dispatchValue(size, "", "change");
+      dispatchValue(price, "9000", "input");
+      dispatchValue(stock, "99", "input");
+    });
+
+  await expect(page.locator(".sku")).toHaveCount(2);
+  await expect(page.getByLabel("SKU 2 코드")).toHaveValue("C");
+  await expect(page.getByLabel("SKU 2 옵션명")).toHaveValue("파랑 S");
+  await expect(page.getByLabel("SKU 2 색상")).toHaveValue("black");
+  await expect(page.getByLabel("SKU 2 사이즈")).toHaveValue("m");
+  await expect(page.getByLabel("SKU 2 가격")).toHaveValue("1000");
+  await expect(page.getByLabel("SKU 2 재고")).toHaveValue("2");
+});
+
 test("repeated stale SKU move only moves the captured SKU", async ({
   page,
 }) => {
