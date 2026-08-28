@@ -9,6 +9,7 @@ import {
   useFollowedBrands,
   useRecordRecentProductView,
 } from "@/features/wish";
+import { layoutLegendList } from "../helpers/layout-legend-list";
 
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ "product-id": "product-1" }),
@@ -23,6 +24,8 @@ jest.mock("@/features/wish", () => ({
   useFollowedBrands: jest.fn(),
   useRecordRecentProductView: jest.fn(),
 }));
+
+const mockUpsert = jest.fn();
 
 const product = {
   productId: "product-1",
@@ -59,6 +62,11 @@ const product = {
   createdAt: "2026-08-12T00:00:00.000Z",
 };
 
+const renderProduct = () => {
+  render(<ProductScreen />);
+  layoutLegendList("상품 옵션 목록");
+};
+
 describe("product quantity controls", () => {
   beforeEach(() => {
     jest.mocked(useProduct).mockReturnValue({
@@ -67,7 +75,7 @@ describe("product quantity controls", () => {
       isLoading: false,
     } as never);
     jest.mocked(useCartActions).mockReturnValue({
-      upsert: { mutate: jest.fn() },
+      upsert: { mutate: mockUpsert },
     } as never);
     jest.mocked(useCurrentUser).mockReturnValue({ data: undefined } as never);
     jest.mocked(useFollowedBrands).mockReturnValue({ data: [] } as never);
@@ -82,26 +90,79 @@ describe("product quantity controls", () => {
 
   it("exposes disabled boundaries and never exceeds selected stock", async () => {
     const user = userEvent.setup();
-    render(<ProductScreen />);
+    renderProduct();
 
     expect(screen.getByRole("button", { name: "수량 줄이기" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "수량 늘리기" })).toBeEnabled();
 
     await user.press(screen.getByRole("button", { name: "수량 늘리기" }));
 
-    expect(screen.getByTestId("e2e.cart.quantity.value")).toHaveTextContent("2");
+    expect(screen.getByTestId("e2e.cart.quantity.value")).toHaveTextContent(
+      "2",
+    );
     expect(screen.getByRole("button", { name: "수량 늘리기" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "수량 줄이기" })).toBeEnabled();
   });
 
   it("resets quantity when selecting an option with lower stock", async () => {
     const user = userEvent.setup();
-    render(<ProductScreen />);
+    renderProduct();
 
     await user.press(screen.getByRole("button", { name: "수량 늘리기" }));
     await user.press(screen.getByRole("radio", { name: "화이트 / S" }));
 
-    expect(screen.getByTestId("e2e.cart.quantity.value")).toHaveTextContent("1");
+    expect(screen.getByTestId("e2e.cart.quantity.value")).toHaveTextContent(
+      "1",
+    );
     expect(screen.getByRole("button", { name: "수량 늘리기" })).toBeDisabled();
+  });
+
+  it("clamps quantity when refreshed inventory decreases", async () => {
+    const user = userEvent.setup();
+    renderProduct();
+    await user.press(screen.getByRole("button", { name: "수량 늘리기" }));
+    expect(screen.getByTestId("e2e.cart.quantity.value")).toHaveTextContent(
+      "2",
+    );
+
+    jest.mocked(useProduct).mockReturnValue({
+      data: {
+        ...product,
+        skus: product.skus.map((sku) =>
+          sku.skuId === "sku-1" ? { ...sku, stock: 1 } : sku,
+        ),
+      },
+      isError: false,
+      isLoading: false,
+    } as never);
+    screen.rerender(<ProductScreen />);
+
+    expect(screen.getByTestId("e2e.cart.quantity.value")).toHaveTextContent(
+      "1",
+    );
+    expect(screen.getByRole("button", { name: "수량 늘리기" })).toBeDisabled();
+  });
+
+  it("announces and disables an out-of-stock option", async () => {
+    jest.mocked(useProduct).mockReturnValue({
+      data: {
+        ...product,
+        skus: product.skus.map((sku) =>
+          sku.skuId === "sku-1" ? { ...sku, stock: 0 } : sku,
+        ),
+      },
+      isError: false,
+      isLoading: false,
+    } as never);
+    const user = userEvent.setup();
+    renderProduct();
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "선택한 옵션은 품절이에요.",
+    );
+    const addButton = screen.getByRole("button", { name: "품절" });
+    expect(addButton).toBeDisabled();
+    await user.press(addButton);
+    expect(mockUpsert).not.toHaveBeenCalled();
   });
 });
