@@ -47,10 +47,7 @@ const formattingViolations = async (files) => {
   for (const file of files.sort()) {
     const source = await readFile(file, "utf8");
     if (!(await check(source, { filepath: file })))
-      violations.push({
-        path: relative(workspace, file),
-        source,
-      });
+      violations.push(relative(workspace, file));
   }
   return violations;
 };
@@ -75,13 +72,9 @@ const [ownedViolations, foViolations] = await Promise.all([
 const failures = [];
 
 if (ownedViolations.length > 0)
-  failures.push(
-    `Formatting violations:\n${ownedViolations.map(({ path }) => path).join("\n")}`,
-  );
+  failures.push(`Formatting violations:\n${ownedViolations.join("\n")}`);
 if (foViolations.length > 0)
-  failures.push(
-    `Formatting violations:\n${foViolations.map(({ path }) => path).join("\n")}`,
-  );
+  failures.push(`Formatting violations:\n${foViolations.join("\n")}`);
 if (failures.length > 0) throw new Error(failures.join("\n"));
 
 console.log("Formatting verified; 0 violations");
