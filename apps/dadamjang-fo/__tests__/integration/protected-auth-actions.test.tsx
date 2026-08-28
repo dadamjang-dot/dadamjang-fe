@@ -1,12 +1,20 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import {
+  fireEvent,
+  render,
+  screen,
+  userEvent,
+  waitFor,
+} from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
 import ShopScreen from "@/app/(tabs)/shop";
+import StyleScreen from "@/app/(tabs)/style";
 import CartScreen from "@/app/cart";
 import CompareScreen from "@/app/compare";
 import OrdersScreen from "@/app/orders";
 import ProductScreen from "@/app/product/[product-id]";
+import StylePostScreen from "@/app/style/[style-id]";
 import { AuthSessionStateProvider } from "@/features/auth/auth-session-state";
 import { getCurrentUser } from "@/features/auth/api";
 import { getCart, upsertCartItem } from "@/features/cart/api";
@@ -15,6 +23,12 @@ import { ShopFiltersProvider } from "@/features/catalog/shop-filters";
 import { getComparison } from "@/features/comparison/api";
 import { getOrders } from "@/features/order/api";
 import { getComparisonPriceSummaries } from "@/features/price-evidence/api";
+import {
+  getStylePost,
+  getStylePosts,
+  likeStylePost,
+} from "@/features/style/api";
+import type { StylePost } from "@/features/style/types";
 import { addWish, followBrand, getFollowedBrands, getWishlist } from "@/features/wish/api";
 
 const mockPush = jest.fn();
@@ -22,7 +36,10 @@ const mockReplace = jest.fn();
 let mockPathname = "/";
 
 jest.mock("expo-router", () => ({
-  useLocalSearchParams: () => ({ "product-id": "product-1" }),
+  useLocalSearchParams: () => ({
+    "product-id": "product-1",
+    "style-id": "style-1",
+  }),
   usePathname: () => mockPathname,
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }));
@@ -62,6 +79,16 @@ jest.mock("@/features/price-evidence/api", () => ({
   getProductPriceSummaries: jest.fn(),
 }));
 
+jest.mock("@/features/style/api", () => ({
+  createStylePost: jest.fn(),
+  getLikedStylePosts: jest.fn(),
+  getPurchasedStyleProducts: jest.fn(),
+  getStylePost: jest.fn(),
+  getStylePosts: jest.fn(),
+  likeStylePost: jest.fn(),
+  unlikeStylePost: jest.fn(),
+}));
+
 jest.mock("@/features/wish/api", () => ({
   addWish: jest.fn(),
   followBrand: jest.fn(),
@@ -92,6 +119,43 @@ jest.mock("@/features/shop", () => {
   };
 });
 
+jest.mock("@/features/style/components", () => {
+  const React = jest.requireActual<typeof import("react")>("react");
+  const { Pressable, Text, View } =
+    jest.requireActual<typeof import("react-native")>("react-native");
+  return {
+    StyleCategoryBar: () => null,
+    StylePostDetail: ({
+      onToggleLike,
+    }: {
+      onToggleLike: (nextLiked: boolean) => void;
+    }) =>
+      React.createElement(Pressable, {
+        accessibilityLabel: "스타일 상세 좋아요",
+        accessibilityRole: "button",
+        onPress: () => onToggleLike(true),
+      }),
+    StylePostGrid: ({
+      isLoading,
+      onToggleLike,
+    }: {
+      isLoading: boolean;
+      onToggleLike: (stylePostId: string, nextLiked: boolean) => void;
+    }) =>
+      React.createElement(
+        View,
+        null,
+        isLoading ? null : React.createElement(Text, null, "스타일 피드 준비"),
+        React.createElement(Pressable, {
+          accessibilityLabel: "스타일 피드 좋아요",
+          accessibilityRole: "button",
+          onPress: () => onToggleLike("style-1", true),
+        }),
+      ),
+    StyleSortBar: () => null,
+  };
+});
+
 jest.mock("@/shared/components", () => {
   const React = jest.requireActual<typeof import("react")>("react");
   const { Pressable, Text, View } =
@@ -103,8 +167,29 @@ jest.mock("@/shared/components", () => {
         { accessibilityLabel: label, accessibilityRole: "button", onPress },
         React.createElement(Text, null, label),
       ),
-    ProductLayout: ({ children }: { children: ReactNode }) =>
-      React.createElement(View, null, children),
+    ProductLayout: ({
+      children,
+      headerActions = [],
+    }: {
+      children: ReactNode;
+      headerActions?: readonly {
+        accessibilityLabel: string;
+        onPress: () => void;
+      }[];
+    }) =>
+      React.createElement(
+        View,
+        null,
+        ...headerActions.map((action) =>
+          React.createElement(Pressable, {
+            accessibilityLabel: action.accessibilityLabel,
+            accessibilityRole: "button",
+            key: action.accessibilityLabel,
+            onPress: action.onPress,
+          }),
+        ),
+        children,
+      ),
   };
 });
 
@@ -165,6 +250,25 @@ const product = {
   createdAt: "2026-08-29T00:00:00.000Z",
 };
 
+const stylePost: StylePost = {
+  stylePostId: "style-1",
+  authorId: "user-1",
+  author: { userId: "user-1", userid: "buyer" },
+  title: "스타일 게시물",
+  content: "오늘의 스타일",
+  category: "CLOTHING",
+  imageUrls: ["https://example.com/style.jpg"],
+  thumbnailUrl: "https://example.com/style.jpg",
+  hashtags: [],
+  brandTags: [],
+  products: [],
+  isPartner: false,
+  likeCount: 2,
+  isLiked: false,
+  createdAt: "2026-08-29T00:00:00.000Z",
+  updatedAt: "2026-08-29T00:00:00.000Z",
+};
+
 const createWrapper = (hasSession = false) => {
   const client = new QueryClient({
     defaultOptions: {
@@ -193,6 +297,12 @@ describe("protected FO routes and actions", () => {
     jest.mocked(getProduct).mockResolvedValue(product);
     jest.mocked(getComparison).mockResolvedValue([]);
     jest.mocked(getComparisonPriceSummaries).mockResolvedValue([]);
+    jest.mocked(getStylePost).mockResolvedValue(stylePost);
+    jest.mocked(getStylePosts).mockResolvedValue({
+      hasNextPage: false,
+      nextCursor: null,
+      nodes: [stylePost],
+    });
     jest.mocked(getFollowedBrands).mockResolvedValue([]);
     jest.mocked(getWishlist).mockResolvedValue([]);
   });
@@ -244,6 +354,50 @@ describe("protected FO routes and actions", () => {
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/auth/signin",
       params: { returnTo: "/shop" },
+    });
+  });
+
+  it("gates Style feed actions with their exact return targets", async () => {
+    mockPathname = "/style";
+    const user = userEvent.setup();
+    render(<StyleScreen />, { wrapper: createWrapper() });
+
+    expect(await screen.findByText("스타일 피드 준비")).toBeVisible();
+    await user.press(screen.getByRole("button", { name: "스타일 작성" }));
+    await user.press(
+      screen.getByRole("button", { name: "스타일 피드 좋아요" }),
+    );
+
+    expect(likeStylePost).not.toHaveBeenCalled();
+    expect(mockPush.mock.calls).toEqual([
+      [
+        {
+          pathname: "/auth/signin",
+          params: { returnTo: "/style-compose" },
+        },
+      ],
+      [
+        {
+          pathname: "/auth/signin",
+          params: { returnTo: "/style/style-1" },
+        },
+      ],
+    ]);
+  });
+
+  it("gates Style detail likes on the exact detail return target", async () => {
+    mockPathname = "/style/style-1";
+    const user = userEvent.setup();
+    render(<StylePostScreen />, { wrapper: createWrapper() });
+
+    await user.press(
+      await screen.findByRole("button", { name: "스타일 상세 좋아요" }),
+    );
+
+    expect(likeStylePost).not.toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/auth/signin",
+      params: { returnTo: "/style/style-1" },
     });
   });
 

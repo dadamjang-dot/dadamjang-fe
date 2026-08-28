@@ -4,7 +4,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { IconAction } from "@dadamjang/mobile";
 
-import { useCurrentUser } from "@/features/auth";
+import { useAuthActionGate } from "@/features/auth";
 import {
   StyleCategoryBar,
   StylePostGrid,
@@ -23,7 +23,7 @@ import { fetchUntilRowsGrow, uniqueBy } from "@/shared/lib";
 
 const StyleScreen = () => {
   const router = useRouter();
-  const currentUser = useCurrentUser();
+  const authGate = useAuthActionGate("/style-compose");
   const [selectedCategory, setSelectedCategory] =
     useState<StyleCategoryKey>("ALL");
   const [selectedSort, setSelectedSort] =
@@ -50,16 +50,8 @@ const StyleScreen = () => {
     currentStyleQueryIdentity.current = styleQueryIdentity;
   }, [styleQueryIdentity]);
 
-  const requireSignIn = (returnTo: string) => {
-    if (currentUser.authStatus === "unauthenticated") {
-      router.push({ pathname: "/auth", params: { returnTo } });
-      return false;
-    }
-    return currentUser.authStatus === "authenticated";
-  };
-
   const handleCreatePress = () => {
-    if (requireSignIn("/style-compose")) router.push("/style-compose");
+    authGate.runProtectedAction(() => router.push("/style-compose"));
   };
 
   const handleLoadMore = async () => {
@@ -116,8 +108,10 @@ const StyleScreen = () => {
         onPostPress={(stylePostId) => router.push(`/style/${stylePostId}`)}
         onRetry={() => postsQuery.refetch()}
         onToggleLike={(stylePostId, nextLiked) => {
-          if (requireSignIn(`/style/${stylePostId}`))
-            likeMutation.mutate({ stylePostId, nextLiked });
+          authGate.runProtectedAction(
+            () => likeMutation.mutate({ stylePostId, nextLiked }),
+            `/style/${stylePostId}`,
+          );
         }}
         posts={posts}
         showRank={isRanking}

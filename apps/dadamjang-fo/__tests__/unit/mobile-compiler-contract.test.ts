@@ -26,4 +26,13 @@ describe("mobile compiler and styling contract", () => {
       /import\s*\{[^}]*\bStyleSheet\b[^}]*\}\s*from\s*"react-native"/s,
     );
   });
+
+  it.each([
+    "shared/components/product-layout/layout-animation.ios.ts",
+    "shared/components/product-header/header-animation.ios.ts",
+  ])("does not animate layout properties in %s", (relativePath) => {
+    expect(source(relativePath)).not.toMatch(
+      /\b(?:bottom|flex|height|left|margin|padding|right|top|width)\s*:/,
+    );
+  });
 });

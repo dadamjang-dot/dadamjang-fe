@@ -87,10 +87,14 @@ export const useAuthActionGate = (returnTo: string) => {
   const currentUser = useCurrentUser();
   const sanitizedReturnTo = resolveAuthReturnTo(returnTo);
   const redirectToSignIn = useCallback(
-    (replace = false) => {
+    (replace = false, returnToOverride?: string) => {
       const href = {
         pathname: "/auth/signin" as const,
-        params: { returnTo: sanitizedReturnTo },
+        params: {
+          returnTo: resolveAuthReturnTo(
+            returnToOverride ?? sanitizedReturnTo,
+          ),
+        },
       };
       if (replace) router.replace(href);
       else router.push(href);
@@ -98,9 +102,9 @@ export const useAuthActionGate = (returnTo: string) => {
     [router, sanitizedReturnTo],
   );
   const runProtectedAction = useCallback(
-    (action: () => void) => {
+    (action: () => void, returnToOverride?: string) => {
       if (currentUser.authStatus === "unauthenticated") {
-        redirectToSignIn();
+        redirectToSignIn(false, returnToOverride);
         return false;
       }
       if (currentUser.authStatus !== "authenticated") return false;

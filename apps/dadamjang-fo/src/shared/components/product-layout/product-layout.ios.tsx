@@ -96,8 +96,13 @@ const ProductLayout = (props: ProductLayoutProps) => {
 
   const buttonGroup = (
     <View style={s.buttonRow}>
-      {renderActionButtonGroup(groupAnim)}
-      <Animated.View style={cancelAnim}>
+      <View pointerEvents={isSearching ? "none" : "auto"}>
+        {renderActionButtonGroup(groupAnim)}
+      </View>
+      <Animated.View
+        pointerEvents={isSearching ? "auto" : "none"}
+        style={[s.cancelLayer, cancelAnim]}
+      >
         <LiquidGlassView
           effect="clear"
           interactive
@@ -144,11 +149,15 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   buttonRow: {
     height: 40,
+    position: "relative",
     flexDirection: "row",
-    gap: 8,
     alignItems: "center",
     justifyContent: "flex-end",
     flexShrink: 0,
+  },
+  cancelLayer: {
+    position: "absolute",
+    right: 0,
   },
   measureOuter: {
     position: "absolute",

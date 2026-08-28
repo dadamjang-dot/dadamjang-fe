@@ -124,4 +124,66 @@ describe("style post like rollback", () => {
       client.clear();
     });
   });
+
+  it("coordinates one post across separate hook instances", async () => {
+    const client = createClient();
+    const firstToggle = createDeferred<StylePost>();
+    const secondToggle = createDeferred<StylePost>();
+    client.setQueryData(styleQueryKeys.post(post.stylePostId), post);
+    jest
+      .mocked(likeStylePost)
+      .mockReturnValueOnce(firstToggle.promise)
+      .mockReturnValueOnce(secondToggle.promise);
+    const { result, unmount } = renderHook(
+      () => ({
+        detail: useToggleStylePostLike(),
+        feed: useToggleStylePostLike(),
+      }),
+      { wrapper: createWrapper(client) },
+    );
+    let firstRequest!: Promise<StylePost>;
+    let secondRequest!: Promise<StylePost>;
+
+    act(() => {
+      firstRequest = result.current.feed.mutateAsync({
+        stylePostId: post.stylePostId,
+        nextLiked: true,
+      });
+    });
+    await waitFor(() => expect(likeStylePost).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      secondRequest = result.current.detail.mutateAsync({
+        stylePostId: post.stylePostId,
+        nextLiked: true,
+      });
+    });
+    await waitFor(() =>
+      expect(
+        client.getQueryData<StylePost>(styleQueryKeys.post(post.stylePostId))
+          ?.isLiked,
+      ).toBe(true),
+    );
+    const callsBeforeFirstSettled = jest.mocked(likeStylePost).mock.calls.length;
+
+    await act(async () => {
+      firstToggle.reject(new Error("older like failed"));
+      await expect(firstRequest).rejects.toThrow("older like failed");
+    });
+    await waitFor(() => expect(likeStylePost).toHaveBeenCalledTimes(2));
+    const isLikedAfterOlderFailure = client.getQueryData<StylePost>(
+      styleQueryKeys.post(post.stylePostId),
+    )?.isLiked;
+    secondToggle.resolve({ ...post, isLiked: true, likeCount: 3 });
+    await act(async () => {
+      await secondRequest;
+    });
+
+    expect(callsBeforeFirstSettled).toBe(1);
+    expect(isLikedAfterOlderFailure).toBe(true);
+    act(() => {
+      unmount();
+      client.clear();
+    });
+  });
 });

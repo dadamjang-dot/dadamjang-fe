@@ -31,7 +31,6 @@ export const useCircularPairAnimation = (
         },
       ],
       opacity: interpolate(progress.get(), [0, phaseEnd], [1, 0], Extrapolation.CLAMP),
-      display: progress.get() >= phaseEnd ? "none" : "flex",
     };
   });
 
@@ -47,7 +46,6 @@ export const useCircularPairAnimation = (
       },
     ],
     opacity: interpolate(progress.get(), [0, phaseEnd], [1, 0], Extrapolation.CLAMP),
-    display: progress.get() >= phaseEnd ? "none" : "flex",
   }));
 
   const cancelBtnStyle = useAnimatedStyle(() => ({
@@ -62,7 +60,6 @@ export const useCircularPairAnimation = (
         ),
       },
     ],
-    display: progress.get() <= phaseEnd ? "none" : "flex",
   }));
 
   const groupAnim: [ActionButtonGroupAnimation, ActionButtonGroupAnimation?] = [
@@ -82,21 +79,24 @@ export const useCapsuleAnimation = (
     if (childrenWidth.get() === 0 || cancelWidth.get() === 0) {
       return {
         opacity: interpolate(progress.get(), [0, phaseEnd], [1, 0], Extrapolation.CLAMP),
-        display: progress.get() >= phaseEnd ? "none" : "flex",
       };
     }
 
+    const collapsedScale = cancelWidth.get() / childrenWidth.get();
     return {
-      width: interpolate(
-        progress.get(),
-        [0, phaseEnd],
-        [childrenWidth.get(), cancelWidth.get()],
-        Extrapolation.CLAMP,
-      ),
       opacity: interpolate(progress.get(), [0, phaseEnd], [1, 0], Extrapolation.CLAMP),
+      transformOrigin: "right center",
       transform: [
         {
-          scale: interpolate(
+          scaleX: interpolate(
+            progress.get(),
+            [0, phaseEnd],
+            [1, collapsedScale],
+            Extrapolation.CLAMP,
+          ),
+        },
+        {
+          scaleY: interpolate(
             progress.get(),
             [0, phaseEnd],
             [1, 0.85],
@@ -104,7 +104,6 @@ export const useCapsuleAnimation = (
           ),
         },
       ],
-      display: progress.get() >= phaseEnd ? "none" : "flex",
     };
   });
 
@@ -124,7 +123,6 @@ export const useCapsuleAnimation = (
         ),
       },
     ],
-    display: progress.get() <= phaseEnd ? "none" : "flex",
   }));
 
   const groupAnim: [ActionButtonGroupAnimation, ActionButtonGroupAnimation?] = [

@@ -4,8 +4,8 @@ import {
   useQuery,
   useQueryClient,
   type InfiniteData,
+  type QueryClient,
 } from "@tanstack/react-query";
-import { useRef } from "react";
 
 import {
   createStylePost,
@@ -125,10 +125,49 @@ const updateFeedData = (
       }
     : data;
 
+interface StyleLikeCoordinator {
+  activeCount: number;
+  pending?: Promise<void>;
+  revision: number;
+}
+
+const styleLikeCoordinatorsByClient = new WeakMap<
+  QueryClient,
+  Map<string, StyleLikeCoordinator>
+>();
+
+const getStyleLikeCoordinator = (
+  queryClient: QueryClient,
+  stylePostId: string,
+) => {
+  let coordinatorsByPost = styleLikeCoordinatorsByClient.get(queryClient);
+  if (!coordinatorsByPost) {
+    coordinatorsByPost = new Map();
+    styleLikeCoordinatorsByClient.set(queryClient, coordinatorsByPost);
+  }
+  let coordinator = coordinatorsByPost.get(stylePostId);
+  if (!coordinator) {
+    coordinator = { activeCount: 0, revision: 0 };
+    coordinatorsByPost.set(stylePostId, coordinator);
+  }
+  return coordinator;
+};
+
+const releaseStyleLikeCoordinator = (
+  queryClient: QueryClient,
+  stylePostId: string,
+  coordinator: StyleLikeCoordinator,
+) => {
+  if (coordinator.activeCount > 0 || coordinator.pending) return;
+  const coordinatorsByPost = styleLikeCoordinatorsByClient.get(queryClient);
+  if (coordinatorsByPost?.get(stylePostId) !== coordinator) return;
+  coordinatorsByPost.delete(stylePostId);
+  if (coordinatorsByPost.size === 0)
+    styleLikeCoordinatorsByClient.delete(queryClient);
+};
+
 export const useToggleStylePostLike = () => {
   const queryClient = useQueryClient();
-  const pendingByPost = useRef(new Map<string, Promise<void>>());
-  const revisionByPost = useRef(new Map<string, number>());
   return useMutation({
     mutationFn: async ({
       stylePostId,
@@ -137,7 +176,8 @@ export const useToggleStylePostLike = () => {
       stylePostId: string;
       nextLiked: boolean;
     }) => {
-      const previous = pendingByPost.current.get(stylePostId);
+      const coordinator = getStyleLikeCoordinator(queryClient, stylePostId);
+      const previous = coordinator.pending;
       const request = (previous ?? Promise.resolve())
         .catch(() => undefined)
         .then(() =>
@@ -149,18 +189,20 @@ export const useToggleStylePostLike = () => {
         () => undefined,
         () => undefined,
       );
-      pendingByPost.current.set(stylePostId, settled);
+      coordinator.pending = settled;
 
       try {
         return await request;
       } finally {
-        if (pendingByPost.current.get(stylePostId) === settled)
-          pendingByPost.current.delete(stylePostId);
+        if (coordinator.pending === settled) coordinator.pending = undefined;
+        releaseStyleLikeCoordinator(queryClient, stylePostId, coordinator);
       }
     },
     onMutate: async ({ stylePostId, nextLiked }) => {
-      const revision = (revisionByPost.current.get(stylePostId) ?? 0) + 1;
-      revisionByPost.current.set(stylePostId, revision);
+      const coordinator = getStyleLikeCoordinator(queryClient, stylePostId);
+      coordinator.activeCount += 1;
+      coordinator.revision += 1;
+      const { revision } = coordinator;
       await queryClient.cancelQueries({ queryKey: styleQueryKeys.postsRoot() });
       await queryClient.cancelQueries({ queryKey: ["style-post"] });
       const previousFeeds = queryClient.getQueriesData<
@@ -180,13 +222,10 @@ export const useToggleStylePostLike = () => {
         (post) =>
           post ? updateStylePostLike(post, stylePostId, nextLiked) : post,
       );
-      return { previousFeeds, previousPost, revision };
+      return { coordinator, previousFeeds, previousPost, revision };
     },
     onError: (_error, variables, context) => {
-      if (
-        context?.revision !== revisionByPost.current.get(variables.stylePostId)
-      )
-        return;
+      if (!context || context.revision !== context.coordinator.revision) return;
       context?.previousFeeds.forEach(([queryKey, data]) =>
         queryClient.setQueryData(queryKey, data),
       );
@@ -197,10 +236,17 @@ export const useToggleStylePostLike = () => {
         );
     },
     onSettled: (_data, _error, variables, context) => {
-      if (
-        context?.revision === revisionByPost.current.get(variables.stylePostId)
-      )
-        revisionByPost.current.delete(variables.stylePostId);
+      const isLatest =
+        !context || context.revision === context.coordinator.revision;
+      if (context) {
+        context.coordinator.activeCount -= 1;
+        releaseStyleLikeCoordinator(
+          queryClient,
+          variables.stylePostId,
+          context.coordinator,
+        );
+      }
+      if (!isLatest) return;
       queryClient.invalidateQueries({ queryKey: styleQueryKeys.postsRoot() });
       queryClient.invalidateQueries({ queryKey: ["style-post"] });
     },

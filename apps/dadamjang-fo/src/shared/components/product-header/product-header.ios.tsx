@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   View,
   type LayoutChangeEvent,
@@ -40,6 +46,7 @@ const ProductHeader = ({
   progress: customProgress,
 }: ProductHeaderProps) => {
   const inputRef = useRef<TextInput>(null);
+  const [measuredChildrenWidth, setMeasuredChildrenWidth] = useState(0);
 
   const containerWidth = useSharedValue(0);
   const childrenWidth = useSharedValue(0);
@@ -70,6 +77,7 @@ const ProductHeader = ({
     (e: LayoutChangeEvent) => {
       if (childrenWidth.get() === 0 && e.nativeEvent.layout.width > 0) {
         childrenWidth.set(e.nativeEvent.layout.width);
+        setMeasuredChildrenWidth(e.nativeEvent.layout.width);
       }
     },
     [childrenWidth],
@@ -93,7 +101,7 @@ const ProductHeader = ({
     );
   }, [isSearching, progress]);
 
-  const { btnWrapperStyle, searchInputStyle } = useHeaderAnimation(
+  const { searchInputStyle } = useHeaderAnimation(
     progress,
     containerWidth,
     childrenWidth,
@@ -104,15 +112,17 @@ const ProductHeader = ({
   return (
     <View style={s.container} onLayout={handleContainerLayout}>
       <Animated.View style={[s.searchInputWrapper, searchInputStyle]}>
-        <SearchInput
-          ref={inputRef}
-          value={searchValue}
-          placeholder="Search"
-          onValueChange={onSearchValueChange}
-          onFocus={onSearchFocus}
-        />
+        <View style={s.searchInputSurface}>
+          <SearchInput
+            ref={inputRef}
+            value={searchValue}
+            placeholder="Search"
+            onValueChange={onSearchValueChange}
+            onFocus={onSearchFocus}
+          />
+        </View>
       </Animated.View>
-      <Animated.View style={[s.btnWrapper, btnWrapperStyle]}>
+      <View style={s.btnWrapper(measuredChildrenWidth)}>
         <View style={s.measureLayer} onLayout={handleChildrenLayout}>
           {children}
         </View>
@@ -120,7 +130,7 @@ const ProductHeader = ({
           <ActionButton actions={[{ label: "취소", onPress: handleCancel }]} />
         </View>
         {children}
-      </Animated.View>
+      </View>
     </View>
   );
 };
@@ -136,16 +146,23 @@ const s = StyleSheet.create({
     zIndex: 1,
   },
   searchInputWrapper: {
+    flex: 1,
     minWidth: 0,
     height: 40,
+    alignItems: "flex-start",
   },
-  btnWrapper: {
+  searchInputSurface: {
+    width: "100%",
+    height: 40,
+  },
+  btnWrapper: (width: number) => ({
+    width: width > 0 ? width : undefined,
     height: 40,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
     flexShrink: 0,
-  },
+  }),
   measureLayer: {
     position: "absolute",
     top: -9999,

@@ -4,7 +4,7 @@ import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 
-import { useCurrentUser } from "@/features/auth";
+import { useAuthActionGate } from "@/features/auth";
 import { StylePostDetail } from "@/features/style/components";
 import { useStylePost, useToggleStylePostLike } from "@/features/style";
 import { Button } from "@/shared/components";
@@ -12,7 +12,7 @@ import { Button } from "@/shared/components";
 const StylePostScreen = () => {
   const router = useRouter();
   const { "style-id": styleId } = useLocalSearchParams<{ "style-id": string }>();
-  const currentUser = useCurrentUser();
+  const authGate = useAuthActionGate(`/style/${styleId}`);
   const postQuery = useStylePost(styleId);
   const likeMutation = useToggleStylePostLike();
 
@@ -29,12 +29,9 @@ const StylePostScreen = () => {
       onBack={() => router.back()}
       onProductPress={(productId) => router.push(`/product/${productId}`)}
       onToggleLike={(nextLiked) => {
-        if (currentUser.authStatus === "unauthenticated") {
-          router.push({ pathname: "/auth/signin", params: { returnTo: `/style/${styleId}` } });
-          return;
-        }
-        if (currentUser.authStatus !== "authenticated") return;
-        likeMutation.mutate({ stylePostId: styleId, nextLiked });
+        authGate.runProtectedAction(() =>
+          likeMutation.mutate({ stylePostId: styleId, nextLiked }),
+        );
       }}
       post={postQuery.data}
     />

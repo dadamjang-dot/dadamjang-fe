@@ -5,20 +5,21 @@ import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 
-import { useCurrentUser } from "@/features/auth";
+import { useAuthActionGate } from "@/features/auth";
 import { StyleComposer } from "@/features/style/components";
 
 const StyleComposeScreen = () => {
   const router = useRouter();
-  const currentUser = useCurrentUser();
+  const { authStatus, data, redirectToSignIn } =
+    useAuthActionGate("/style-compose");
 
   useEffect(() => {
-    if (currentUser.authStatus === "unauthenticated") {
-      router.replace({ pathname: "/auth/signin", params: { returnTo: "/style-compose" } });
+    if (authStatus === "unauthenticated") {
+      redirectToSignIn(true);
     }
-  }, [currentUser.authStatus, router]);
+  }, [authStatus, redirectToSignIn]);
 
-  if (currentUser.authStatus !== "authenticated" || !currentUser.data)
+  if (authStatus !== "authenticated" || !data)
     return <View style={s.loading}><ActivityIndicator color={colors.primary} /></View>;
   return <StyleComposer onClose={() => router.back()} />;
 };
