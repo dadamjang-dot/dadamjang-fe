@@ -37,7 +37,7 @@ const StylePostCard = ({
       style={({ pressed }) => [s.imageLink, pressed && s.pressed]}
     >
       <View style={s.imageWrap}>
-        {imageUrl ? <Image contentFit="cover" source={imageUrl} style={s.image} transition={120} /> : <View style={s.imagePlaceholder} />}
+        {imageUrl ? <Image contentFit="cover" recyclingKey={stylePostId} source={imageUrl} style={s.image} transition={120} /> : <View style={s.imagePlaceholder} />}
         {rank ? <Text style={s.rank}>{rank}</Text> : null}
       </View>
     </Pressable>

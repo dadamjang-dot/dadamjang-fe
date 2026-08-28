@@ -1,4 +1,5 @@
 import { act, type ReactElement } from "react";
+import { Image } from "expo-image";
 import { Text } from "react-native";
 import { create, type ReactTestRenderer } from "react-test-renderer";
 
@@ -66,6 +67,15 @@ describe("ProductCard", () => {
         "바로배송",
       ]),
     );
+  });
+
+  it("keys its product image to the stable product identity", () => {
+    const renderer = render(<ProductCard {...product} />);
+    const productImage = renderer.root
+      .findAllByType(Image)
+      .find((node) => node.props.source?.uri === product.imageUrl);
+
+    expect(productImage?.props.recyclingKey).toBe("product-1");
   });
 
   it("keeps product and like actions independent", () => {
