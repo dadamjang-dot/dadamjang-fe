@@ -56,15 +56,15 @@ const ProductHeader = ({
 
   const handleContainerLayout = useCallback(
     (e: LayoutChangeEvent) => {
-      containerWidth.value = e.nativeEvent.layout.width;
+      containerWidth.set(e.nativeEvent.layout.width);
     },
     [containerWidth],
   );
 
   const handleChildrenLayout = useCallback(
     (e: LayoutChangeEvent) => {
-      if (childrenWidth.value === 0 && e.nativeEvent.layout.width > 0) {
-        childrenWidth.value = e.nativeEvent.layout.width;
+      if (childrenWidth.get() === 0 && e.nativeEvent.layout.width > 0) {
+        childrenWidth.set(e.nativeEvent.layout.width);
       }
     },
     [childrenWidth],
@@ -72,8 +72,8 @@ const ProductHeader = ({
 
   const handleCancelLayout = useCallback(
     (e: LayoutChangeEvent) => {
-      if (cancelWidth.value === 0 && e.nativeEvent.layout.width > 0) {
-        cancelWidth.value = e.nativeEvent.layout.width;
+      if (cancelWidth.get() === 0 && e.nativeEvent.layout.width > 0) {
+        cancelWidth.set(e.nativeEvent.layout.width);
       }
     },
     [cancelWidth],

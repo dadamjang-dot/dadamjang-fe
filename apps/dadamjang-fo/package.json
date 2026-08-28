@@ -15,7 +15,7 @@
     "build:preview": "eas build --profile preview",
     "build:production": "eas build --profile production",
     "prebuild": "expo prebuild",
-    "lint": "eslint . --rule react-hooks/set-state-in-effect:off --rule react-hooks/immutability:off",
+    "lint": "eslint .",
     "format": "eslint . --fix && prettier --write .",
     "typecheck": "tsc --noEmit",
     "verify:config": "expo config --type public",

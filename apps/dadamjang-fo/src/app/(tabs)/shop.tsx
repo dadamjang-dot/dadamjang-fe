@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { startTransition, useMemo, useOptimistic } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -27,19 +27,24 @@ const ShopScreen = () => {
   const { data: currentUser } = useCurrentUser();
   const { data: wishlist = [] } = useWishlist(Boolean(currentUser));
   const { add: addWish, remove: removeWish } = useWishActions();
-  const [likedProductIds, setLikedProductIds] = useState<Set<string>>(
-    () => new Set(),
+  const likedProductIds = useMemo(
+    () => new Set(wishlist.map((item) => item.productId)),
+    [wishlist],
+  );
+  const [optimisticLikedProductIds, updateOptimisticLike] = useOptimistic(
+    likedProductIds,
+    (current, { productId, liked }: { productId: string; liked: boolean }) => {
+      const next = new Set(current);
+      if (liked) next.add(productId);
+      else next.delete(productId);
+      return next;
+    },
   );
   const productFilter = useMemo(() => toProductFilter(filters), [filters]);
   const productsQuery = useProductPriceSummaries(productFilter);
-  const products = productsQuery.data?.pages.flatMap((page) => page.nodes) ?? [];
+  const products =
+    productsQuery.data?.pages.flatMap((page) => page.nodes) ?? [];
   const totalCount = productsQuery.data?.pages[0]?.totalCount ?? 0;
-
-  useEffect(() => {
-    if (currentUser) {
-      setLikedProductIds(new Set(wishlist.map((item) => item.productId)));
-    }
-  }, [currentUser, wishlist]);
 
   const openFilter = (
     mode: "category" | "brand" | "color" | "size" | "price",
@@ -57,25 +62,13 @@ const ShopScreen = () => {
   ];
 
   const handleToggleLike = (productId: string, nextLiked: boolean) => {
-    const previousLiked = likedProductIds.has(productId);
-    setLikedProductIds((current) => {
-      const next = new Set(current);
-      if (nextLiked) next.add(productId);
-      else next.delete(productId);
-      return next;
-    });
-
     if (!currentUser) return;
-
     const mutation = nextLiked ? addWish : removeWish;
-    mutation.mutate(productId, {
-      onError: () =>
-        setLikedProductIds((current) => {
-          const rollback = new Set(current);
-          if (previousLiked) rollback.add(productId);
-          else rollback.delete(productId);
-          return rollback;
-        }),
+    startTransition(async () => {
+      updateOptimisticLike({ productId, liked: nextLiked });
+      try {
+        await mutation.mutateAsync(productId);
+      } catch {}
     });
   };
 
@@ -108,7 +101,7 @@ const ShopScreen = () => {
           isError={productsQuery.isError}
           isFetchingNextPage={productsQuery.isFetchingNextPage}
           isLoading={productsQuery.isLoading}
-          likedProductIds={likedProductIds}
+          likedProductIds={optimisticLikedProductIds}
           onLoadMore={() => productsQuery.fetchNextPage()}
           onProductPress={(productId) => router.push(`/product/${productId}`)}
           onRetry={() => productsQuery.refetch()}

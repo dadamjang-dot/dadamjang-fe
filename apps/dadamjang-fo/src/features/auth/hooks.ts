@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { clearAccessToken } from "@dadamjang/graphql-client";
+import { resetAuthSession } from "@dadamjang/graphql-client";
 
 import {
   completeKakaoSignupFo,
@@ -74,9 +74,5 @@ export const useResetPassword = () =>
   });
 
 export const useSignOut = () => {
-  const queryClient = useQueryClient();
-  return async () => {
-    await clearAccessToken();
-    queryClient.removeQueries({ queryKey: authQueryKeys.viewer });
-  };
+  return resetAuthSession;
 };

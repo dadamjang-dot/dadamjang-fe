@@ -38,8 +38,8 @@ const ProductLayout = ({
 
   const handleChildrenLayout = useCallback(
     (event: LayoutChangeEvent) => {
-      if (childrenWidth.value === 0 && event.nativeEvent.layout.width > 0) {
-        childrenWidth.value = event.nativeEvent.layout.width;
+      if (childrenWidth.get() === 0 && event.nativeEvent.layout.width > 0) {
+        childrenWidth.set(event.nativeEvent.layout.width);
       }
     },
     [childrenWidth],
@@ -47,8 +47,8 @@ const ProductLayout = ({
 
   const handleCancelLayout = useCallback(
     (event: LayoutChangeEvent) => {
-      if (cancelWidth.value === 0 && event.nativeEvent.layout.width > 0) {
-        cancelWidth.value = event.nativeEvent.layout.width;
+      if (cancelWidth.get() === 0 && event.nativeEvent.layout.width > 0) {
+        cancelWidth.set(event.nativeEvent.layout.width);
       }
     },
     [cancelWidth],
@@ -66,11 +66,7 @@ const ProductLayout = ({
     childrenWidth,
     cancelWidth,
   );
-  const capsuleAnim = useCapsuleAnimation(
-    progress,
-    childrenWidth,
-    cancelWidth,
-  );
+  const capsuleAnim = useCapsuleAnimation(progress, childrenWidth, cancelWidth);
 
   const { groupAnim, cancelAnim } =
     variant === "circularPair" ? circularPairAnim : capsuleAnim;

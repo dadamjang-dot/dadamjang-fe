@@ -26,13 +26,11 @@ const ProductScreen = () => {
   );
   const brandActions = useBrandFollowActions();
   const { mutate: recordRecentProductView } = useRecordRecentProductView();
-  const [skuId, setSkuId] = useState("");
+  const [selectedSkuId, setSelectedSkuId] = useState<string>();
   const [quantity, setQuantity] = useState(1);
-
-  useEffect(() => {
-    const firstSku = product.data?.skus[0];
-    if (firstSku) setSkuId(firstSku.skuId);
-  }, [product.data]);
+  const skuId = product.data?.skus.some(({ skuId }) => skuId === selectedSkuId)
+    ? selectedSkuId
+    : product.data?.skus[0]?.skuId ?? "";
 
   useEffect(() => {
     const viewedProductId = product.data?.productId;
@@ -93,7 +91,7 @@ const ProductScreen = () => {
           accessibilityRole="radio"
           accessibilityState={{ selected: sku.skuId === skuId }}
           key={sku.skuId}
-          onPress={() => setSkuId(sku.skuId)}
+          onPress={() => setSelectedSkuId(sku.skuId)}
           style={[s.option, sku.skuId === skuId && s.selectedOption]}
           testID={`e2e.product.sku.${sku.skuId}`}
         >

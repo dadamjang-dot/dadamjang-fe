@@ -368,9 +368,6 @@ importers:
         specifier: ^3.3.0
         version: 3.3.0(3d4a4491a549e9e8d02b95842a37eb66)
     devDependencies:
-      '@react-native/jest-preset':
-        specifier: ^0.86.3
-        version: 0.86.3(@babel/core@7.29.7(supports-color@8.1.1))(react@19.2.3)(supports-color@8.1.1)
       '@types/react':
         specifier: ~19.2.17
         version: 19.2.17
