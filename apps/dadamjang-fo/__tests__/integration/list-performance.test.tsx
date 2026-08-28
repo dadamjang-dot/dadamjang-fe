@@ -45,6 +45,12 @@ const mockReachLegendListEnd = (accessibilityLabel: string) => {
   reachEnd();
 };
 
+const requiredAt = <T,>(values: readonly T[], index: number) => {
+  const value = values[index];
+  if (value === undefined) throw new Error(`Missing item at index ${index}`);
+  return value;
+};
+
 jest.mock("expo-router", () => ({
   useRouter: () => ({
     push: (path: string) => {
@@ -458,7 +464,9 @@ describe("virtualized list data flow", () => {
     render(<StyleScreen />, { wrapper: createWrapper(client) });
 
     expect(await screen.findAllByText("#first")).toHaveLength(1);
-    await fireEvent.press(screen.getAllByLabelText("스타일 게시물 이미지")[1]);
+    await fireEvent.press(
+      requiredAt(screen.getAllByLabelText("스타일 게시물 이미지"), 1),
+    );
     expect(navigation.path).toBe("/style/style-2");
   });
 
@@ -624,7 +632,9 @@ describe("virtualized list data flow", () => {
     await fireEvent.press(screen.getByText("더 보기"));
     await screen.findByText("#second");
     expect(screen.getAllByText("#first")).toHaveLength(1);
-    await fireEvent.press(screen.getAllByLabelText("스타일 게시물 이미지")[1]);
+    await fireEvent.press(
+      requiredAt(screen.getAllByLabelText("스타일 게시물 이미지"), 1),
+    );
     expect(navigation.path).toBe("/style/style-2");
     await waitFor(() => expect(screen.queryByText("더 보기")).toBeNull());
   });
@@ -681,7 +691,9 @@ describe("virtualized list data flow", () => {
         numColumns: 2,
       },
     ]);
-    await fireEvent.press(screen.getAllByLabelText("스타일 게시물 이미지")[0]);
+    await fireEvent.press(
+      requiredAt(screen.getAllByLabelText("스타일 게시물 이미지"), 0),
+    );
     expect(navigation.path).toBe("/style/style-2");
   });
 
