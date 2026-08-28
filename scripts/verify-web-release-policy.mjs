@@ -147,6 +147,10 @@ check(
 
 const rootPackage = JSON.parse(await read("package.json"));
 const boPackage = JSON.parse(await read("apps/dadamjang-bo/package.json"));
+const foPackage = JSON.parse(await read("apps/dadamjang-fo/package.json"));
+const graphqlClientPackage = JSON.parse(
+  await read("packages/graphql-client/package.json"),
+);
 const partnerPackage = JSON.parse(
   await read("apps/dadamjang-partner/package.json"),
 );
@@ -167,6 +171,31 @@ for (const path of nativeProductionFiles) {
 check(
   rootPackage.scripts?.["format:check"] !== undefined,
   "package.json: root format:check is missing",
+);
+check(
+  rootPackage.scripts?.["measure:fo-problems"] === undefined,
+  "package.json: dead FO measurement command remains",
+);
+check(
+  graphqlClientPackage.peerDependencies?.graphql !== undefined,
+  "GraphQL client: graphql peer contract is missing",
+);
+check(
+  foPackage.dependencies?.graphql !== undefined &&
+    foPackage.devDependencies?.graphql === undefined,
+  "FO: graphql must be a runtime dependency",
+);
+check(
+  foPackage.dependencies?.["@expo/ui"] === undefined,
+  "FO: redundant @expo/ui dependency remains",
+);
+check(
+  foPackage.dependencies?.["expo-symbols"] === undefined,
+  "FO: redundant expo-symbols dependency remains",
+);
+check(
+  boPackage.devDependencies?.prettier === undefined,
+  "BO: unused prettier remains",
 );
 check(
   boPackage.devDependencies?.["@testing-library/react"] === undefined,
