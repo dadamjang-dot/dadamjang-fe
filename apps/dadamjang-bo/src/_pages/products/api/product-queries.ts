@@ -50,6 +50,15 @@ const FILTER_OPTIONS_QUERY = `
   }
 `;
 
+const FILTER_PARTNERS_QUERY = `
+  query AdminProductFilterPartners($filter: AdminPartnerFilterInput) {
+    adminPartners(filter: $filter) {
+      nodes { partnerId ownerUserId ownerUserid ownerEmail businessEmail businessRegistrationNumber tradeName status rejectionReason reviewedAt createdAt }
+      nextCursor hasNextPage totalCount
+    }
+  }
+`;
+
 export const productQueries = {
   all: () => ["admin-products"] as const,
   lists: () => [...productQueries.all(), "list"] as const,
@@ -89,9 +98,22 @@ export const productQueries = {
           adminCategories: AdminCategory[];
           adminPartners: Connection<AdminPartner>;
         }>(FILTER_OPTIONS_QUERY);
+        const partners = [...data.adminPartners.nodes];
+        let page = data.adminPartners;
+        while (page.hasNextPage && page.nextCursor) {
+          page = (
+            await requestGraphQl<
+              { adminPartners: Connection<AdminPartner> },
+              { filter: { after: string; first: number } }
+            >(FILTER_PARTNERS_QUERY, {
+              filter: { after: page.nextCursor, first: 100 },
+            })
+          ).adminPartners;
+          partners.push(...page.nodes);
+        }
         return {
           categories: data.adminCategories,
-          partners: data.adminPartners.nodes,
+          partners,
         };
       },
     }),
