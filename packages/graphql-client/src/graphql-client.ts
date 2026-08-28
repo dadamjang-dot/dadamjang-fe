@@ -48,9 +48,15 @@ type SessionSnapshot = StoredAuthTokens & {
   generation: number;
 };
 
+type CredentialLease = Readonly<{
+  accessToken: string;
+  credentialRevision: number;
+}>;
+
 type RefreshFlight = {
+  credentialRevision: number;
   generation: number;
-  promise: Promise<string | null>;
+  promise: Promise<CredentialLease | null>;
 };
 
 export type AuthenticatedGraphqlClient = {
@@ -124,9 +130,26 @@ const createAuthenticatedGraphqlClientInternal = (
     credentialRevision += 1;
   };
 
-  const beginSessionReset = (expectedGeneration?: number) => {
+  const captureCredentialLease = (): CredentialLease | null => {
+    if (!sessionTokens?.accessToken || !sessionTokens.refreshToken) return null;
+    return {
+      accessToken: sessionTokens.accessToken,
+      credentialRevision,
+    };
+  };
+
+  const beginSessionReset = (
+    expectedGeneration?: number,
+    expectedCredentialRevision?: number,
+  ) => {
     if (expectedGeneration !== undefined && generation !== expectedGeneration)
       return undefined;
+    if (
+      expectedCredentialRevision !== undefined &&
+      credentialRevision !== expectedCredentialRevision
+    ) {
+      return undefined;
+    }
     generation += 1;
     sessionTokens = { accessToken: null, refreshToken: null };
     refreshFlight = undefined;
@@ -170,8 +193,14 @@ const createAuthenticatedGraphqlClientInternal = (
       throw createSessionCleanupError();
   };
 
-  const resetSession = async (expectedGeneration?: number) => {
-    const resetGeneration = beginSessionReset(expectedGeneration);
+  const resetSession = async (
+    expectedGeneration?: number,
+    expectedCredentialRevision?: number,
+  ) => {
+    const resetGeneration = beginSessionReset(
+      expectedGeneration,
+      expectedCredentialRevision,
+    );
     if (resetGeneration === undefined) return false;
     const results = await Promise.allSettled([
       enqueueTokenMutation(async () => {
@@ -354,7 +383,7 @@ const createAuthenticatedGraphqlClientInternal = (
     enqueueTokenMutation(async () => {
       if (generation !== snapshot.generation) return null;
       if (credentialRevision !== snapshot.credentialRevision)
-        return sessionTokens?.accessToken ?? null;
+        return captureCredentialLease();
 
       try {
         await writeStoredSession(tokens);
@@ -372,7 +401,7 @@ const createAuthenticatedGraphqlClientInternal = (
       if (generation !== snapshot.generation) return null;
 
       commitCredentialPair(tokens);
-      return tokens.accessToken;
+      return captureCredentialLease();
     });
 
   const refreshAccessToken = async (snapshot: SessionSnapshot) => {
@@ -402,11 +431,16 @@ const createAuthenticatedGraphqlClientInternal = (
     if (generation !== snapshot.generation)
       return Promise.reject(createAuthError());
     if (credentialRevision !== snapshot.credentialRevision)
-      return Promise.resolve(sessionTokens?.accessToken ?? null);
-    if (refreshFlight?.generation === snapshot.generation)
+      return Promise.resolve(captureCredentialLease());
+    if (
+      refreshFlight?.generation === snapshot.generation &&
+      refreshFlight.credentialRevision === snapshot.credentialRevision
+    ) {
       return refreshFlight.promise;
+    }
 
     const flight: RefreshFlight = {
+      credentialRevision: snapshot.credentialRevision,
       generation: snapshot.generation,
       promise: Promise.resolve(null),
     };
@@ -460,8 +494,8 @@ const createAuthenticatedGraphqlClientInternal = (
       }
     }
 
-    const refreshedToken = await refreshAccessTokenOnce(snapshot);
-    if (!refreshedToken || generation !== snapshot.generation)
+    const credentialLease = await refreshAccessTokenOnce(snapshot);
+    if (!credentialLease || generation !== snapshot.generation)
       throw createAuthError();
 
     try {
@@ -469,13 +503,19 @@ const createAuthenticatedGraphqlClientInternal = (
         snapshot,
         query,
         variables,
-        { ...requestHeaders, Authorization: `Bearer ${refreshedToken}` },
-        refreshedToken,
+        {
+          ...requestHeaders,
+          Authorization: `Bearer ${credentialLease.accessToken}`,
+        },
+        credentialLease.accessToken,
       );
     } catch (error) {
       if (generation !== snapshot.generation) throw createAuthError();
       if (error instanceof ClientError && isUnauthorizedError(error)) {
-        await resetSession(snapshot.generation);
+        await resetSession(
+          snapshot.generation,
+          credentialLease.credentialRevision,
+        );
         throw createAuthError();
       }
       if (error instanceof ClientError) {

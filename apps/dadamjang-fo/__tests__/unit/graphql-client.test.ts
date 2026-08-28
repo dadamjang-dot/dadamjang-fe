@@ -394,6 +394,103 @@ describe("GraphQL authentication", () => {
     );
   });
 
+  it("does not reset newer credentials after a stale retry is unauthorized", async () => {
+    storage.set(sessionKey, storedSession("access-0", "refresh-0"));
+    const cleanup = jest.fn();
+    client.setSessionResetHandler(cleanup);
+    const refreshAuthorizations: (string | null)[] = [];
+    const operationOneAuthorizations: (string | null)[] = [];
+    const operationTwoAuthorizations: (string | null)[] = [];
+    let operationOneAttempt = 0;
+    let operationTwoAttempt = 0;
+    let markOperationOneRetryStarted: () => void = () => undefined;
+    let releaseOperationOneRetry: () => void = () => undefined;
+    const operationOneRetryStarted = new Promise<void>((resolve) => {
+      markOperationOneRetryStarted = resolve;
+    });
+    const operationOneRetryRelease = new Promise<void>((resolve) => {
+      releaseOperationOneRetry = resolve;
+    });
+
+    global.fetch = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const authorization = new Headers(init?.headers).get("Authorization");
+      const body = String(init?.body);
+
+      if (body.includes("mutation Refresh")) {
+        refreshAuthorizations.push(authorization);
+        if (authorization === "Bearer refresh-0") {
+          return jsonResponse({
+            data: {
+              refresh: { accessToken: "access-1", refreshToken: "refresh-1" },
+            },
+          });
+        }
+        if (authorization === "Bearer refresh-1") {
+          return jsonResponse({
+            data: {
+              refresh: { accessToken: "access-2", refreshToken: "refresh-2" },
+            },
+          });
+        }
+        throw new Error(`Unexpected refresh authorization: ${authorization}`);
+      }
+
+      if (body.includes("query OperationOne")) {
+        operationOneAuthorizations.push(authorization);
+        operationOneAttempt += 1;
+        if (operationOneAttempt === 1) return unauthorizedResponse();
+        markOperationOneRetryStarted();
+        await operationOneRetryRelease;
+        return unauthenticatedResponse();
+      }
+
+      if (body.includes("query OperationTwo")) {
+        operationTwoAuthorizations.push(authorization);
+        operationTwoAttempt += 1;
+        if (operationTwoAttempt === 1) return unauthorizedResponse();
+        return jsonResponse({ data: { viewer: { id: "viewer-2" } } });
+      }
+
+      throw new Error(`Unexpected GraphQL operation: ${body}`);
+    };
+
+    const operationOne = client.graphqlRequest(
+      "query OperationOne { viewer { id } }",
+    );
+    await operationOneRetryStarted;
+
+    await expect(
+      client.graphqlRequest<{ viewer: { id: string } }>(
+        "query OperationTwo { viewer { id } }",
+      ),
+    ).resolves.toEqual({ viewer: { id: "viewer-2" } });
+    releaseOperationOneRetry();
+
+    await expect(operationOne).rejects.toMatchObject<Partial<GraphqlError>>({
+      name: "GraphqlError",
+      status: 401,
+    });
+    expect(refreshAuthorizations).toEqual([
+      "Bearer refresh-0",
+      "Bearer refresh-1",
+    ]);
+    expect(operationOneAuthorizations).toEqual([
+      "Bearer access-0",
+      "Bearer access-1",
+    ]);
+    expect(operationTwoAuthorizations).toEqual([
+      "Bearer access-1",
+      "Bearer access-2",
+    ]);
+    expect(cleanup).not.toHaveBeenCalled();
+    await expect(client.getAccessToken()).resolves.toBe("access-2");
+    await expect(client.getRefreshToken()).resolves.toBe("refresh-2");
+    expect(storage.get(sessionKey)).toBe(
+      storedSession("access-2", "refresh-2"),
+    );
+    expect(storage.has(invalidationKey)).toBe(false);
+  });
+
   it("does not restore or retry a session after logout during refresh", async () => {
     storage.set(sessionKey, storedSession("access-a", "refresh-a"));
     let releaseRefresh: () => void = () => undefined;
