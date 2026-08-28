@@ -13,6 +13,7 @@ import {
   useFollowedBrands,
   useRecordRecentProductView,
 } from "@/features/wish";
+import { Button } from "@/shared/components/button";
 
 const ProductScreen = () => {
   const router = useRouter();
@@ -28,9 +29,10 @@ const ProductScreen = () => {
   const { mutate: recordRecentProductView } = useRecordRecentProductView();
   const [selectedSkuId, setSelectedSkuId] = useState<string>();
   const [quantity, setQuantity] = useState(1);
-  const skuId = product.data?.skus.some(({ skuId }) => skuId === selectedSkuId)
-    ? selectedSkuId
-    : product.data?.skus[0]?.skuId ?? "";
+  const selectedSku =
+    product.data?.skus.find(({ skuId }) => skuId === selectedSkuId) ??
+    product.data?.skus[0];
+  const skuId = selectedSku?.skuId ?? "";
 
   useEffect(() => {
     const viewedProductId = product.data?.productId;
@@ -51,7 +53,7 @@ const ProductScreen = () => {
   }
 
   const handleAddCart = () => {
-    if (!skuId) return;
+    if (!selectedSku || selectedSku.stock < quantity) return;
     cart.upsert.mutate({ skuId, quantity }, { onSuccess: () => router.push("/cart") });
   };
 
@@ -91,7 +93,10 @@ const ProductScreen = () => {
           accessibilityRole="radio"
           accessibilityState={{ selected: sku.skuId === skuId }}
           key={sku.skuId}
-          onPress={() => setSelectedSkuId(sku.skuId)}
+          onPress={() => {
+            setSelectedSkuId(sku.skuId);
+            setQuantity(1);
+          }}
           style={[s.option, sku.skuId === skuId && s.selectedOption]}
           testID={`e2e.product.sku.${sku.skuId}`}
         >
@@ -99,13 +104,31 @@ const ProductScreen = () => {
         </Pressable>
       ))}
       <View style={s.quantityRow}>
-        <Pressable onPress={() => setQuantity((current) => Math.max(1, current - 1))} testID="e2e.cart.quantity.decrement">
+        <Button
+          accessibilityLabel="수량 줄이기"
+          disabled={quantity <= 1}
+          onPress={() => setQuantity((current) => Math.max(1, current - 1))}
+          style={s.quantityControl}
+          testID="e2e.cart.quantity.decrement"
+          variant="bare"
+        >
           <Text style={s.quantityButton}>−</Text>
-        </Pressable>
+        </Button>
         <Text testID="e2e.cart.quantity.value">{quantity}</Text>
-        <Pressable onPress={() => setQuantity((current) => current + 1)} testID="e2e.cart.quantity.increment">
+        <Button
+          accessibilityLabel="수량 늘리기"
+          disabled={!selectedSku || quantity >= selectedSku.stock}
+          onPress={() =>
+            setQuantity((current) =>
+              Math.min(selectedSku?.stock ?? current, current + 1),
+            )
+          }
+          style={s.quantityControl}
+          testID="e2e.cart.quantity.increment"
+          variant="bare"
+        >
           <Text style={s.quantityButton}>+</Text>
-        </Pressable>
+        </Button>
       </View>
       <Pressable onPress={handleAddCart} style={s.primaryButton} testID="e2e.cart.add">
         <Text style={s.primaryLabel}>장바구니 담기</Text>
@@ -131,6 +154,7 @@ const s = StyleSheet.create({
   selectedOption: { borderColor: colors.primary },
   optionLabel: { color: colors.ink },
   quantityRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 24 },
+  quantityControl: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   quantityButton: { color: colors.primary, fontSize: 24, fontWeight: "700" },
   primaryButton: { minHeight: 52, alignItems: "center", justifyContent: "center", borderRadius: 8, backgroundColor: colors.primary },
   primaryLabel: { color: colors.surface, fontWeight: "700" },
