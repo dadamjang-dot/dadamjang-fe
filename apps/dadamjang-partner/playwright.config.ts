@@ -30,6 +30,7 @@ export default defineConfig({
     ? undefined
     : {
         command: "pnpm dev",
+        env: { DADAMJANG_IMAGE_ORIGINS: "https://images.test" },
         url: "http://127.0.0.1:3002/login",
         reuseExistingServer: !process.env.CI,
       },

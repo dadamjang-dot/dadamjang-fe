@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, Page, test } from "@playwright/test";
 
 const expectedConsoleErrors = new WeakMap<Page, RegExp[]>();
@@ -172,6 +173,42 @@ const protectedHandlers = (
   PartnerMe: () => session,
   MyPartner: () => partner,
   ...extra,
+});
+
+test("authenticated partner pages have no serious accessibility violations", async ({
+  page,
+}) => {
+  await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerDashboard: () => ({
+        myPartnerDashboard: {
+          draftCount: 1,
+          pendingCount: 1,
+          rejectedCount: 1,
+          approvedCount: 1,
+          publishedCount: 1,
+        },
+      }),
+      PartnerProducts: () => list(),
+    }),
+  );
+
+  for (const [path, heading] of [
+    ["/dashboard", "대시보드"],
+    ["/products", "상품 관리"],
+    ["/products/new", "상품 등록"],
+  ] as const) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(
+      results.violations.filter(
+        ({ impact }) => impact === "serious" || impact === "critical",
+      ),
+    ).toEqual([]);
+  }
 });
 
 test("login succeeds, reports API errors, and rejects non-partners", async ({
