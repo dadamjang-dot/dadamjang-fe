@@ -3,10 +3,10 @@ import { handleGraphQlPost } from "@/_app/api-routes/graphql";
 
 const DEVICE_ID = "00000000-0000-4000-8000-000000000001";
 
-const response = (body: unknown, cookies: string[] = []) => {
+const response = (body: unknown, cookies: string[] = [], status = 200) => {
   const headers = new Headers({ "content-type": "application/json" });
   cookies.forEach((cookie) => headers.append("set-cookie", cookie));
-  return new Response(JSON.stringify(body), { headers });
+  return new Response(JSON.stringify(body), { headers, status });
 };
 
 const request = (
@@ -57,6 +57,59 @@ describe("partner GraphQL BFF refresh", () => {
     await expect(result.json()).resolves.toEqual({
       data: { me: { role: "PARTNER" } },
     });
+  });
+
+  it("shares one refresh across parallel requests and preserves cookie order", async () => {
+    const unauthenticated = {
+      errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+    };
+    let initialCalls = 0;
+    let refreshCalls = 0;
+    let releaseRefresh = () => {};
+    const refreshReleased = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (_input, options) => {
+        const body = String(options?.body ?? "");
+        const cookie = new Headers(options?.headers).get("cookie") ?? "";
+        if (body.includes("mutation Refresh")) {
+          const call = ++refreshCalls;
+          if (call === 1) await refreshReleased;
+          return call === 1
+            ? response({ data: { refresh: { role: "PARTNER" } } }, [
+                "access_token=fresh; Path=/; HttpOnly",
+                "refresh_token=rotated; Path=/; HttpOnly",
+              ])
+            : response(unauthenticated);
+        }
+        if (cookie.includes("access_token=fresh"))
+          return response({ data: { me: { role: "PARTNER" } } }, [
+            "request_state=settled; Path=/",
+          ]);
+        initialCalls += 1;
+        return response(unauthenticated);
+      });
+
+    const pending = [handleGraphQlPost(request()), handleGraphQlPost(request())];
+    await vi.waitFor(() => expect(initialCalls).toBe(2));
+    await vi.waitFor(() => expect(refreshCalls).toBeGreaterThan(0));
+    releaseRefresh();
+    const results = await Promise.all(pending);
+
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(refreshCalls).toBe(1);
+    for (const result of results) {
+      await expect(result.json()).resolves.toEqual({
+        data: { me: { role: "PARTNER" } },
+      });
+      expect(result.headers.getSetCookie()).toEqual([
+        "access_token=fresh; Path=/; HttpOnly",
+        "refresh_token=rotated; Path=/; HttpOnly",
+        "request_state=settled; Path=/",
+      ]);
+    }
   });
 
   it("ignores null error entries while detecting an unauthenticated response", async () => {
@@ -149,11 +202,44 @@ describe("partner GraphQL BFF refresh", () => {
       );
 
     const result = await handleGraphQlPost(request());
-    const cookies = result.headers.getSetCookie().join("\n");
+    expect(result.headers.getSetCookie()).toEqual([
+      "access_token=; Path=/; Max-Age=0; HttpOnly",
+      "refresh_token=; Path=/; Max-Age=0; HttpOnly",
+    ]);
+  });
 
-    expect(cookies).toContain("access_token=");
-    expect(cookies).toContain("refresh_token=");
-    expect(cookies).toContain("Max-Age=0");
+  it("preserves cookies when refresh returns a transient HTTP failure", async () => {
+    const unauthenticated = {
+      errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+    };
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(response(unauthenticated))
+      .mockResolvedValueOnce(
+        response(
+          { errors: [{ extensions: { code: "SERVICE_UNAVAILABLE" } }] },
+          [],
+          503,
+        ),
+      );
+
+    const result = await handleGraphQlPost(request());
+
+    expect(result.status).toBe(503);
+    expect(result.headers.getSetCookie()).toEqual([]);
+  });
+
+  it("preserves cookies when refresh transport fails", async () => {
+    const unauthenticated = {
+      errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+    };
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(response(unauthenticated))
+      .mockRejectedValueOnce(new TypeError("fetch failed"));
+
+    const result = await handleGraphQlPost(request());
+
+    expect(result.status).toBe(503);
+    expect(result.headers.getSetCookie()).toEqual([]);
   });
 
   it.each([

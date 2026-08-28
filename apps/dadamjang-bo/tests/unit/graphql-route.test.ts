@@ -117,6 +117,63 @@ describe("GraphQL BFF", () => {
     );
   });
 
+  it("shares one refresh across parallel requests and preserves cookie order", async () => {
+    const unauthenticated = {
+      errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+    };
+    let initialCalls = 0;
+    let refreshCalls = 0;
+    let releaseRefresh = () => {};
+    const refreshReleased = new Promise<void>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    const fetchMock = vi.fn<typeof fetch>(async (_input, options) => {
+      const body = String(options?.body ?? "");
+      const cookie = new Headers(options?.headers).get("cookie") ?? "";
+      if (body.includes("mutation Refresh")) {
+        const call = ++refreshCalls;
+        if (call === 1) await refreshReleased;
+        return call === 1
+          ? graphqlResponse({ data: { refresh: { role: "ADMIN" } } }, [
+              "access_token=fresh; Path=/; HttpOnly",
+              "refresh_token=rotated; Path=/; HttpOnly",
+            ])
+          : graphqlResponse(unauthenticated);
+      }
+      if (cookie.includes("access_token=fresh"))
+        return graphqlResponse({ data: { me: { role: "ADMIN" } } }, [
+          "request_state=settled; Path=/",
+        ]);
+      initialCalls += 1;
+      return graphqlResponse(unauthenticated);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const headers = {
+      cookie: `refresh_token=original; bo_device_id=${DEVICE_ID}`,
+    };
+
+    const pending = [
+      handleGraphQlPost(request("query Me { me { role } }", headers)),
+      handleGraphQlPost(request("query Me { me { role } }", headers)),
+    ];
+    await vi.waitFor(() => expect(initialCalls).toBe(2));
+    await vi.waitFor(() => expect(refreshCalls).toBeGreaterThan(0));
+    releaseRefresh();
+    const responses = await Promise.all(pending);
+
+    expect(refreshCalls).toBe(1);
+    for (const response of responses) {
+      await expect(response.json()).resolves.toEqual({
+        data: { me: { role: "ADMIN" } },
+      });
+      expect(response.headers.getSetCookie()).toEqual([
+        "access_token=fresh; Path=/; HttpOnly",
+        "refresh_token=rotated; Path=/; HttpOnly",
+        "request_state=settled; Path=/",
+      ]);
+    }
+  });
+
   it("ignores null error entries while detecting an unauthenticated response", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -216,16 +273,62 @@ describe("GraphQL BFF", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const response = await handleGraphQlPost(
-      request("query Me { me { role } }"),
+      request("query Me { me { role } }", {
+        cookie: `refresh_token=invalid; bo_device_id=${DEVICE_ID}`,
+      }),
     );
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(response.headers.get("set-cookie")).toContain(
-      "access_token=; Path=/; Max-Age=0",
+    expect(response.headers.getSetCookie()).toEqual([
+      "access_token=; Path=/; Max-Age=0; HttpOnly",
+      "refresh_token=; Path=/; Max-Age=0; HttpOnly",
+    ]);
+  });
+
+  it("preserves cookies when refresh returns a transient HTTP failure", async () => {
+    const unauthenticated = {
+      errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(graphqlResponse(unauthenticated))
+      .mockResolvedValueOnce(
+        graphqlResponse(
+          { errors: [{ extensions: { code: "SERVICE_UNAVAILABLE" } }] },
+          [],
+          503,
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handleGraphQlPost(
+      request("query Me { me { role } }", {
+        cookie: `refresh_token=original; bo_device_id=${DEVICE_ID}`,
+      }),
     );
-    expect(response.headers.get("set-cookie")).toContain(
-      "refresh_token=; Path=/; Max-Age=0",
+
+    expect(response.status).toBe(503);
+    expect(response.headers.getSetCookie()).toEqual([]);
+  });
+
+  it("preserves cookies when refresh transport fails", async () => {
+    const unauthenticated = {
+      errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(graphqlResponse(unauthenticated))
+      .mockRejectedValueOnce(new TypeError("fetch failed"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handleGraphQlPost(
+      request("query Me { me { role } }", {
+        cookie: `refresh_token=original; bo_device_id=${DEVICE_ID}`,
+      }),
     );
+
+    expect(response.status).toBe(503);
+    expect(response.headers.getSetCookie()).toEqual([]);
   });
 
   it.each([

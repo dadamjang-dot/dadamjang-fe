@@ -1,10 +1,25 @@
 import { NextResponse } from "next/server";
 
 type GraphQlPayload = Record<string, unknown>;
+type TransientRefreshResult = {
+  kind: "transient";
+  body: string;
+  status: number;
+  contentType: string | null;
+};
+type RefreshResult =
+  | { kind: "success"; cookies: string[] }
+  | { kind: "authoritative" }
+  | TransientRefreshResult;
+type RefreshGroup = {
+  active: number;
+  refresh?: Promise<RefreshResult>;
+};
 
 const MAX_BODY_BYTES = 1024 * 1024;
 const PUBLIC_OPERATION =
   /\b(signin|refresh|acceptAdminInvite|requestPasswordReset|resetPassword)\b/;
+const refreshGroups = new Map<string, RefreshGroup>();
 
 const upstreamUrl = () => {
   const value = process.env.DADAMJANG_API_URL;
@@ -99,6 +114,77 @@ const hasRefreshData = (payload: GraphQlPayload | null) => {
   return typeof data.refresh.role === "string";
 };
 
+const acquireRefreshGroup = (cookieHeader: string, deviceId: string) => {
+  const refreshToken =
+    cookieHeader.match(/(?:^|;\s*)refresh_token=([^;]*)/)?.[1] ?? "";
+  const key = `${deviceId}\u0000${refreshToken}`;
+  const group = refreshGroups.get(key) ?? { active: 0 };
+  group.active += 1;
+  refreshGroups.set(key, group);
+  return { key, group };
+};
+
+const releaseRefreshGroup = (key: string, group: RefreshGroup) => {
+  group.active -= 1;
+  if (group.active === 0) refreshGroups.delete(key);
+};
+
+const transientRefresh = (): TransientRefreshResult => ({
+  kind: "transient",
+  body: JSON.stringify({
+    errors: [
+      {
+        message: "Session refresh temporarily unavailable",
+        extensions: { code: "SERVICE_UNAVAILABLE" },
+      },
+    ],
+  }),
+  status: 503,
+  contentType: "application/json",
+});
+
+const performRefresh = async (
+  cookieHeader: string,
+  initialCookies: string[],
+  deviceId: string,
+): Promise<RefreshResult> => {
+  try {
+    const refresh = await forward(
+      JSON.stringify({ query: "mutation Refresh { refresh { role } }" }),
+      mergeCookies(cookieHeader, initialCookies),
+      deviceId,
+    );
+    const body = await refresh.text();
+    const payload = readPayload(body);
+    if (
+      refresh.status === 401 ||
+      refresh.status === 403 ||
+      isUnauthenticated(payload)
+    )
+      return { kind: "authoritative" };
+    if (!refresh.ok || !hasRefreshData(payload))
+      return {
+        kind: "transient",
+        body: refresh.ok ? transientRefresh().body : body,
+        status: refresh.ok ? 502 : refresh.status,
+        contentType: refresh.headers.get("content-type"),
+      };
+    return { kind: "success", cookies: setCookies(refresh.headers) };
+  } catch {
+    return transientRefresh();
+  }
+};
+
+const refreshSession = (
+  group: RefreshGroup,
+  cookieHeader: string,
+  initialCookies: string[],
+  deviceId: string,
+) => {
+  group.refresh ??= performRefresh(cookieHeader, initialCookies, deviceId);
+  return group.refresh;
+};
+
 const responseWithCookies = (
   body: string,
   status: number,
@@ -164,68 +250,72 @@ export const handleGraphQlPost = async (request: Request) => {
   const matchedDeviceId = decodeDeviceId(cookieMatch?.[1]);
   const deviceId = matchedDeviceId ?? crypto.randomUUID();
   const createdDeviceId = matchedDeviceId ? undefined : deviceId;
-  const initial = await forward(body, cookieHeader, deviceId);
-  const initialBody = await initial.text();
-  const initialCookies = setCookies(initial.headers);
-  if (
-    !isUnauthenticated(readPayload(initialBody)) ||
-    PUBLIC_OPERATION.test(input.query)
-  )
+  const { key, group } = acquireRefreshGroup(cookieHeader, deviceId);
+  try {
+    const initial = await forward(body, cookieHeader, deviceId);
+    const initialBody = await initial.text();
+    const initialCookies = setCookies(initial.headers);
+    if (
+      !isUnauthenticated(readPayload(initialBody)) ||
+      PUBLIC_OPERATION.test(input.query)
+    )
+      return responseWithCookies(
+        initialBody,
+        initial.status,
+        initial.headers.get("content-type"),
+        initialCookies,
+        createdDeviceId,
+      );
+
+    const refresh = await refreshSession(
+      group,
+      cookieHeader,
+      initialCookies,
+      deviceId,
+    );
+    if (refresh.kind === "transient")
+      return responseWithCookies(
+        refresh.body,
+        refresh.status,
+        refresh.contentType,
+        [],
+        createdDeviceId,
+      );
+    if (refresh.kind === "authoritative") {
+      const response = responseWithCookies(
+        initialBody,
+        initial.status,
+        initial.headers.get("content-type"),
+        [],
+        createdDeviceId,
+      );
+      response.cookies.set("access_token", "", {
+        httpOnly: true,
+        path: "/",
+        maxAge: 0,
+      });
+      response.cookies.set("refresh_token", "", {
+        httpOnly: true,
+        path: "/",
+        maxAge: 0,
+      });
+      return response;
+    }
+
+    const retried = await forward(
+      body,
+      mergeCookies(cookieHeader, [...initialCookies, ...refresh.cookies]),
+      deviceId,
+    );
+    const retriedBody = await retried.text();
     return responseWithCookies(
-      initialBody,
-      initial.status,
-      initial.headers.get("content-type"),
-      initialCookies,
+      retriedBody,
+      retried.status,
+      retried.headers.get("content-type"),
+      [...refresh.cookies, ...setCookies(retried.headers)],
       createdDeviceId,
     );
-
-  const refreshBody = JSON.stringify({
-    query: "mutation Refresh { refresh { role } }",
-  });
-  const refresh = await forward(
-    refreshBody,
-    mergeCookies(cookieHeader, initialCookies),
-    deviceId,
-  );
-  const refreshText = await refresh.text();
-  const refreshCookies = setCookies(refresh.headers);
-  const refreshPayload = readPayload(refreshText);
-  if (
-    !refresh.ok ||
-    isUnauthenticated(refreshPayload) ||
-    !hasRefreshData(refreshPayload)
-  ) {
-    const response = responseWithCookies(
-      initialBody,
-      initial.status,
-      initial.headers.get("content-type"),
-      initialCookies,
-      createdDeviceId,
-    );
-    response.cookies.set("access_token", "", {
-      httpOnly: true,
-      path: "/",
-      maxAge: 0,
-    });
-    response.cookies.set("refresh_token", "", {
-      httpOnly: true,
-      path: "/",
-      maxAge: 0,
-    });
-    return response;
+  } finally {
+    releaseRefreshGroup(key, group);
   }
-
-  const retried = await forward(
-    body,
-    mergeCookies(cookieHeader, [...initialCookies, ...refreshCookies]),
-    deviceId,
-  );
-  const retriedBody = await retried.text();
-  return responseWithCookies(
-    retriedBody,
-    retried.status,
-    retried.headers.get("content-type"),
-    [...refreshCookies, ...setCookies(retried.headers)],
-    createdDeviceId,
-  );
 };
