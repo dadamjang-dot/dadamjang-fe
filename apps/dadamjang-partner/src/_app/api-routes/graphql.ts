@@ -26,7 +26,7 @@ type UpstreamFailure = {
   body: string;
   status: number;
   contentType: "application/json";
-  reason: "malformed" | "network" | "oversized" | "timeout";
+  reason: "aborted" | "malformed" | "network" | "oversized" | "timeout";
 };
 type UpstreamSuccess = {
   kind: "success";
@@ -147,12 +147,12 @@ const forward = async (
   body: string,
   cookie: string,
   deviceId: string,
-  requestSignal: AbortSignal,
+  requestSignal?: AbortSignal,
 ): Promise<UpstreamResult> => {
-  const signal = AbortSignal.any([
-    requestSignal,
-    AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
-  ]);
+  const deadlineSignal = AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);
+  const signal = requestSignal
+    ? AbortSignal.any([requestSignal, deadlineSignal])
+    : deadlineSignal;
   try {
     const response = await fetch(upstreamUrl(), {
       method: "POST",
@@ -173,7 +173,9 @@ const forward = async (
       return failure(502, "Upstream returned malformed JSON", "malformed");
     return { kind: "success", response, body: responseBody, payload };
   } catch {
-    return signal.aborted
+    if (requestSignal?.aborted)
+      return failure(499, "Client request aborted", "aborted");
+    return deadlineSignal.aborted
       ? failure(504, "Upstream request timed out", "timeout")
       : failure(502, "Upstream request failed", "network");
   }
@@ -231,14 +233,12 @@ const performRefresh = async (
   cookieHeader: string,
   initialCookies: string[],
   deviceId: string,
-  requestSignal: AbortSignal,
 ): Promise<RefreshResult> => {
   try {
     const refresh = await forward(
       JSON.stringify({ query: "mutation Refresh { refresh { role } }" }),
       mergeCookies(cookieHeader, initialCookies),
       deviceId,
-      requestSignal,
     );
     if (refresh.kind === "failure" && refresh.reason === "network")
       return transientRefresh();
@@ -274,14 +274,8 @@ const refreshSession = (
   cookieHeader: string,
   initialCookies: string[],
   deviceId: string,
-  requestSignal: AbortSignal,
 ) => {
-  group.refresh ??= performRefresh(
-    cookieHeader,
-    initialCookies,
-    deviceId,
-    requestSignal,
-  );
+  group.refresh ??= performRefresh(cookieHeader, initialCookies, deviceId);
   return group.refresh;
 };
 
@@ -479,7 +473,6 @@ export const handleGraphQlPost = async (request: Request) => {
       cookieHeader,
       initialCookies,
       deviceId,
-      request.signal,
     );
     if (refresh.kind === "transient")
       return responseWithCookies(

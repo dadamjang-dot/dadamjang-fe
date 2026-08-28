@@ -217,6 +217,69 @@ describe("GraphQL BFF", () => {
     }
   });
 
+  it("keeps a shared refresh alive when its first client disconnects", async () => {
+    const controller = new AbortController();
+    const unauthenticated = {
+      errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+    };
+    let initialCalls = 0;
+    let refreshCalls = 0;
+    let refreshSignal: AbortSignal | undefined;
+    let releaseRefresh = () => {};
+    const fetchMock = vi.fn<typeof fetch>(async (_input, options) => {
+      if (options?.signal?.aborted) throw options.signal.reason;
+      const body = String(options?.body ?? "");
+      const cookie = new Headers(options?.headers).get("cookie") ?? "";
+      if (body.includes("mutation Refresh")) {
+        refreshCalls += 1;
+        return new Promise<Response>((resolve, reject) => {
+          refreshSignal = options?.signal ?? undefined;
+          releaseRefresh = () =>
+            resolve(
+              graphqlResponse({ data: { refresh: { role: "ADMIN" } } }, [
+                "access_token=fresh; Path=/; HttpOnly",
+              ]),
+            );
+          refreshSignal?.addEventListener(
+            "abort",
+            () => reject(refreshSignal?.reason),
+            { once: true },
+          );
+        });
+      }
+      if (cookie.includes("access_token=fresh"))
+        return graphqlResponse({ data: { me: { role: "ADMIN" } } });
+      initialCalls += 1;
+      return graphqlResponse(unauthenticated);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const headers = {
+      cookie: `refresh_token=original; bo_device_id=${DEVICE_ID}`,
+    };
+
+    const disconnected = handleGraphQlPost(
+      request("query Me { me { role } }", headers, controller.signal),
+    );
+    await vi.waitFor(() => expect(refreshCalls).toBe(1));
+    const live = handleGraphQlPost(
+      request("query Me { me { role } }", headers),
+    );
+    await vi.waitFor(() => expect(initialCalls).toBe(2));
+    controller.abort();
+
+    expect(refreshSignal?.aborted).toBe(false);
+    releaseRefresh();
+    const [disconnectedResponse, liveResponse] = await Promise.all([
+      disconnected,
+      live,
+    ]);
+    expect(disconnectedResponse.status).toBe(499);
+    await expect(liveResponse.json()).resolves.toEqual({
+      data: { me: { role: "ADMIN" } },
+    });
+    expect(refreshCalls).toBe(1);
+  });
+
   it("ignores null error entries while detecting an unauthenticated response", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -500,9 +563,12 @@ describe("GraphQL BFF", () => {
     const response = await pending;
 
     expect(response.status).toBe(504);
+    await expect(response.json()).resolves.toEqual({
+      error: "Upstream request timed out",
+    });
   });
 
-  it("returns 504 when the incoming request aborts", async () => {
+  it("returns 499 when the incoming request aborts", async () => {
     const controller = new AbortController();
     const fetchMock = vi.fn(
       (_input, options: RequestInit | undefined) =>
@@ -524,7 +590,10 @@ describe("GraphQL BFF", () => {
     controller.abort();
     const response = await pending;
 
-    expect(response.status).toBe(504);
+    expect(response.status).toBe(499);
+    await expect(response.json()).resolves.toEqual({
+      error: "Client request aborted",
+    });
   });
 
   it("returns 502 and cancels an oversized upstream response", async () => {
