@@ -13,7 +13,6 @@ export const PartnerShell = ({ children }: { children: ReactNode }) => {
   const partner = useQuery({
     queryKey: ["my-partner"],
     queryFn: myPartner,
-    enabled: session.isSuccess && session.data.role === "PARTNER",
     retry: false,
   });
   if (session.isPending)
