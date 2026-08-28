@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mobile-e2e
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -41,13 +41,13 @@ jobs:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           EXPO_PUBLIC_API_URL: ${{ vars.E2E_API_URL }}
       - run: |
-          mkdir -p .maestro-artifacts/app .maestro-artifacts/debug .maestro-artifacts/screenshots
-          curl -fsSL "$(jq -r '.[0].artifacts.buildUrl' eas-build.json)" -o .maestro-artifacts/app.tar.gz
-          tar -xzf .maestro-artifacts/app.tar.gz -C .maestro-artifacts/app
+          mkdir -p .maestro-artifacts/debug .maestro-artifacts/screenshots "$RUNNER_TEMP/dadamjang-e2e-app"
+          curl -fsSL "$(jq -r '.[0].artifacts.buildUrl' eas-build.json)" -o "$RUNNER_TEMP/dadamjang-e2e-app.tar.gz"
+          tar -xzf "$RUNNER_TEMP/dadamjang-e2e-app.tar.gz" -C "$RUNNER_TEMP/dadamjang-e2e-app"
           xcrun simctl boot "iPhone 16" || true
           open -a Simulator
           xcrun simctl bootstatus booted -b
-          xcrun simctl install booted "$(find .maestro-artifacts/app -name '*.app' -type d | head -1)"
+          xcrun simctl install booted "$(find "$RUNNER_TEMP/dadamjang-e2e-app" -name '*.app' -type d | head -1)"
           xcrun simctl io booted recordVideo .maestro-artifacts/video.mp4 &
           video_pid=$!
           finish_video() {
@@ -70,3 +70,4 @@ jobs:
         with:
           name: ios-full-maestro
           path: apps/dadamjang-fo/.maestro-artifacts
+          retention-days: 7
