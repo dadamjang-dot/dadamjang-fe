@@ -89,6 +89,17 @@ const isUnauthorizedError = (error: ClientError) =>
     ({ extensions }) => extensions?.code === "UNAUTHENTICATED",
   ) === true;
 
+const isAuthTokens = (value: unknown): value is AuthTokens => {
+  if (!value || typeof value !== "object") return false;
+  const tokens = value as Partial<AuthTokens>;
+  return (
+    typeof tokens.accessToken === "string" &&
+    tokens.accessToken.length > 0 &&
+    typeof tokens.refreshToken === "string" &&
+    tokens.refreshToken.length > 0
+  );
+};
+
 const createAuthError = () => new GraphqlError(expiredSessionMessage, 401);
 const createSessionCleanupError = () => new GraphqlError(sessionCleanupMessage);
 
@@ -221,13 +232,7 @@ const createAuthenticatedGraphqlClientInternal = (
       const record = JSON.parse(value) as Partial<
         AuthTokens & { version: number }
       >;
-      if (
-        record.version === sessionRecordVersion &&
-        typeof record.accessToken === "string" &&
-        record.accessToken.length > 0 &&
-        typeof record.refreshToken === "string" &&
-        record.refreshToken.length > 0
-      ) {
+      if (record.version === sessionRecordVersion && isAuthTokens(record)) {
         return {
           accessToken: record.accessToken,
           refreshToken: record.refreshToken,
@@ -329,7 +334,7 @@ const createAuthenticatedGraphqlClientInternal = (
   };
 
   const setAuthTokens = async (tokens: AuthTokens) => {
-    if (!tokens.accessToken || !tokens.refreshToken) {
+    if (!isAuthTokens(tokens)) {
       await resetSession();
       throw createAuthError();
     }
@@ -411,20 +416,28 @@ const createAuthenticatedGraphqlClientInternal = (
       throw createAuthError();
     }
 
-    let tokens: AuthTokens;
+    let data: RefreshPayload;
     try {
       const client = createRequestClient({
         Authorization: `Bearer ${snapshot.refreshToken}`,
       });
-      const data = await client.request<RefreshPayload>(refreshMutation);
-      tokens = data.refresh;
-      if (!tokens?.accessToken || !tokens.refreshToken) throw createAuthError();
-    } catch {
+      data = await client.request<RefreshPayload>(refreshMutation);
+    } catch (error) {
+      if (error instanceof ClientError && isUnauthorizedError(error)) {
+        await resetSession(snapshot.generation);
+        throw createAuthError();
+      }
+      if (error instanceof ClientError) {
+        throw new GraphqlError(getErrorMessage(error), error.response.status);
+      }
+      throw error;
+    }
+    if (!isAuthTokens(data.refresh)) {
       await resetSession(snapshot.generation);
       throw createAuthError();
     }
 
-    return commitRefreshedTokens(snapshot, tokens);
+    return commitRefreshedTokens(snapshot, data.refresh);
   };
 
   const refreshAccessTokenOnce = (snapshot: SessionSnapshot) => {

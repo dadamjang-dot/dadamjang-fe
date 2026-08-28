@@ -914,6 +914,78 @@ describe("GraphQL authentication", () => {
     expect(storage.get(sessionKey)).toBe(JSON.stringify({ version: 1 }));
   });
 
+  it.each([
+    ["network", new TypeError("Network request failed")],
+    [
+      "timeout",
+      Object.assign(new Error("The request timed out"), {
+        name: "TimeoutError",
+      }),
+    ],
+  ])(
+    "preserves credentials when refresh hits a %s failure",
+    async (_, failure) => {
+      storage.set(sessionKey, storedSession("expired-access", "refresh-1"));
+      const cleanup = jest.fn();
+      client.setSessionResetHandler(cleanup);
+      let requestCount = 0;
+      global.fetch = jest.fn(async () => {
+        requestCount += 1;
+        if (requestCount === 1) return unauthorizedResponse();
+        throw failure;
+      }) as typeof fetch;
+
+      await expect(
+        client.graphqlRequest("query Viewer { viewer { id } }"),
+      ).rejects.toMatchObject({ message: failure.message, name: failure.name });
+      await expect(client.getAccessToken()).resolves.toBe("expired-access");
+      await expect(client.getRefreshToken()).resolves.toBe("refresh-1");
+      expect(cleanup).not.toHaveBeenCalled();
+      expect(storage.get(sessionKey)).toBe(
+        storedSession("expired-access", "refresh-1"),
+      );
+      expect(storage.has(invalidationKey)).toBe(false);
+    },
+  );
+
+  it("preserves credentials when refresh receives HTTP 503", async () => {
+    storage.set(sessionKey, storedSession("expired-access", "refresh-1"));
+    const cleanup = jest.fn();
+    client.setSessionResetHandler(cleanup);
+    installTransport([
+      unauthorizedResponse(),
+      jsonResponse({ errors: [{ message: "Service unavailable" }] }, 503),
+    ]);
+
+    await expect(
+      client.graphqlRequest("query Viewer { viewer { id } }"),
+    ).rejects.toMatchObject<Partial<GraphqlError>>({
+      message: "Service unavailable",
+      name: "GraphqlError",
+      status: 503,
+    });
+    expect(cleanup).not.toHaveBeenCalled();
+    expect(storage.get(sessionKey)).toBe(
+      storedSession("expired-access", "refresh-1"),
+    );
+    expect(storage.has(invalidationKey)).toBe(false);
+  });
+
+  it("invalidates credentials when refresh returns malformed tokens", async () => {
+    storage.set(sessionKey, storedSession("expired-access", "refresh-1"));
+    installTransport([
+      unauthorizedResponse(),
+      jsonResponse({
+        data: { refresh: { accessToken: "", refreshToken: "refresh-2" } },
+      }),
+    ]);
+
+    await expect(
+      client.graphqlRequest("query Viewer { viewer { id } }"),
+    ).rejects.toMatchObject<Partial<GraphqlError>>({ status: 401 });
+    expect(storage.get(sessionKey)).toBe(JSON.stringify({ version: 1 }));
+  });
+
   it("fails closed after one retry receives HTTP 401", async () => {
     storage.set(sessionKey, storedSession("expired-access", "refresh-1"));
     const requests = installTransport([
