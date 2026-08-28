@@ -30,8 +30,10 @@ export const upsertCartItem = async (skuId: string, quantity: number) =>
   );
 
 export const removeCartItem = async (skuId: string) =>
-  graphqlRequest(
-    "mutation RemoveCartItem($skuId: String!) { removeCartItem(skuId: $skuId) }",
+  graphqlRequest<{ removeCartItem: Pick<Cart, "cartId"> }>(
+    `mutation RemoveCartItem($skuId: String!) {
+      removeCartItem(skuId: $skuId) { cartId }
+    }`,
     { skuId },
   );
 

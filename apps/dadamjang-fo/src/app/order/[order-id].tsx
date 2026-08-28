@@ -12,17 +12,20 @@ import {
 import { useOrder } from "@/features/order";
 
 const checkoutState = (status: OrderStatus, paymentStatus: PaymentStatus) => {
+  if (status === "CANCELLED" || paymentStatus === "CANCELLED")
+    return { message: "결제가 취소됐어요.", testID: "e2e.checkout.cancelled" };
+  if (status === "FAILED" || paymentStatus === "FAILED")
+    return { message: "결제에 실패했어요.", testID: "e2e.checkout.failure" };
   if (status === "PAYMENT_PENDING" && paymentStatus === "PENDING")
     return {
       message: "결제 승인을 기다리고 있어요.",
       testID: "e2e.checkout.pending",
     };
-  if (status !== "PAYMENT_PENDING" && paymentStatus === "APPROVED")
+  if (
+    (status === "PAID" || status === "FULFILLING" || status === "COMPLETED") &&
+    paymentStatus === "APPROVED"
+  )
     return { message: "결제가 완료됐어요.", testID: "e2e.checkout.success" };
-  if (paymentStatus === "FAILED")
-    return { message: "결제에 실패했어요.", testID: "e2e.checkout.failure" };
-  if (paymentStatus === "CANCELLED")
-    return { message: "결제가 취소됐어요.", testID: "e2e.checkout.cancelled" };
   return { message: "결제 상태를 확인해 주세요.", testID: "e2e.order.detail" };
 };
 

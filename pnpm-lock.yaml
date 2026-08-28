@@ -227,6 +227,9 @@ importers:
       eslint-config-expo:
         specifier: ~55.0.1
         version: 55.0.1(eslint@9.39.4(supports-color@8.1.1))(supports-color@8.1.1)(typescript@5.9.3)
+      graphql:
+        specifier: 16.14.2
+        version: 16.14.2
       graphql-request:
         specifier: ^7.4.0
         version: 7.4.0(graphql@16.14.2)
