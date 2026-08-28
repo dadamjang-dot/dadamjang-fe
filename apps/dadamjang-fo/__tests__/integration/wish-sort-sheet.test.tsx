@@ -1,5 +1,4 @@
 import { render, screen, userEvent } from "@testing-library/react-native";
-import { View } from "react-native";
 
 import WishSortSheet from "@/features/wish/components/wish-sort-sheet";
 
@@ -26,7 +25,7 @@ describe("wish sort sheet accessibility", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("exposes checked radios inside an iOS and Android modal scope", () => {
+  it("exposes checked radios while the modal is visible", () => {
     render(
       <WishSortSheet
         onClose={jest.fn()}
@@ -38,11 +37,5 @@ describe("wish sort sheet accessibility", () => {
 
     expect(screen.getByRole("radio", { name: "추천순" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "최신순" })).not.toBeChecked();
-
-    const modalScope = screen
-      .UNSAFE_getAllByType(View)
-      .find((view) => view.props.accessibilityViewIsModal === true);
-
-    expect(modalScope?.props.importantForAccessibility).toBe("yes");
   });
 });

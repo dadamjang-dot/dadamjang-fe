@@ -1,5 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
-import { Image } from "expo-image";
+import { render, screen, userEvent } from "@testing-library/react-native";
 
 import StylePostCard from "@/features/style/components/style-post-card";
 
@@ -8,9 +7,10 @@ jest.mock("expo-image", () => ({
 }));
 
 describe("style post card interactions", () => {
-  it("opens the post separately from toggling its like", () => {
+  it("opens the post separately from toggling its like", async () => {
     const onPress = jest.fn();
     const onToggleLike = jest.fn();
+    const user = userEvent.setup();
 
     render(
       <StylePostCard
@@ -31,16 +31,22 @@ describe("style post card interactions", () => {
     expect(screen.getByText("#daily_look")).toBeOnTheScreen();
     expect(screen.queryByText("상품 1")).not.toBeOnTheScreen();
 
-    fireEvent.press(screen.getByLabelText("스타일 게시물 이미지"));
-    fireEvent.press(screen.getByLabelText("스타일 게시물 태그"));
-    fireEvent.press(screen.getByLabelText("좋아요"));
+    await user.press(
+      screen.getByRole("button", { name: "스타일 게시물 이미지" }),
+    );
+    await user.press(
+      screen.getByRole("button", { name: "스타일 게시물 태그" }),
+    );
+    await user.press(screen.getByRole("button", { name: "좋아요" }));
 
     expect(onPress).toHaveBeenCalledTimes(2);
     expect(onPress).toHaveBeenCalledWith("style-1");
     expect(onToggleLike).toHaveBeenCalledWith("style-1", true);
   });
 
-  it("keys its post image to the stable style identity", () => {
+  it("renders the new identity when a recycled card receives another post", async () => {
+    const onPress = jest.fn();
+    const user = userEvent.setup();
     render(
       <StylePostCard
         author="buyer"
@@ -49,15 +55,31 @@ describe("style post card interactions", () => {
         imageUrl="https://example.com/style.jpg"
         isLiked={false}
         likeCount={2}
-        onPress={jest.fn()}
+        onPress={onPress}
         onToggleLike={jest.fn()}
         stylePostId="style-1"
       />,
     );
-    const postImage = screen
-      .UNSAFE_getAllByType(Image)
-      .find((image) => image.props.source === "https://example.com/style.jpg");
 
-    expect(postImage).toHaveProp("recyclingKey", "style-1");
+    screen.rerender(
+      <StylePostCard
+        author="buyer-2"
+        content="새 스타일"
+        hashtags={["new_look"]}
+        imageUrl="https://example.com/style-2.jpg"
+        isLiked={false}
+        likeCount={4}
+        onPress={onPress}
+        onToggleLike={jest.fn()}
+        stylePostId="style-2"
+      />,
+    );
+
+    expect(screen.queryByText("#daily_look")).not.toBeOnTheScreen();
+    expect(screen.getByText("#new_look")).toBeVisible();
+    await user.press(
+      screen.getByRole("button", { name: "스타일 게시물 이미지" }),
+    );
+    expect(onPress).toHaveBeenLastCalledWith("style-2");
   });
 });

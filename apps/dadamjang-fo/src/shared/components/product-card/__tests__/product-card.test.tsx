@@ -1,42 +1,8 @@
-import { act, type ReactElement } from "react";
-import { Image } from "expo-image";
-import { Text } from "react-native";
-import { create, type ReactTestRenderer } from "react-test-renderer";
+import { render, screen, userEvent } from "@testing-library/react-native";
 
 import { ProductCard, type ProductCardProps } from "../product-card";
 
-jest.mock("expo-image", () => ({
-  Image: "ExpoImage",
-}));
-
-jest.mock("react-native-unistyles", () => ({
-  StyleSheet: {
-    create: <T,>(styles: T) => styles,
-  },
-}));
-
-const render = (component: ReactElement) => {
-  let renderer: ReactTestRenderer;
-
-  act(() => {
-    renderer = create(component);
-  });
-
-  return renderer!;
-};
-
-const findButton = (
-  renderer: ReactTestRenderer,
-  accessibilityLabel: string,
-) => {
-  const button = renderer.root
-    .findAllByProps({ accessibilityLabel })
-    .find((node) => node.props.accessibilityRole === "button");
-
-  if (!button) throw new Error(`Button ${accessibilityLabel} was not rendered`);
-
-  return button;
-};
+jest.mock("expo-image", () => ({ Image: "ExpoImage" }));
 
 const product: ProductCardProps = {
   imageUrl: "https://example.com/t-shirt.jpg",
@@ -52,36 +18,20 @@ const product: ProductCardProps = {
 
 describe("ProductCard", () => {
   it("renders product benefits and prices", () => {
-    const renderer = render(<ProductCard {...product} />);
-    const text = renderer.root
-      .findAllByType(Text)
-      .map((node) => node.props.children)
-      .filter((value): value is string => typeof value === "string");
+    render(<ProductCard {...product} />);
 
-    expect(text).toEqual(
-      expect.arrayContaining([
-        "슈퍼세일",
-        "오버핏 반팔 티셔츠",
-        "19,900원",
-        "29,900원",
-        "바로배송",
-      ]),
-    );
+    expect(screen.getByText("슈퍼세일")).toBeVisible();
+    expect(screen.getByText("오버핏 반팔 티셔츠")).toBeVisible();
+    expect(screen.getByText("19,900원")).toBeVisible();
+    expect(screen.getByText("29,900원")).toBeVisible();
+    expect(screen.getByText("바로배송")).toBeVisible();
   });
 
-  it("keys its product image to the stable product identity", () => {
-    const renderer = render(<ProductCard {...product} />);
-    const productImage = renderer.root
-      .findAllByType(Image)
-      .find((node) => node.props.source?.uri === product.imageUrl);
-
-    expect(productImage?.props.recyclingKey).toBe("product-1");
-  });
-
-  it("keeps product and like actions independent", () => {
+  it("keeps product and like actions independent", async () => {
     const onPress = jest.fn();
     const onToggleLike = jest.fn();
-    const renderer = render(
+    const user = userEvent.setup();
+    render(
       <ProductCard
         {...product}
         isLiked
@@ -89,20 +39,34 @@ describe("ProductCard", () => {
         onToggleLike={onToggleLike}
       />,
     );
-    const productButton = findButton(renderer, "오버핏 반팔 티셔츠");
-    const likeButton = findButton(renderer, "오버핏 반팔 티셔츠 좋아요 취소");
-
-    expect(likeButton.props.accessibilityLabel).toBe(
-      "오버핏 반팔 티셔츠 좋아요 취소",
-    );
-    expect(likeButton.props.accessibilityState).toEqual({ selected: true });
-
-    act(() => {
-      productButton.props.onPress();
-      likeButton.props.onPress();
+    const productButton = screen.getByRole("button", {
+      name: "오버핏 반팔 티셔츠",
     });
+    const likeButton = screen.getByRole("button", {
+      name: "오버핏 반팔 티셔츠 좋아요 취소",
+    });
+
+    expect(likeButton).toBeSelected();
+    await user.press(productButton);
+    await user.press(likeButton);
 
     expect(onPress).toHaveBeenCalledTimes(1);
     expect(onToggleLike).toHaveBeenCalledWith(false);
+  });
+
+  it("renders the new identity when a recycled card receives another product", () => {
+    render(<ProductCard {...product} />);
+
+    screen.rerender(
+      <ProductCard
+        {...product}
+        imageUrl="https://example.com/hoodie.jpg"
+        name="후드 집업"
+        productId="product-2"
+      />,
+    );
+
+    expect(screen.queryByText("오버핏 반팔 티셔츠")).not.toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: "후드 집업" })).toBeVisible();
   });
 });

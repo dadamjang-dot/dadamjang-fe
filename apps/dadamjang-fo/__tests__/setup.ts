@@ -1,5 +1,3 @@
-import { cleanup } from "@testing-library/react-native";
-
 class TestNetworkError extends Error {
   constructor() {
     super("Unexpected GraphQL network request in test");
@@ -35,8 +33,7 @@ global.fetch = jest.fn(async () => {
   throw new TestNetworkError();
 });
 
-afterEach(async () => {
-  await cleanup();
+afterEach(() => {
   jest.clearAllMocks();
   jest.restoreAllMocks();
 });
