@@ -1,3 +1,9 @@
+import { useEffect, useState } from "react";
+import type { ImageSourcePropType } from "react-native";
+import {
+  unstable_getMaterialSymbolSourceAsync,
+  type AndroidSymbol,
+} from "expo-symbols";
 import {
   Host,
   Row,
@@ -16,13 +22,66 @@ import {
 } from "@expo/ui/jetpack-compose/modifiers";
 import { colors } from "@dadamjang/design-tokens";
 
-import type { ActionButtonProps } from "./action-button.types";
+import type { Action, ActionButtonProps } from "./action-button.types";
+
+const getMaterialSymbolSourceAsync =
+  unstable_getMaterialSymbolSourceAsync as unknown as (
+    symbol: AndroidSymbol,
+    size: number,
+    color: string,
+  ) => Promise<ImageSourcePropType | null>;
+
+interface ActionButtonContentProps {
+  action: Action;
+}
+
+export const ActionButtonContent = ({ action }: ActionButtonContentProps) => {
+  const iconSize = action.iconSize ?? 20;
+  const materialIcon = action.icon?.md;
+  const [source, setSource] = useState<ImageSourcePropType | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setSource(null);
+
+    if (materialIcon) {
+      void getMaterialSymbolSourceAsync(
+        materialIcon,
+        iconSize,
+        "white",
+      ).then(
+        (nextSource) => {
+          if (active) setSource(nextSource);
+        },
+        () => {
+          if (active) setSource(null);
+        },
+      );
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [iconSize, materialIcon]);
+
+  if (action.icon) {
+    return source ? (
+      <Icon
+        contentDescription={action.accessibilityLabel}
+        size={iconSize}
+        source={source}
+      />
+    ) : null;
+  }
+
+  return action.label ? <Text>{action.label}</Text> : null;
+};
 
 const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
   if (!actions || actions.length === 0) return null;
 
   if (actions.length === 1) {
-    const { icon, iconSize, label, onPress } = actions[0];
+    const { icon, label, onPress } = actions[0];
     const isCircle = iconOnly && !!icon && !label;
 
     if (label && !icon) {
@@ -54,7 +113,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
           }}
           modifiers={[size(40, 40)]}
         >
-          {icon ? <Icon source={{ uri: icon }} size={iconSize ?? 20} /> : null}
+          {icon ? <ActionButtonContent action={actions[0]} /> : null}
         </FilledTonalIconButton>
       </Host>
     );
@@ -76,13 +135,13 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
               action.label && !action.icon ? [height(32)] : [size(32, 32)];
             return (
               <IconButton
-                key={action.label ?? idx}
+                key={action.accessibilityLabel ?? action.label ?? idx}
                 onClick={action.onPress}
                 modifiers={itemModifiers}
               >
                 <Row modifiers={[paddingAll(0)]}>
                   {action.icon ? (
-                    <Icon source={{ uri: action.icon }} size={action.iconSize ?? 20} />
+                    <ActionButtonContent action={action} />
                   ) : null}
                   {action.label ? <Text>{action.label}</Text> : null}
                 </Row>

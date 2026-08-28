@@ -7,8 +7,16 @@ import { Action } from "@dadamjang/mobile";
 
 const HomeScreen = () => {
   const headerActions: Action[] = [
-    { icon: "bell", onPress: () => {} },
-    { icon: "cart", onPress: () => {} },
+    {
+      accessibilityLabel: "알림",
+      icon: { md: "notifications", sf: "bell" },
+      onPress: () => {},
+    },
+    {
+      accessibilityLabel: "장바구니",
+      icon: { md: "shopping_cart", sf: "cart" },
+      onPress: () => {},
+    },
   ];
 
   return (

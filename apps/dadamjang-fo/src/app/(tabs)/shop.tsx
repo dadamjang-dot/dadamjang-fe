@@ -52,8 +52,16 @@ const ShopScreen = () => {
   };
 
   const headerActions: Action[] = [
-    { icon: "line.3.horizontal", onPress: () => {} },
-    { icon: "cart", onPress: () => {} },
+    {
+      accessibilityLabel: "메뉴",
+      icon: { md: "menu", sf: "line.3.horizontal" },
+      onPress: () => {},
+    },
+    {
+      accessibilityLabel: "장바구니",
+      icon: { md: "shopping_cart", sf: "cart" },
+      onPress: () => {},
+    },
   ];
 
   const handleToggleLike = (productId: string, nextLiked: boolean) => {

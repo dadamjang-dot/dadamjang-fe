@@ -16,8 +16,16 @@ const MyScreen = () => {
         <ActionButtonGroup
           variant="circularPair"
           actions={[
-            { icon: "gear", onPress: () => {} },
-            { icon: "cart", onPress: () => {} },
+            {
+              accessibilityLabel: "설정",
+              icon: { md: "settings", sf: "gear" },
+              onPress: () => {},
+            },
+            {
+              accessibilityLabel: "장바구니",
+              icon: { md: "shopping_cart", sf: "cart" },
+              onPress: () => {},
+            },
           ]}
         />
       </TitleHeader>

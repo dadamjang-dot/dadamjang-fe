@@ -38,8 +38,16 @@ const StyleScreen = () => {
   };
 
   const headerActions: Action[] = [
-    { icon: "plus", onPress: handleCreatePress },
-    { icon: "cart", onPress: () => router.push("/cart") },
+    {
+      accessibilityLabel: "스타일 작성",
+      icon: { md: "add", sf: "plus" },
+      onPress: handleCreatePress,
+    },
+    {
+      accessibilityLabel: "장바구니",
+      icon: { md: "shopping_cart", sf: "cart" },
+      onPress: () => router.push("/cart"),
+    },
   ];
 
   return (

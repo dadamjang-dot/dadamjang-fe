@@ -21,7 +21,7 @@ const ActionButtonCapsuleGroup = ({
         <Animated.View style={[s.capsuleContent, animations?.[1]]}>
           {actions.map((action, index) => (
             <ActionButtonContent
-              key={action.label ?? action.icon ?? index}
+              key={action.accessibilityLabel ?? action.label ?? index}
               action={action}
               iconOnly
             />

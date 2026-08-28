@@ -7,6 +7,7 @@ import { getCart, checkoutCart } from "@/features/cart/api";
 import CartScreen from "@/app/cart";
 import WishScreen from "@/app/(tabs)/wish";
 import { getWishlist } from "@/features/wish/api";
+import type { Action } from "@dadamjang/mobile";
 
 const mockNavigation: { path?: string } = {};
 
@@ -27,13 +28,17 @@ jest.mock("@/shared/components", () => {
   const { Pressable, Text, View } = jest.requireActual<typeof import("react-native")>("react-native");
 
   return {
-    ActionButton: ({ actions }: { actions: { icon?: string; label?: string; onPress: () => void }[] }) => {
+    ActionButton: ({ actions }: { actions: Action[] }) => {
       const action = actions[0];
       return action
         ? React.createElement(
             Pressable,
             { onPress: action.onPress, testID: "e2e.wish.cart" },
-            React.createElement(Text, null, action.label ?? action.icon),
+            React.createElement(
+              Text,
+              null,
+              action.accessibilityLabel ?? action.label ?? action.icon?.sf,
+            ),
           )
         : null;
     },

@@ -28,9 +28,7 @@ const ProductLayout = ({ headerActions, variant: _variant, children }: ProductLa
         searchValue={searchValue}
         onSearchValueChange={setSearchValue}
       >
-        {headerActions.map((_, i) => (
-          <ActionButton key={i} actions={headerActions} iconOnly />
-        ))}
+        <ActionButton actions={headerActions} iconOnly />
       </ProductHeader>
 
       {isSearching ? <SearchContent keyword={searchValue} /> : children}

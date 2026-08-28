@@ -27,28 +27,32 @@ const TabLayout = () => (
     <NativeTabs.Trigger name="index">
       <NativeTabs.Trigger.Label>홈</NativeTabs.Trigger.Label>
       <NativeTabs.Trigger.Icon
+        md="home"
         sf={{ default: "house", selected: "house.fill" }}
       />
     </NativeTabs.Trigger>
     <NativeTabs.Trigger name="style">
       <NativeTabs.Trigger.Label>스타일</NativeTabs.Trigger.Label>
       <NativeTabs.Trigger.Icon
+        md="add_box"
         sf={{ default: "plus.square", selected: "plus.square.fill" }}
       />
     </NativeTabs.Trigger>
     <NativeTabs.Trigger name="shop" testID="e2e.navigation.shop">
       <NativeTabs.Trigger.Label>쇼핑</NativeTabs.Trigger.Label>
-      <NativeTabs.Trigger.Icon sf="magnifyingglass" />
+      <NativeTabs.Trigger.Icon md="search" sf="magnifyingglass" />
     </NativeTabs.Trigger>
     <NativeTabs.Trigger name="wish" testID="e2e.navigation.wish">
       <NativeTabs.Trigger.Label>위시</NativeTabs.Trigger.Label>
       <NativeTabs.Trigger.Icon
+        md="favorite"
         sf={{ default: "heart", selected: "heart.fill" }}
       />
     </NativeTabs.Trigger>
     <NativeTabs.Trigger name="my" testID="e2e.navigation.my">
       <NativeTabs.Trigger.Label>마이</NativeTabs.Trigger.Label>
       <NativeTabs.Trigger.Icon
+        md="person"
         sf={{ default: "person", selected: "person.fill" }}
       />
     </NativeTabs.Trigger>

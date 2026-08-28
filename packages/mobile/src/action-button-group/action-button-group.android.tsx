@@ -1,7 +1,8 @@
-import { Host, Row, FilledTonalIconButton, Icon, Shape } from "@expo/ui/jetpack-compose";
+import { Host, Row, FilledTonalIconButton, Shape } from "@expo/ui/jetpack-compose";
 import { size } from "@expo/ui/jetpack-compose/modifiers";
 
 import { colors } from "@dadamjang/design-tokens";
+import { ActionButtonContent } from "../action-button/action-button.android";
 import type { ActionButtonGroupProps } from "./action-button-group.types";
 
 const ActionButtonGroup = ({
@@ -14,7 +15,7 @@ const ActionButtonGroup = ({
         <Row>
           {actions.map((action, idx) => (
             <FilledTonalIconButton
-              key={action.label ?? action.icon ?? idx}
+              key={action.accessibilityLabel ?? action.label ?? idx}
               onClick={action.onPress}
               shape={Shape.Circle({})}
               colors={{
@@ -24,7 +25,7 @@ const ActionButtonGroup = ({
               modifiers={[size(40, 40)]}
             >
               {action.icon ? (
-                <Icon source={{ uri: action.icon }} size={20} />
+                <ActionButtonContent action={action} />
               ) : null}
             </FilledTonalIconButton>
           ))}
@@ -39,7 +40,7 @@ const ActionButtonGroup = ({
       <Row>
         {actions.map((action, idx) => (
           <FilledTonalIconButton
-            key={action.label ?? action.icon ?? idx}
+            key={action.accessibilityLabel ?? action.label ?? idx}
             onClick={action.onPress}
             shape={Shape.Pill({})}
             colors={{
@@ -49,7 +50,7 @@ const ActionButtonGroup = ({
             modifiers={[size(40, 40)]}
           >
             {action.icon ? (
-              <Icon source={{ uri: action.icon }} size={20} />
+              <ActionButtonContent action={action} />
             ) : null}
           </FilledTonalIconButton>
         ))}

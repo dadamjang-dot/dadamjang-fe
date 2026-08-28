@@ -49,7 +49,13 @@ const WishScreen = () => {
     <View style={s.container} testID="e2e.wish.screen">
       <TitleHeader title="위시">
         <ActionButton
-          actions={[{ icon: "cart", onPress: () => router.push("/cart") }]}
+          actions={[
+            {
+              accessibilityLabel: "장바구니",
+              icon: { md: "shopping_cart", sf: "cart" },
+              onPress: () => router.push("/cart"),
+            },
+          ]}
           iconOnly
         />
       </TitleHeader>

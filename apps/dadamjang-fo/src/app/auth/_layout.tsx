@@ -3,7 +3,7 @@ import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
-import { ActionButton } from "@dadamjang/mobile";
+import { ActionButton, type Action } from "@dadamjang/mobile";
 
 import { useCurrentUser } from "@/features/auth";
 
@@ -19,9 +19,9 @@ const AuthLayout = () => {
     else router.replace("/");
   };
 
-  const closeAction = {
+  const closeAction: Action = {
     accessibilityLabel: "닫기",
-    icon: "xmark",
+    icon: { md: "close", sf: "xmark" },
     iconSize: 18,
     onPress: close,
   };

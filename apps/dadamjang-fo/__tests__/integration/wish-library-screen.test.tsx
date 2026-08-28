@@ -13,9 +13,10 @@ import {
 } from "@/features/wish/api";
 import { getLikedStylePosts, unlikeStylePost } from "@/features/style/api";
 import type { StylePost } from "@/features/style/types";
+import type { Action } from "@dadamjang/mobile";
 
 const navigation: { path?: string } = {};
-const actionButtonCalls: { actions: { icon?: string; onPress: () => void }[] }[] = [];
+const actionButtonCalls: { actions: Action[] }[] = [];
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({
@@ -30,14 +31,18 @@ jest.mock("@/shared/components", () => {
   const { Pressable, Text, View } = jest.requireActual<typeof import("react-native")>("react-native");
 
   return {
-    ActionButton: ({ actions }: { actions: { icon?: string; onPress: () => void }[] }) => {
+    ActionButton: ({ actions }: { actions: Action[] }) => {
       actionButtonCalls.push({ actions });
       const action = actions[0];
       return action
         ? React.createElement(
             Pressable,
             { onPress: action.onPress, testID: "e2e.wish.cart" },
-            React.createElement(Text, null, action.icon),
+            React.createElement(
+              Text,
+              null,
+              action.accessibilityLabel ?? action.label ?? action.icon?.sf,
+            ),
           )
         : null;
     },
@@ -175,7 +180,13 @@ describe("WISH library screen", () => {
     await screen.findByTestId("e2e.product.open.product-1");
     expect(actionButtonCalls.length).toBeGreaterThan(0);
     expect(actionButtonCalls.every(({ actions }) => actions.length === 1)).toBe(true);
-    expect(actionButtonCalls.at(-1)?.actions[0]?.icon).toBe("cart");
+    expect(actionButtonCalls.at(-1)?.actions[0]?.icon).toEqual({
+      md: "shopping_cart",
+      sf: "cart",
+    });
+    expect(actionButtonCalls.at(-1)?.actions[0]?.accessibilityLabel).toBe(
+      "장바구니",
+    );
 
     await fireEvent.press(screen.getByTestId("e2e.wish.cart"));
     expect(navigation.path).toBe("/cart");
