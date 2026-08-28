@@ -247,6 +247,7 @@ export const ConfirmDialog = ({
     open={open}
     onOpenChange={onOpenChange}
     role="alertdialog"
+    closeOnEscape={!pending}
     closeOnInteractOutside={!pending}
   >
     <Dialog.Backdrop className={styles.dialogBackdrop} />
@@ -266,6 +267,7 @@ export const ConfirmDialog = ({
             </ActionButton>
           </Dialog.Action>
           <ActionButton
+            disabled={pending}
             variant={critical ? "criticalSolid" : "neutralSolid"}
             loading={pending}
             onClick={onConfirm}

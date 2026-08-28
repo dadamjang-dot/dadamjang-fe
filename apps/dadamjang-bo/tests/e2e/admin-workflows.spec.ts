@@ -104,6 +104,43 @@ test("review dialogs discard stale input and mutation errors", async ({
   ).toHaveCount(0);
 });
 
+test("review dialogs stay open while a review is pending", async ({ page }) => {
+  await authenticateAdmin(page);
+  let reviewStarted = false;
+  let releaseReview = () => {};
+  const reviewReleased = new Promise<void>((resolve) => {
+    releaseReview = resolve;
+  });
+  await page.route("**/api/graphql", async (route) => {
+    const payload = route.request().postDataJSON() as { query: string };
+    if (!reviewStarted && payload.query.includes("mutation ReviewProduct")) {
+      reviewStarted = true;
+      await reviewReleased;
+      await route.fallback();
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.goto("/products");
+  await page.getByRole("button", { name: "Pending Product" }).click();
+  await page.getByRole("button", { name: "승인", exact: true }).click();
+  const dialog = page.getByRole("alertdialog");
+  const confirm = dialog.getByRole("button", { name: "승인", exact: true });
+  await confirm.click();
+  await expect.poll(() => reviewStarted).toBe(true);
+
+  try {
+    await expect(confirm).toBeDisabled();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeVisible();
+  } finally {
+    releaseReview();
+  }
+
+  await expect(page.getByText("상품을 승인했습니다.")).toBeVisible();
+});
+
 test("order transition uses server-provided next states", async ({ page }) => {
   await authenticateAdmin(page);
   await page.goto("/orders/order-1");
