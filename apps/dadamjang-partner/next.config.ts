@@ -9,6 +9,17 @@ type ImageRemotePattern = {
   pathname: "/**";
 };
 
+const isPrivateIpv4 = (first: number, second: number) =>
+  first === 0 ||
+  first === 10 ||
+  first === 127 ||
+  (first === 100 && second >= 64 && second <= 127) ||
+  (first === 169 && second === 254) ||
+  (first === 172 && second >= 16 && second <= 31) ||
+  (first === 192 && second === 168) ||
+  (first === 198 && (second === 18 || second === 19)) ||
+  first >= 224;
+
 const isPrivateHostname = (hostname: string) => {
   const normalized = hostname
     .toLowerCase()
@@ -27,17 +38,7 @@ const isPrivateHostname = (hostname: string) => {
     const octets = normalized.split(".").map(Number);
     const first = octets[0] ?? 0;
     const second = octets[1] ?? 0;
-    return (
-      first === 0 ||
-      first === 10 ||
-      first === 127 ||
-      (first === 100 && second >= 64 && second <= 127) ||
-      (first === 169 && second === 254) ||
-      (first === 172 && second >= 16 && second <= 31) ||
-      (first === 192 && second === 168) ||
-      (first === 198 && (second === 18 || second === 19)) ||
-      first >= 224
-    );
+    return isPrivateIpv4(first, second);
   }
   if (ipVersion === 6) {
     if (normalized.startsWith("::ffff:")) {
@@ -48,17 +49,7 @@ const isPrivateHostname = (hostname: string) => {
       if (high !== undefined && low !== undefined) {
         const first = high >> 8;
         const second = high & 255;
-        return (
-          first === 0 ||
-          first === 10 ||
-          first === 127 ||
-          (first === 100 && second >= 64 && second <= 127) ||
-          (first === 169 && second === 254) ||
-          (first === 172 && second >= 16 && second <= 31) ||
-          (first === 192 && second === 168) ||
-          (first === 198 && (second === 18 || second === 19)) ||
-          first >= 224
-        );
+        return isPrivateIpv4(first, second);
       }
     }
     return (
