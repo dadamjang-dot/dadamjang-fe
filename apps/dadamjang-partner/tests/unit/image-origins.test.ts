@@ -42,7 +42,9 @@ describe("image origin configuration", () => {
     ["an empty allowlist", ""],
     ["a wildcard origin", "https://*.example.com"],
     ["a localhost origin", "http://localhost:3000"],
+    ["a trailing-dot localhost origin", "http://localhost."],
     ["a private origin", "http://10.0.0.7"],
+    ["an IPv4-mapped loopback origin", "http://[::ffff:127.0.0.1]"],
   ])("rejects %s in production", async (_name, origins) => {
     await expect(loadConfig("production", origins)).rejects.toThrow(
       "DADAMJANG_IMAGE_ORIGINS",

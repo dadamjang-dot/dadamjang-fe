@@ -13,7 +13,8 @@ const isPrivateHostname = (hostname: string) => {
   const normalized = hostname
     .toLowerCase()
     .replace(/^\[/, "")
-    .replace(/\]$/, "");
+    .replace(/\]$/, "")
+    .replace(/\.$/, "");
   if (
     normalized === "localhost" ||
     normalized.endsWith(".localhost") ||
@@ -38,7 +39,28 @@ const isPrivateHostname = (hostname: string) => {
       first >= 224
     );
   }
-  if (ipVersion === 6)
+  if (ipVersion === 6) {
+    if (normalized.startsWith("::ffff:")) {
+      const [high, low] = normalized
+        .slice(7)
+        .split(":")
+        .map((part) => Number.parseInt(part, 16));
+      if (high !== undefined && low !== undefined) {
+        const first = high >> 8;
+        const second = high & 255;
+        return (
+          first === 0 ||
+          first === 10 ||
+          first === 127 ||
+          (first === 100 && second >= 64 && second <= 127) ||
+          (first === 169 && second === 254) ||
+          (first === 172 && second >= 16 && second <= 31) ||
+          (first === 192 && second === 168) ||
+          (first === 198 && (second === 18 || second === 19)) ||
+          first >= 224
+        );
+      }
+    }
     return (
       normalized === "::" ||
       normalized === "::1" ||
@@ -46,6 +68,7 @@ const isPrivateHostname = (hostname: string) => {
       normalized.startsWith("fd") ||
       /^fe[89ab]/.test(normalized)
     );
+  }
   return false;
 };
 
