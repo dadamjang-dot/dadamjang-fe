@@ -5,11 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  View,
-  type LayoutChangeEvent,
-  type TextInput,
-} from "react-native";
+import { View, type LayoutChangeEvent, type TextInput } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import Animated, {
   useSharedValue,

@@ -32,8 +32,12 @@ export const runIdentityVerificationSession = async (
 ) => {
   const started = await startIdentityVerification(purpose, provider);
   const redirectUrl = Linking.createURL("auth/identity-callback");
-  const result = await WebBrowser.openAuthSessionAsync(started.launchUrl, redirectUrl);
-  if (result.type !== "success") throw new AuthSessionCancelledError("본인 인증을 취소했어요.");
+  const result = await WebBrowser.openAuthSessionAsync(
+    started.launchUrl,
+    redirectUrl,
+  );
+  if (result.type !== "success")
+    throw new AuthSessionCancelledError("본인 인증을 취소했어요.");
   const params = callbackParams(result.url);
   const callbackToken = params.get("callbackToken");
   if (
@@ -43,8 +47,10 @@ export const runIdentityVerificationSession = async (
   )
     throw new Error("본인 인증에 실패했어요. 다시 시도해 주세요.");
   const status = await getIdentityVerificationStatus(started.sessionId);
-  if (status.status === "EXPIRED") throw new Error("본인 인증 시간이 만료되었습니다. 다시 시도해 주세요.");
-  if (status.status !== "VERIFIED") throw new Error("본인 인증 완료 상태를 확인하지 못했어요.");
+  if (status.status === "EXPIRED")
+    throw new Error("본인 인증 시간이 만료되었습니다. 다시 시도해 주세요.");
+  if (status.status !== "VERIFIED")
+    throw new Error("본인 인증 완료 상태를 확인하지 못했어요.");
   return (await completeIdentityVerification(started.sessionId, callbackToken))
     .identityVerificationToken;
 };
@@ -52,8 +58,12 @@ export const runIdentityVerificationSession = async (
 export const runKakaoLoginSession = async (): Promise<KakaoLoginResult> => {
   const started = await startKakaoLogin();
   const redirectUrl = Linking.createURL("auth/kakao-callback");
-  const result = await WebBrowser.openAuthSessionAsync(started.authUrl, redirectUrl);
-  if (result.type !== "success") throw new AuthSessionCancelledError("카카오 로그인을 취소했어요.");
+  const result = await WebBrowser.openAuthSessionAsync(
+    started.authUrl,
+    redirectUrl,
+  );
+  if (result.type !== "success")
+    throw new AuthSessionCancelledError("카카오 로그인을 취소했어요.");
   const params = callbackParams(result.url);
   const flowId = params.get("flowId");
   const callbackToken = params.get("callbackToken");

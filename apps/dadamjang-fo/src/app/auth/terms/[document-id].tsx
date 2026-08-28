@@ -9,18 +9,26 @@ import { AuthScreen } from "@/features/auth/components";
 import { Button } from "@/shared/components/button";
 
 const ConsentDocumentScreen = () => {
-  const { "document-id": documentId } = useLocalSearchParams<{ "document-id": string }>();
+  const { "document-id": documentId } = useLocalSearchParams<{
+    "document-id": string;
+  }>();
   const query = useSignupConsentDocuments();
   const document = query.data?.find((item) => item.documentId === documentId);
 
   return (
     <AuthScreen testID="e2e.auth.terms">
       <Stack.Screen options={{ title: document?.title ?? "약관 상세" }} />
-      {query.isPending ? <Text style={s.status}>약관을 불러오고 있어요.</Text> : null}
+      {query.isPending ? (
+        <Text style={s.status}>약관을 불러오고 있어요.</Text>
+      ) : null}
       {query.isError ? (
         <View style={s.errorState}>
           <Text style={s.error}>약관을 불러오지 못했어요.</Text>
-          <Button label="다시 시도" onPress={() => query.refetch()} variant="secondary" />
+          <Button
+            label="다시 시도"
+            onPress={() => query.refetch()}
+            variant="secondary"
+          />
         </View>
       ) : null}
       {!query.isPending && !query.isError && !document ? (
@@ -46,7 +54,12 @@ const s = StyleSheet.create({
   document: { gap: spacing.md },
   title: { color: colors.ink, fontSize: 22, fontWeight: "800", lineHeight: 30 },
   version: { color: colors.muted, fontSize: 12 },
-  body: { marginTop: spacing.sm, color: colors.ink, fontSize: 14, lineHeight: 23 },
+  body: {
+    marginTop: spacing.sm,
+    color: colors.ink,
+    fontSize: 14,
+    lineHeight: 23,
+  },
 });
 
 export default ConsentDocumentScreen;

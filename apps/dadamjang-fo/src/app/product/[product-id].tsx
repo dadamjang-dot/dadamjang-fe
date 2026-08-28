@@ -88,7 +88,9 @@ const ProductScreen = () => {
   const handleToggleBrandFollow = () => {
     if (!brand) return;
     currentUser.runProtectedAction(() => {
-      const mutation = isFollowing ? brandActions.unfollow : brandActions.follow;
+      const mutation = isFollowing
+        ? brandActions.unfollow
+        : brandActions.follow;
       mutation.mutate(brand.brandId);
     });
   };

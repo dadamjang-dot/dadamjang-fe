@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { extname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,9 +25,6 @@ const ignoredDirectories = new Set([
   "playwright-report",
   "test-results",
 ]);
-const foBaselineDigest =
-  "2c7e463269788884bacd814d184b0f9744423a5a90a13dec56d5f227461f5d1c";
-
 const collectFiles = async (directory) => {
   const files = [];
   const entries = await readdir(directory, { withFileTypes: true });
@@ -59,17 +55,6 @@ const formattingViolations = async (files) => {
   return violations;
 };
 
-const digestViolations = (violations) => {
-  const digest = createHash("sha256");
-  for (const violation of violations) {
-    digest.update(violation.path);
-    digest.update("\0");
-    digest.update(violation.source);
-    digest.update("\0");
-  }
-  return digest.digest("hex");
-};
-
 const ownedFiles = (
   await Promise.all(
     ["apps/dadamjang-bo", "apps/dadamjang-partner", "packages"].map((path) =>
@@ -87,19 +72,16 @@ const [ownedViolations, foViolations] = await Promise.all([
   formattingViolations(ownedFiles),
   formattingViolations(foFiles),
 ]);
-const foDigest = digestViolations(foViolations);
 const failures = [];
 
 if (ownedViolations.length > 0)
   failures.push(
     `Formatting violations:\n${ownedViolations.map(({ path }) => path).join("\n")}`,
   );
-if (foViolations.length > 0 && foDigest !== foBaselineDigest)
+if (foViolations.length > 0)
   failures.push(
-    `FO formatting baseline changed: ${foDigest}\n${foViolations.map(({ path }) => path).join("\n")}`,
+    `Formatting violations:\n${foViolations.map(({ path }) => path).join("\n")}`,
   );
 if (failures.length > 0) throw new Error(failures.join("\n"));
 
-console.log(
-  `Formatting verified; ${foViolations.length} unchanged FO baseline files remain`,
-);
+console.log("Formatting verified; 0 violations");

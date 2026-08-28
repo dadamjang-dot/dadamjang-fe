@@ -20,9 +20,10 @@ describe("ProductCard", () => {
   it("renders product benefits and prices", () => {
     render(<ProductCard {...product} />);
 
-    expect(
-      screen.UNSAFE_getByProps({ recyclingKey: "product-1" }),
-    ).toHaveProp("source", { uri: "https://example.com/t-shirt.jpg" });
+    expect(screen.UNSAFE_getByProps({ recyclingKey: "product-1" })).toHaveProp(
+      "source",
+      { uri: "https://example.com/t-shirt.jpg" },
+    );
     expect(screen.getByText("슈퍼세일")).toBeVisible();
     expect(screen.getByText("오버핏 반팔 티셔츠")).toBeVisible();
     expect(screen.getByText("19,900원")).toBeVisible();

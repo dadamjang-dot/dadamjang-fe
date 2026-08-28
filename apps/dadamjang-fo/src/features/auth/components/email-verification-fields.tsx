@@ -15,7 +15,10 @@ type EmailVerificationFieldsProps = {
   verificationToken?: string;
   onVerified: (token?: string) => void;
   requestCode: (email: string) => Promise<unknown>;
-  verifyCode: (input: { email: string; code: string }) => Promise<VerificationPayload>;
+  verifyCode: (input: {
+    email: string;
+    code: string;
+  }) => Promise<VerificationPayload>;
   testIDPrefix: string;
 };
 
@@ -38,7 +41,10 @@ export const EmailVerificationFields = ({
 
   useEffect(() => {
     if (cooldown <= 0) return;
-    const timer = setInterval(() => setCooldown((value) => Math.max(0, value - 1)), 1_000);
+    const timer = setInterval(
+      () => setCooldown((value) => Math.max(0, value - 1)),
+      1_000,
+    );
     return () => clearInterval(timer);
   }, [cooldown]);
 
@@ -81,7 +87,10 @@ export const EmailVerificationFields = ({
     setIsVerifying(true);
     setMessage(undefined);
     try {
-      const result = await verifyCode({ email: email.trim().toLowerCase(), code });
+      const result = await verifyCode({
+        email: email.trim().toLowerCase(),
+        code,
+      });
       onVerified(result.emailVerificationToken);
       setMessage("이메일 인증을 마쳤어요.");
     } catch (error) {
@@ -102,7 +111,9 @@ export const EmailVerificationFields = ({
   return (
     <>
       <AuthField
-        actionDisabled={Boolean(verificationToken) || cooldown > 0 || isRequesting}
+        actionDisabled={
+          Boolean(verificationToken) || cooldown > 0 || isRequesting
+        }
         actionLabel={isRequesting ? "보내는 중" : requestLabel}
         autoCapitalize="none"
         autoComplete="email"

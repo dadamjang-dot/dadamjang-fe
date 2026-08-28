@@ -14,21 +14,31 @@ import { authErrorMessage } from "@/features/auth/rules";
 import type { IdentityVerificationProvider } from "@/features/auth/types";
 import { Button } from "@/shared/components/button";
 
-const providers: { id: IdentityVerificationProvider; label: string; description: string }[] = [
+const providers: {
+  id: IdentityVerificationProvider;
+  label: string;
+  description: string;
+}[] = [
   { id: "TOSS", label: "토스 인증", description: "토스 인증서로 본인 확인" },
-  { id: "KAKAO", label: "카카오 인증", description: "카카오 인증서로 본인 확인" },
-  { id: "NAVER", label: "네이버 인증", description: "네이버 인증서로 본인 확인" },
+  {
+    id: "KAKAO",
+    label: "카카오 인증",
+    description: "카카오 인증서로 본인 확인",
+  },
+  {
+    id: "NAVER",
+    label: "네이버 인증",
+    description: "네이버 인증서로 본인 확인",
+  },
 ];
 
 const IdentityProviderSheetRoute = () => {
   const router = useRouter();
-  const {
-    identityRequest,
-    completeIdentityRequest,
-    cancelIdentityRequest,
-  } = useAuthFlow();
+  const { identityRequest, completeIdentityRequest, cancelIdentityRequest } =
+    useAuthFlow();
   const settled = useRef(false);
-  const [pendingProvider, setPendingProvider] = useState<IdentityVerificationProvider>();
+  const [pendingProvider, setPendingProvider] =
+    useState<IdentityVerificationProvider>();
   const [message, setMessage] = useState<string>();
 
   useEffect(
@@ -43,7 +53,10 @@ const IdentityProviderSheetRoute = () => {
     setPendingProvider(provider);
     setMessage(undefined);
     try {
-      const token = await runIdentityVerificationSession(identityRequest.purpose, provider);
+      const token = await runIdentityVerificationSession(
+        identityRequest.purpose,
+        provider,
+      );
       settled.current = true;
       completeIdentityRequest(token);
       router.back();
@@ -79,7 +92,9 @@ const IdentityProviderSheetRoute = () => {
           >
             <View style={s.providerText}>
               <Text style={s.providerLabel}>
-                {pendingProvider === provider.id ? "인증 여는 중" : provider.label}
+                {pendingProvider === provider.id
+                  ? "인증 여는 중"
+                  : provider.label}
               </Text>
               <Text style={s.providerDescription}>{provider.description}</Text>
             </View>

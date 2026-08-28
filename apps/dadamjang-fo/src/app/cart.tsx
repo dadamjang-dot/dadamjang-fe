@@ -11,12 +11,8 @@ import { useCart, useCartActions } from "@/features/cart";
 
 const CartScreen = () => {
   const router = useRouter();
-  const {
-    authStatus,
-    isAuthenticated,
-    redirectToSignIn,
-    retryAuth,
-  } = useAuthActionGate("/cart");
+  const { authStatus, isAuthenticated, redirectToSignIn, retryAuth } =
+    useAuthActionGate("/cart");
   const cart = useCart(isAuthenticated);
   const actions = useCartActions();
 
@@ -59,10 +55,9 @@ const CartScreen = () => {
   }
 
   const handleCheckout = () => {
-    actions.checkout.mutate(
-      undefined,
-      { onSuccess: (order) => router.replace(`/order/${order.orderId}`) },
-    );
+    actions.checkout.mutate(undefined, {
+      onSuccess: (order) => router.replace(`/order/${order.orderId}`),
+    });
   };
 
   return (

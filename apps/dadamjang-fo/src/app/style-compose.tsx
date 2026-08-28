@@ -20,10 +20,21 @@ const StyleComposeScreen = () => {
   }, [authStatus, redirectToSignIn]);
 
   if (authStatus !== "authenticated" || !data)
-    return <View style={s.loading}><ActivityIndicator color={colors.primary} /></View>;
+    return (
+      <View style={s.loading}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
   return <StyleComposer onClose={() => router.back()} />;
 };
 
-const s = StyleSheet.create({ loading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface } });
+const s = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+  },
+});
 
 export default StyleComposeScreen;

@@ -74,7 +74,9 @@ const SearchContent = ({ keyword }: SearchContentProps) => {
                 onPress={() => router.push(`/product/${product.productId}`)}
                 onToggleLike={(nextLiked) => {
                   auth.runProtectedAction(() => {
-                    const mutation = nextLiked ? wishActions.add : wishActions.remove;
+                    const mutation = nextLiked
+                      ? wishActions.add
+                      : wishActions.remove;
                     mutation.mutate(product.productId);
                   });
                 }}

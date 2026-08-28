@@ -54,9 +54,7 @@ const FilterChip = ({
     >
       {label}
     </Text>
-    {showDisclosure ? (
-      <Text style={s.disclosureIcon}>⌄</Text>
-    ) : null}
+    {showDisclosure ? <Text style={s.disclosureIcon}>⌄</Text> : null}
   </Button>
 );
 

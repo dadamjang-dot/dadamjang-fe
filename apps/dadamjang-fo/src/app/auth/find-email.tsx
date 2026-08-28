@@ -42,16 +42,25 @@ const FindEmailScreen = () => {
         {maskedEmail ? (
           <View style={s.result}>
             <Text style={s.eyebrow}>가입한 이메일</Text>
-            <Text accessibilityLabel={`가입한 이메일 ${maskedEmail}`} style={s.email}>
+            <Text
+              accessibilityLabel={`가입한 이메일 ${maskedEmail}`}
+              style={s.email}
+            >
               {maskedEmail}
             </Text>
-            <Button label="이메일로 로그인" onPress={() => router.replace("/auth/signin")} />
+            <Button
+              label="이메일로 로그인"
+              onPress={() => router.replace("/auth/signin")}
+            />
           </View>
         ) : (
           <>
             <View style={s.intro}>
               <Text style={s.heading}>본인 인증으로 이메일을 찾아요.</Text>
-              <Text style={s.description}>가입할 때 입력한 정보와 일치하는 이메일을 일부 가려서 보여드려요.</Text>
+              <Text style={s.description}>
+                가입할 때 입력한 정보와 일치하는 이메일을 일부 가려서
+                보여드려요.
+              </Text>
             </View>
             <Button
               disabled={findEmail.isPending}
@@ -59,7 +68,9 @@ const FindEmailScreen = () => {
               onPress={handleVerify}
               testID="e2e.auth.find-email.identity"
             />
-            {notFound ? <Text style={s.message}>가입된 이메일을 찾지 못했습니다.</Text> : null}
+            {notFound ? (
+              <Text style={s.message}>가입된 이메일을 찾지 못했습니다.</Text>
+            ) : null}
           </>
         )}
         {message ? (
@@ -75,12 +86,27 @@ const FindEmailScreen = () => {
 const s = StyleSheet.create({
   content: { gap: spacing.xl },
   intro: { gap: spacing.sm },
-  heading: { color: colors.ink, fontSize: 20, fontWeight: "800", lineHeight: 28 },
+  heading: {
+    color: colors.ink,
+    fontSize: 20,
+    fontWeight: "800",
+    lineHeight: 28,
+  },
   description: { color: colors.muted, fontSize: 14, lineHeight: 21 },
   result: { gap: spacing.lg, alignItems: "stretch" },
   eyebrow: { color: colors.muted, fontSize: 13, textAlign: "center" },
-  email: { color: colors.ink, fontSize: 22, fontWeight: "800", textAlign: "center" },
-  message: { color: colors.danger, fontSize: 13, lineHeight: 18, textAlign: "center" },
+  email: {
+    color: colors.ink,
+    fontSize: 22,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  message: {
+    color: colors.danger,
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: "center",
+  },
 });
 
 export default FindEmailScreen;

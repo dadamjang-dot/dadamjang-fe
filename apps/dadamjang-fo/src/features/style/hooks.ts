@@ -181,9 +181,7 @@ export const useToggleStylePostLike = () => {
       const request = (previous ?? Promise.resolve())
         .catch(() => undefined)
         .then(() =>
-          nextLiked
-            ? likeStylePost(stylePostId)
-            : unlikeStylePost(stylePostId),
+          nextLiked ? likeStylePost(stylePostId) : unlikeStylePost(stylePostId),
         );
       const settled = request.then(
         () => undefined,

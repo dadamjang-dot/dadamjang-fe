@@ -9,10 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
-import type {
-  IdentityVerificationPurpose,
-  KakaoSignupContext,
-} from "./types";
+import type { IdentityVerificationPurpose, KakaoSignupContext } from "./types";
 
 export class IdentitySheetDismissedError extends Error {
   constructor() {
@@ -29,7 +26,9 @@ type PendingIdentity = {
 
 type AuthFlowContextValue = {
   identityRequest?: IdentityRequest;
-  openIdentityProviderSheet: (purpose: IdentityVerificationPurpose) => Promise<string>;
+  openIdentityProviderSheet: (
+    purpose: IdentityVerificationPurpose,
+  ) => Promise<string>;
   completeIdentityRequest: (token: string) => void;
   cancelIdentityRequest: () => void;
   kakaoSignup?: KakaoSignupContext;
@@ -71,7 +70,10 @@ export const AuthFlowProvider = ({ children }: { children: ReactNode }) => {
     setIdentityRequest(undefined);
   }, []);
 
-  const clearKakaoSignup = useCallback(() => setKakaoSignupState(undefined), []);
+  const clearKakaoSignup = useCallback(
+    () => setKakaoSignupState(undefined),
+    [],
+  );
   const resetAuthFlow = useCallback(() => {
     cancelIdentityRequest();
     setKakaoSignupState(undefined);
@@ -98,7 +100,11 @@ export const AuthFlowProvider = ({ children }: { children: ReactNode }) => {
     ],
   );
 
-  return <AuthFlowContext.Provider value={value}>{children}</AuthFlowContext.Provider>;
+  return (
+    <AuthFlowContext.Provider value={value}>
+      {children}
+    </AuthFlowContext.Provider>
+  );
 };
 
 export const useAuthFlow = () => {

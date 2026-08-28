@@ -27,10 +27,13 @@ export const sortWishProducts = (
     .sort((left, right) => {
       const priceDelta =
         filters.sort === "LOW_PRICE"
-          ? lowestActiveSkuPrice(left.product) - lowestActiveSkuPrice(right.product)
-          : lowestActiveSkuPrice(right.product) - lowestActiveSkuPrice(left.product);
+          ? lowestActiveSkuPrice(left.product) -
+            lowestActiveSkuPrice(right.product)
+          : lowestActiveSkuPrice(right.product) -
+            lowestActiveSkuPrice(left.product);
       const createdAtDelta =
-        Date.parse(right.product.createdAt) - Date.parse(left.product.createdAt);
+        Date.parse(right.product.createdAt) -
+        Date.parse(left.product.createdAt);
       if (filters.sort === "RECOMMENDED") return left.index - right.index;
       if (filters.sort === "LATEST")
         return createdAtDelta || left.index - right.index;

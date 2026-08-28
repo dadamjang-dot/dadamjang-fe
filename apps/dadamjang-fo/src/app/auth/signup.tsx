@@ -30,12 +30,12 @@ import { Button } from "@/shared/components/button";
 
 const SignupScreen = () => {
   const router = useRouter();
-  const { mode, returnTo } = useLocalSearchParams<{ mode?: string; returnTo?: string }>();
-  const {
-    kakaoSignup,
-    clearKakaoSignup,
-    openIdentityProviderSheet,
-  } = useAuthFlow();
+  const { mode, returnTo } = useLocalSearchParams<{
+    mode?: string;
+    returnTo?: string;
+  }>();
+  const { kakaoSignup, clearKakaoSignup, openIdentityProviderSheet } =
+    useAuthFlow();
   const isKakao = mode === "kakao" && Boolean(kakaoSignup);
   const consentsQuery = useSignupConsentDocuments();
   const requestCode = useRequestSignupEmailCode();
@@ -43,25 +43,37 @@ const SignupScreen = () => {
   const signupFo = useSignUpFo();
   const signupKakao = useCompleteKakaoSignupFo();
   const [email, setEmail] = useState(kakaoSignup?.email ?? "");
-  const [emailVerificationToken, setEmailVerificationToken] = useState<string>();
+  const [emailVerificationToken, setEmailVerificationToken] =
+    useState<string>();
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
-  const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(new Set());
-  const [identityVerificationToken, setIdentityVerificationToken] = useState<string>();
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [identityVerificationToken, setIdentityVerificationToken] =
+    useState<string>();
   const [isIdentityPending, setIsIdentityPending] = useState(false);
   const [message, setMessage] = useState<string>();
 
-  const documents = useMemo(() => consentsQuery.data ?? [], [consentsQuery.data]);
-  const emailVerified = isKakao && !kakaoSignup?.emailVerificationRequired
-    ? Boolean(email)
-    : Boolean(emailVerificationToken);
+  const documents = useMemo(
+    () => consentsQuery.data ?? [],
+    [consentsQuery.data],
+  );
+  const emailVerified =
+    isKakao && !kakaoSignup?.emailVerificationRequired
+      ? Boolean(email)
+      : Boolean(emailVerificationToken);
   const credentialsValid = isKakao
     ? validateEmail(email) === null && emailVerified
-    : validateEmail(email) === null && emailVerified && validatePassword(password) === null &&
+    : validateEmail(email) === null &&
+      emailVerified &&
+      validatePassword(password) === null &&
       password === passwordConfirmation;
-  const requiredConsentsAccepted = hasCompleteSignupConsentDocuments(documents) &&
+  const requiredConsentsAccepted =
+    hasCompleteSignupConsentDocuments(documents) &&
     hasRequiredConsents(documents, selectedDocumentIds);
-  const canVerifyIdentity = credentialsValid && requiredConsentsAccepted && !isIdentityPending;
+  const canVerifyIdentity =
+    credentialsValid && requiredConsentsAccepted && !isIdentityPending;
   const isSubmitting = signupFo.isPending || signupKakao.isPending;
 
   const consents = useMemo(
@@ -93,7 +105,12 @@ const SignupScreen = () => {
   };
 
   const handleSubmit = async () => {
-    if (!identityVerificationToken || !credentialsValid || !requiredConsentsAccepted) return;
+    if (
+      !identityVerificationToken ||
+      !credentialsValid ||
+      !requiredConsentsAccepted
+    )
+      return;
     setMessage(undefined);
     try {
       if (isKakao && kakaoSignup) {
@@ -124,8 +141,13 @@ const SignupScreen = () => {
     return (
       <AuthScreen centered>
         <View style={s.missingFlow}>
-          <Text style={s.message}>카카오 가입 시간이 만료되었습니다. 다시 시작해 주세요.</Text>
-          <Button label="로그인으로 돌아가기" onPress={() => router.replace("/auth")} />
+          <Text style={s.message}>
+            카카오 가입 시간이 만료되었습니다. 다시 시작해 주세요.
+          </Text>
+          <Button
+            label="로그인으로 돌아가기"
+            onPress={() => router.replace("/auth")}
+          />
         </View>
       </AuthScreen>
     );
@@ -149,22 +171,35 @@ const SignupScreen = () => {
         />
         <View style={s.section}>
           <Text style={s.sectionTitle}>약관 동의</Text>
-          {consentsQuery.isPending ? <Text style={s.status}>약관을 불러오고 있어요.</Text> : null}
+          {consentsQuery.isPending ? (
+            <Text style={s.status}>약관을 불러오고 있어요.</Text>
+          ) : null}
           {consentsQuery.isError ? (
             <View style={s.statusGroup}>
               <Text style={s.message}>약관을 불러오지 못했어요.</Text>
-              <Button label="다시 시도" onPress={() => consentsQuery.refetch()} variant="secondary" />
+              <Button
+                label="다시 시도"
+                onPress={() => consentsQuery.refetch()}
+                variant="secondary"
+              />
             </View>
           ) : null}
           {documents.length > 0 ? (
             <ConsentChecklist
               documents={documents}
               onOpenDocument={(documentId) =>
-                router.push({ pathname: "/auth/terms/[document-id]", params: { "document-id": documentId } })
+                router.push({
+                  pathname: "/auth/terms/[document-id]",
+                  params: { "document-id": documentId },
+                })
               }
               onToggle={toggleConsent}
               onToggleAll={(selected) =>
-                setSelectedDocumentIds(selected ? new Set(documents.map(({ documentId }) => documentId)) : new Set())
+                setSelectedDocumentIds(
+                  selected
+                    ? new Set(documents.map(({ documentId }) => documentId))
+                    : new Set(),
+                )
               }
               selectedDocumentIds={selectedDocumentIds}
             />
@@ -211,7 +246,12 @@ const s = StyleSheet.create({
   section: { gap: spacing.lg },
   sectionTitle: { color: colors.ink, fontSize: 18, fontWeight: "800" },
   identity: { gap: spacing.sm },
-  verified: { color: colors.ink, fontSize: 13, fontWeight: "600", textAlign: "center" },
+  verified: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+  },
   status: { color: colors.muted, fontSize: 13 },
   statusGroup: { gap: spacing.md },
   message: { color: colors.danger, fontSize: 13, lineHeight: 18 },

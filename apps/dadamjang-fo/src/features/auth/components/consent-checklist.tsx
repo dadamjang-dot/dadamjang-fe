@@ -38,14 +38,18 @@ export const ConsentChecklist = ({
   onOpenDocument,
 }: ConsentChecklistProps) => {
   const allState = getConsentSelectionState(documents, selectedDocumentIds);
-  const orderedDocuments = [...documents].sort((left, right) => typeOrder[left.type] - typeOrder[right.type]);
+  const orderedDocuments = [...documents].sort(
+    (left, right) => typeOrder[left.type] - typeOrder[right.type],
+  );
 
   return (
     <View style={s.checklist}>
       <Button
         accessibilityLabel="모두 동의하기"
         accessibilityRole="checkbox"
-        accessibilityState={{ checked: allState === "mixed" ? "mixed" : allState === "checked" }}
+        accessibilityState={{
+          checked: allState === "mixed" ? "mixed" : allState === "checked",
+        }}
         onPress={() => onToggleAll(allState !== "checked")}
         style={s.allRow}
         testID="e2e.auth.consent.all"
@@ -70,7 +74,9 @@ export const ConsentChecklist = ({
               >
                 <Check state={selected ? "checked" : "unchecked"} />
                 <Text style={s.documentLabel}>
-                  <Text style={s.requirement}>{document.required ? "[필수]" : "[선택]"}</Text>{" "}
+                  <Text style={s.requirement}>
+                    {document.required ? "[필수]" : "[선택]"}
+                  </Text>{" "}
                   {document.title}
                 </Text>
               </Button>
@@ -112,10 +118,20 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
   },
-  documentLabel: { minWidth: 0, flex: 1, color: colors.ink, fontSize: 14, lineHeight: 19 },
+  documentLabel: {
+    minWidth: 0,
+    flex: 1,
+    color: colors.ink,
+    fontSize: 14,
+    lineHeight: 19,
+  },
   requirement: { color: colors.muted, fontSize: 12 },
   details: { minHeight: 44, justifyContent: "center", paddingLeft: spacing.md },
-  detailsLabel: { color: colors.muted, fontSize: 12, textDecorationLine: "underline" },
+  detailsLabel: {
+    color: colors.muted,
+    fontSize: 12,
+    textDecorationLine: "underline",
+  },
   check: {
     width: 22,
     height: 22,

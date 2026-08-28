@@ -1,9 +1,6 @@
 import { useRouter } from "expo-router";
 
-import {
-  useShopFilters,
-  type ProductSort,
-} from "@/features/catalog";
+import { useShopFilters, type ProductSort } from "@/features/catalog";
 import { ProductSortSheet } from "@/features/shop";
 
 const ShopSortSheetRoute = () => {
@@ -16,10 +13,7 @@ const ShopSortSheetRoute = () => {
   };
 
   return (
-    <ProductSortSheet
-      selectedSort={filters.sort}
-      onSelect={handleSelectSort}
-    />
+    <ProductSortSheet selectedSort={filters.sort} onSelect={handleSelectSort} />
   );
 };
 

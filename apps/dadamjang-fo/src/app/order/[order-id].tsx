@@ -41,7 +41,8 @@ const OrderDetailScreen = () => {
   const order = useOrder(orderId);
 
   if (order.isLoading) return <Text>주문을 불러오는 중이에요.</Text>;
-  if (order.isError || !order.data) return <Text>주문을 불러오지 못했어요.</Text>;
+  if (order.isError || !order.data)
+    return <Text>주문을 불러오지 못했어요.</Text>;
   const state = checkoutState(order.data.status, order.data.paymentStatus);
 
   return (

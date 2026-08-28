@@ -23,11 +23,7 @@ const sortLabels: Record<ProductSort, string> = {
 const ShopSortBar = ({ totalCount, sort, onOpenSort }: ShopSortBarProps) => (
   <View style={s.container}>
     <Text style={s.count}>{totalCount.toLocaleString("ko-KR")}개</Text>
-    <Button
-      onPress={onOpenSort}
-      style={s.sortButton}
-      variant="bare"
-    >
+    <Button onPress={onOpenSort} style={s.sortButton} variant="bare">
       <Text style={s.sortLabel}>{sortLabels[sort]}</Text>
       <Text style={s.chevron}>⌄</Text>
     </Button>

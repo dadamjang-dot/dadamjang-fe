@@ -1,4 +1,8 @@
-import { useAnimatedStyle, interpolate, Extrapolation } from "react-native-reanimated";
+import {
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from "react-native-reanimated";
 import type { SharedValue } from "react-native-reanimated";
 import type { ActionButtonGroupAnimation } from "@dadamjang/mobile";
 
@@ -30,7 +34,12 @@ export const useCircularPairAnimation = (
           ),
         },
       ],
-      opacity: interpolate(progress.get(), [0, phaseEnd], [1, 0], Extrapolation.CLAMP),
+      opacity: interpolate(
+        progress.get(),
+        [0, phaseEnd],
+        [1, 0],
+        Extrapolation.CLAMP,
+      ),
     };
   });
 
@@ -45,11 +54,21 @@ export const useCircularPairAnimation = (
         ),
       },
     ],
-    opacity: interpolate(progress.get(), [0, phaseEnd], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(
+      progress.get(),
+      [0, phaseEnd],
+      [1, 0],
+      Extrapolation.CLAMP,
+    ),
   }));
 
   const cancelBtnStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.get(), [phaseEnd, 1], [0, 1], Extrapolation.CLAMP),
+    opacity: interpolate(
+      progress.get(),
+      [phaseEnd, 1],
+      [0, 1],
+      Extrapolation.CLAMP,
+    ),
     transform: [
       {
         scale: interpolate(
@@ -78,13 +97,23 @@ export const useCapsuleAnimation = (
   const capsuleStyle = useAnimatedStyle(() => {
     if (childrenWidth.get() === 0 || cancelWidth.get() === 0) {
       return {
-        opacity: interpolate(progress.get(), [0, phaseEnd], [1, 0], Extrapolation.CLAMP),
+        opacity: interpolate(
+          progress.get(),
+          [0, phaseEnd],
+          [1, 0],
+          Extrapolation.CLAMP,
+        ),
       };
     }
 
     const collapsedScale = cancelWidth.get() / childrenWidth.get();
     return {
-      opacity: interpolate(progress.get(), [0, phaseEnd], [1, 0], Extrapolation.CLAMP),
+      opacity: interpolate(
+        progress.get(),
+        [0, phaseEnd],
+        [1, 0],
+        Extrapolation.CLAMP,
+      ),
       transformOrigin: "right center",
       transform: [
         {
@@ -112,7 +141,12 @@ export const useCapsuleAnimation = (
   }));
 
   const cancelBtnStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.get(), [phaseEnd, 1], [0, 1], Extrapolation.CLAMP),
+    opacity: interpolate(
+      progress.get(),
+      [phaseEnd, 1],
+      [0, 1],
+      Extrapolation.CLAMP,
+    ),
     transform: [
       {
         scale: interpolate(

@@ -91,9 +91,7 @@ export const useAuthActionGate = (returnTo: string) => {
       const href = {
         pathname: "/auth/signin" as const,
         params: {
-          returnTo: resolveAuthReturnTo(
-            returnToOverride ?? sanitizedReturnTo,
-          ),
+          returnTo: resolveAuthReturnTo(returnToOverride ?? sanitizedReturnTo),
         },
       };
       if (replace) router.replace(href);

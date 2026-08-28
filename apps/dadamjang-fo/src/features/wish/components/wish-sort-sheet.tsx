@@ -89,7 +89,14 @@ const s = StyleSheet.create({
     borderTopRightRadius: 20,
     backgroundColor: colors.surface,
   },
-  handle: { alignSelf: "center", width: 36, height: 4, marginBottom: 8, borderRadius: 2, backgroundColor: colors.line },
+  handle: {
+    alignSelf: "center",
+    width: 36,
+    height: 4,
+    marginBottom: 8,
+    borderRadius: 2,
+    backgroundColor: colors.line,
+  },
   option: {
     minHeight: 52,
     flexDirection: "row",
@@ -100,7 +107,15 @@ const s = StyleSheet.create({
     borderBottomColor: colors.primarySoft,
   },
   optionLabel: { color: colors.ink, fontSize: 15 },
-  check: { width: 24, height: 24, alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 1, borderColor: colors.line },
+  check: {
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
   selectedCheck: { borderColor: colors.ink, backgroundColor: colors.ink },
   checkLabel: { color: colors.surface, fontSize: 14, fontWeight: "700" },
 });

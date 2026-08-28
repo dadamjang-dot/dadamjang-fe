@@ -13,12 +13,8 @@ import { Button } from "@/shared/components";
 
 const CompareScreen = () => {
   const router = useRouter();
-  const {
-    authStatus,
-    isAuthenticated,
-    redirectToSignIn,
-    retryAuth,
-  } = useAuthActionGate("/compare");
+  const { authStatus, isAuthenticated, redirectToSignIn, retryAuth } =
+    useAuthActionGate("/compare");
   const comparison = useComparison(isAuthenticated);
   const summaries = useComparisonPriceSummaries(isAuthenticated);
   const actions = useComparisonActions();
@@ -26,7 +22,8 @@ const CompareScreen = () => {
     comparison.data?.map((item) => item.productId) ?? [],
   );
   const matchedSummaries =
-    summaries.data?.filter((summary) => productIds.has(summary.productId)) ?? [];
+    summaries.data?.filter((summary) => productIds.has(summary.productId)) ??
+    [];
 
   useEffect(() => {
     if (authStatus === "unauthenticated") redirectToSignIn(true);
@@ -84,7 +81,9 @@ const CompareScreen = () => {
             onPress={() => router.push(`/product/${summary.productId}`)}
           >
             <Text style={s.title}>{summary.name}</Text>
-            <Text style={s.price}>{summary.finalPrice.toLocaleString("ko-KR")}원</Text>
+            <Text style={s.price}>
+              {summary.finalPrice.toLocaleString("ko-KR")}원
+            </Text>
             <Text style={s.meta}>{summary.lowestPriceEvidenceSummary}</Text>
           </Pressable>
           <Pressable

@@ -11,12 +11,8 @@ import { useOrders } from "@/features/order";
 
 const OrdersScreen = () => {
   const router = useRouter();
-  const {
-    authStatus,
-    isAuthenticated,
-    redirectToSignIn,
-    retryAuth,
-  } = useAuthActionGate("/orders");
+  const { authStatus, isAuthenticated, redirectToSignIn, retryAuth } =
+    useAuthActionGate("/orders");
   const orders = useOrders(isAuthenticated);
 
   useEffect(() => {

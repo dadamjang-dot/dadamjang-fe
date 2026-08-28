@@ -11,16 +11,28 @@ import { Button } from "@/shared/components";
 
 const StylePostScreen = () => {
   const router = useRouter();
-  const { "style-id": styleId } = useLocalSearchParams<{ "style-id": string }>();
+  const { "style-id": styleId } = useLocalSearchParams<{
+    "style-id": string;
+  }>();
   const authGate = useAuthActionGate(`/style/${styleId}`);
   const postQuery = useStylePost(styleId);
   const likeMutation = useToggleStylePostLike();
 
   if (postQuery.isLoading) {
-    return <View style={s.state}><ActivityIndicator color={colors.primary} /><Text style={s.helper}>스타일을 불러오는 중이에요.</Text></View>;
+    return (
+      <View style={s.state}>
+        <ActivityIndicator color={colors.primary} />
+        <Text style={s.helper}>스타일을 불러오는 중이에요.</Text>
+      </View>
+    );
   }
   if (postQuery.isError || !postQuery.data) {
-    return <View style={s.state}><Text style={s.title}>스타일을 불러오지 못했어요.</Text><Button label="다시 시도" onPress={() => postQuery.refetch()} /></View>;
+    return (
+      <View style={s.state}>
+        <Text style={s.title}>스타일을 불러오지 못했어요.</Text>
+        <Button label="다시 시도" onPress={() => postQuery.refetch()} />
+      </View>
+    );
   }
 
   return (
@@ -39,7 +51,14 @@ const StylePostScreen = () => {
 };
 
 const s = StyleSheet.create({
-  state: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 24, backgroundColor: colors.surface },
+  state: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    padding: 24,
+    backgroundColor: colors.surface,
+  },
   title: { color: colors.ink, fontSize: 16, fontWeight: "700" },
   helper: { color: colors.muted, fontSize: 14 },
 });

@@ -8,7 +8,9 @@ import StyleComposer from "./style-composer";
 const purchasedProduct: PurchasedStyleProduct = {
   productId: "product-1",
   title: "오버핏 반팔 티셔츠",
-  imageUrls: ["https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300"],
+  imageUrls: [
+    "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300",
+  ],
   brandId: "brand-1",
   brandName: "다담장",
   categoryId: "category-1",
@@ -16,9 +18,14 @@ const purchasedProduct: PurchasedStyleProduct = {
 };
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: Infinity }, mutations: { retry: false } },
+  defaultOptions: {
+    queries: { staleTime: Infinity },
+    mutations: { retry: false },
+  },
 });
-queryClient.setQueryData(styleQueryKeys.purchasedProducts(), [purchasedProduct]);
+queryClient.setQueryData(styleQueryKeys.purchasedProducts(), [
+  purchasedProduct,
+]);
 
 const Harness = () => (
   <QueryClientProvider client={queryClient}>

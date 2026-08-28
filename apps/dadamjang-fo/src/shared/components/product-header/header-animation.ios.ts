@@ -1,4 +1,8 @@
-import { useAnimatedStyle, interpolate, Extrapolation } from "react-native-reanimated";
+import {
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from "react-native-reanimated";
 import type { SharedValue } from "react-native-reanimated";
 
 const horizontalPadding = 16;

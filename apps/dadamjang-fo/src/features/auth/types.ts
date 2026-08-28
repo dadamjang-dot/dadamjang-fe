@@ -12,10 +12,7 @@ export type TokenPayload = {
 };
 
 export type SignupConsentType =
-  | "AGE_OVER_14"
-  | "SERVICE_TERMS"
-  | "PRIVACY_COLLECTION"
-  | "MARKETING";
+  "AGE_OVER_14" | "SERVICE_TERMS" | "PRIVACY_COLLECTION" | "MARKETING";
 
 export type SignupConsentDocument = {
   documentId: string;
@@ -34,7 +31,8 @@ export type ConsentAcceptance = {
 
 export type IdentityVerificationPurpose = "SIGNUP" | "FIND_EMAIL";
 export type IdentityVerificationProvider = "TOSS" | "KAKAO" | "NAVER";
-export type IdentityVerificationStatus = "PENDING" | "VERIFIED" | "FAILED" | "EXPIRED";
+export type IdentityVerificationStatus =
+  "PENDING" | "VERIFIED" | "FAILED" | "EXPIRED";
 
 export type IdentityVerificationStart = {
   sessionId: string;

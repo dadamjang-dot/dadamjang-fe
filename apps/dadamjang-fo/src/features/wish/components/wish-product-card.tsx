@@ -16,7 +16,11 @@ type WishProductCardProps = {
 
 const formatPrice = (price: number) => `${price.toLocaleString("ko-KR")}원`;
 
-const WishProductCard = ({ product, onPress, onRemove }: WishProductCardProps) => {
+const WishProductCard = ({
+  product,
+  onPress,
+  onRemove,
+}: WishProductCardProps) => {
   const lowestPrice = lowestActiveSkuPrice(product);
   const highestPrice = product.skus.length
     ? Math.max(...product.skus.map((sku) => sku.price))
@@ -56,15 +60,21 @@ const WishProductCard = ({ product, onPress, onRemove }: WishProductCardProps) =
           ) : null}
         </View>
         <View style={s.content}>
-          {product.brand ? <Text style={s.brand}>{product.brand.name}</Text> : null}
-          <Text numberOfLines={2} style={s.title}>{product.title}</Text>
+          {product.brand ? (
+            <Text style={s.brand}>{product.brand.name}</Text>
+          ) : null}
+          <Text numberOfLines={2} style={s.title}>
+            {product.title}
+          </Text>
           <View style={s.priceRow}>
             <Text style={s.price}>{formatPrice(lowestPrice)}</Text>
             {highestPrice > lowestPrice ? (
               <Text style={s.originalPrice}>{formatPrice(highestPrice)}</Text>
             ) : null}
           </View>
-          {product.isExpressDelivery ? <Text style={s.express}>바로배송</Text> : null}
+          {product.isExpressDelivery ? (
+            <Text style={s.express}>바로배송</Text>
+          ) : null}
         </View>
       </Button>
       {onRemove ? (
@@ -119,7 +129,12 @@ const s = StyleSheet.create({
   brand: { color: colors.muted, fontSize: 12, fontWeight: "600" },
   title: { color: colors.ink, fontSize: 14, lineHeight: 19 },
   priceRow: { flexDirection: "row", alignItems: "baseline", gap: spacing.xs },
-  price: { color: colors.ink, fontSize: 15, fontVariant: ["tabular-nums"], fontWeight: "700" },
+  price: {
+    color: colors.ink,
+    fontSize: 15,
+    fontVariant: ["tabular-nums"],
+    fontWeight: "700",
+  },
   originalPrice: {
     color: colors.muted,
     fontSize: 12,

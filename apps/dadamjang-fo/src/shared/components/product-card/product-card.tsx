@@ -67,9 +67,7 @@ const ProductCard = ({
           <Text style={s.originalPrice}>{formatPrice(originalPrice)}</Text>
         ) : null}
       </View>
-      {isExpressDelivery ? (
-        <Text style={s.expressLabel}>바로배송</Text>
-      ) : null}
+      {isExpressDelivery ? <Text style={s.expressLabel}>바로배송</Text> : null}
     </Button>
     <Button
       accessibilityLabel={isLiked ? `${name} 좋아요 취소` : `${name} 좋아요`}
