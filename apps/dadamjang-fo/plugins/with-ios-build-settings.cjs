@@ -97,15 +97,15 @@ const withXcodeBuildSettingsFallback = (config) =>
           SENTRY_DEBUG_SYMBOLS_PHASE +
           " \\*/ = \\{\\n" +
           "\\t\\t\\tisa = PBXShellScriptBuildPhase;" +
-          ")(\\s\\S]*?\\n\\t\\t\\};)",
+          ")([\\s\\S]*?\\n\\t\\t\\};)",
       );
 
       const patchedProject = project
         .replace(sentryPhaseRegex, (match, start, rest) => {
           if (match.includes("alwaysOutOfDate = 1;")) return match;
-          return start + "\\t\\t\\talwaysOutOfDate = 1;" + rest;
+          return start + "\n\t\t\talwaysOutOfDate = 1;" + rest;
         })
-        .split("\\n\\t\\t\\t\\t" + DUPLICATED_LIBCXX_FLAG + ",")
+        .split("\n\t\t\t\t" + DUPLICATED_LIBCXX_FLAG + ",")
         .join("");
 
       writeFileSync(projectPath, patchedProject);

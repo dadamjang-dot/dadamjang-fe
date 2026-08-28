@@ -1,7 +1,20 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
+const listSourceFiles = async (directory) => {
+  const entries = await readdir(new URL(`${directory}/`, root), {
+    withFileTypes: true,
+  });
+  const files = await Promise.all(
+    entries.map((entry) => {
+      const path = `${directory}/${entry.name}`;
+      if (entry.isDirectory()) return listSourceFiles(path);
+      return /\.(?:ts|tsx)$/u.test(entry.name) ? [path] : [];
+    }),
+  );
+  return files.flat();
+};
 const failures = [];
 const check = (condition, message) => {
   if (!condition) failures.push(message);
@@ -137,6 +150,20 @@ const boPackage = JSON.parse(await read("apps/dadamjang-bo/package.json"));
 const partnerPackage = JSON.parse(
   await read("apps/dadamjang-partner/package.json"),
 );
+const nativeProductionFiles = (
+  await Promise.all(
+    ["apps/dadamjang-fo/src", "packages/mobile/src"].map(listSourceFiles),
+  )
+).flat();
+for (const path of nativeProductionFiles) {
+  const contents = await read(path);
+  check(
+    !/import\s*\{[^}]*\bStyleSheet\b[^}]*\}\s*from\s*["']react-native["']/su.test(
+      contents,
+    ),
+    `${path}: React Native StyleSheet import is forbidden`,
+  );
+}
 check(
   rootPackage.scripts?.["format:check"] !== undefined,
   "package.json: root format:check is missing",
