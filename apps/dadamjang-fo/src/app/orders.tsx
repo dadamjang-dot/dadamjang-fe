@@ -1,13 +1,14 @@
 import { LegendList } from "@legendapp/list/react-native";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 
 import { useAuthActionGate } from "@/features/auth";
 import { useOrders } from "@/features/order";
+import { Button } from "@/shared/components";
 
 const OrdersScreen = () => {
   const router = useRouter();
@@ -31,9 +32,13 @@ const OrdersScreen = () => {
     return (
       <View style={s.stateGroup}>
         <Text style={s.state}>로그인 상태를 확인하지 못했어요.</Text>
-        <Pressable onPress={() => void retryAuth()}>
+        <Button
+          accessibilityLabel="다시 시도"
+          onPress={() => void retryAuth()}
+          variant="bare"
+        >
           <Text style={s.link}>다시 시도</Text>
-        </Pressable>
+        </Button>
       </View>
     );
   }
@@ -46,9 +51,14 @@ const OrdersScreen = () => {
     return (
       <View style={s.stateGroup}>
         <Text style={s.state}>주문 내역을 불러오지 못했어요.</Text>
-        <Pressable onPress={() => orders.refetch()} testID="e2e.order.retry">
+        <Button
+          accessibilityLabel="다시 시도"
+          onPress={() => orders.refetch()}
+          testID="e2e.order.retry"
+          variant="bare"
+        >
           <Text style={s.link}>다시 시도</Text>
-        </Pressable>
+        </Button>
       </View>
     );
   }
@@ -62,14 +72,16 @@ const OrdersScreen = () => {
       ListEmptyComponent={<Text style={s.state}>주문 내역이 없어요.</Text>}
       recycleItems
       renderItem={({ item: order }) => (
-        <Pressable
+        <Button
+          accessibilityLabel={order.orderNumber}
           onPress={() => router.push(`/order/${order.orderId}`)}
           style={s.item}
           testID={`e2e.order.open.${order.orderId}`}
+          variant="bare"
         >
           <Text style={s.title}>{order.orderNumber}</Text>
           <Text style={s.meta}>{order.paymentStatus}</Text>
-        </Pressable>
+        </Button>
       )}
       showsVerticalScrollIndicator={false}
       style={s.container}

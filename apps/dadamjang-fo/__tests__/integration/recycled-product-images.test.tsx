@@ -39,7 +39,10 @@ const post: StylePost = {
   title: "테스트 스타일",
   content: "오늘의 스타일",
   category: "CLOTHING",
-  imageUrls: [],
+  imageUrls: [
+    "https://example.com/style-1.jpg",
+    "https://example.com/style-2.jpg",
+  ],
   thumbnailUrl: null,
   hashtags: [],
   brandTags: [],
@@ -87,6 +90,31 @@ const product: Product = {
 };
 
 describe("recycled product images", () => {
+  it("keys every style gallery image by post, index, and URL", () => {
+    render(
+      <StylePostDetail
+        isLikePending={false}
+        onBack={jest.fn()}
+        onProductPress={jest.fn()}
+        onToggleLike={jest.fn()}
+        post={post}
+      />,
+    );
+
+    expect(
+      screen.UNSAFE_getByProps({ source: "https://example.com/style-1.jpg" }),
+    ).toHaveProp(
+      "recyclingKey",
+      "style-1:0:https://example.com/style-1.jpg",
+    );
+    expect(
+      screen.UNSAFE_getByProps({ source: "https://example.com/style-2.jpg" }),
+    ).toHaveProp(
+      "recyclingKey",
+      "style-1:1:https://example.com/style-2.jpg",
+    );
+  });
+
   it("keys product images by product ID in virtualized style detail rows", () => {
     render(
       <StylePostDetail

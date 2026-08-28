@@ -60,9 +60,14 @@ const ProductScreen = () => {
     return (
       <View style={s.stateGroup}>
         <Text style={s.state}>상품을 불러오지 못했어요.</Text>
-        <Pressable onPress={() => product.refetch()} testID="e2e.product.retry">
+        <Button
+          accessibilityLabel="다시 시도"
+          onPress={() => product.refetch()}
+          testID="e2e.product.retry"
+          variant="bare"
+        >
           <Text style={s.link}>다시 시도</Text>
-        </Pressable>
+        </Button>
       </View>
     );
   }
@@ -107,11 +112,15 @@ const ProductScreen = () => {
           {brand ? (
             <View style={s.brandRow}>
               <Text style={s.brandName}>{brand.name}</Text>
-              <Pressable
+              <Button
+                accessibilityLabel={`${brand.name} ${
+                  isFollowing ? "팔로우 취소" : "팔로우"
+                }`}
                 accessibilityState={{ selected: isFollowing }}
                 onPress={handleToggleBrandFollow}
                 style={[s.brandButton, isFollowing && s.followingBrandButton]}
                 testID={`e2e.product.brand.follow.${brand.brandId}`}
+                variant="bare"
               >
                 <Text
                   style={[
@@ -121,7 +130,7 @@ const ProductScreen = () => {
                 >
                   {isFollowing ? "팔로잉" : "팔로우"}
                 </Text>
-              </Pressable>
+              </Button>
             </View>
           ) : null}
           <Text style={s.title}>{product.data.title}</Text>

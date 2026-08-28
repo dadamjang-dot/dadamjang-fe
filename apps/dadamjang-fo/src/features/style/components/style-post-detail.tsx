@@ -43,10 +43,11 @@ const StylePostDetail = ({
             horizontal
             keyExtractor={(imageUrl, index) => `${imageUrl}-${index}`}
             pagingEnabled
-            renderItem={({ item }) => (
+            renderItem={({ index, item }) => (
               <View style={s.page}>
                 <Image
                   contentFit="cover"
+                  recyclingKey={`${post.stylePostId}:${index}:${item}`}
                   source={item}
                   style={s.image}
                   transition={120}

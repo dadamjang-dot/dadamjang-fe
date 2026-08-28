@@ -173,4 +173,49 @@ describe("product quantity controls", () => {
     await user.press(addButton);
     expect(mockUpsert).not.toHaveBeenCalled();
   });
+
+  it("exposes product retry as a named button", async () => {
+    const refetch = jest.fn();
+    jest.mocked(useProduct).mockReturnValue({
+      data: undefined,
+      isError: true,
+      isLoading: false,
+      refetch,
+    } as never);
+    const user = userEvent.setup();
+    render(<ProductScreen />);
+
+    await user.press(screen.getByRole("button", { name: "다시 시도" }));
+
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("exposes the followed brand button as selected", () => {
+    jest.mocked(useProduct).mockReturnValue({
+      data: {
+        ...product,
+        brandId: "brand-1",
+        brand: {
+          brandId: "brand-1",
+          name: "테스트 브랜드",
+          slug: "test-brand",
+        },
+      },
+      isError: false,
+      isLoading: false,
+    } as never);
+    jest.mocked(useFollowedBrands).mockReturnValue({
+      data: [
+        { brandId: "brand-1", name: "테스트 브랜드", slug: "test-brand" },
+      ],
+    } as never);
+    renderProduct();
+
+    expect(
+      screen.getByRole("button", { name: "테스트 브랜드 팔로우 취소" }),
+    ).toHaveProp(
+      "accessibilityState",
+      expect.objectContaining({ selected: true }),
+    );
+  });
 });

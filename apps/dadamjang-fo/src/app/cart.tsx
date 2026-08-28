@@ -1,13 +1,14 @@
 import { LegendList } from "@legendapp/list/react-native";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 
 import { useAuthActionGate } from "@/features/auth";
 import { useCart, useCartActions } from "@/features/cart";
+import { Button } from "@/shared/components";
 
 const CartScreen = () => {
   const router = useRouter();
@@ -32,9 +33,13 @@ const CartScreen = () => {
     return (
       <View style={s.stateGroup}>
         <Text style={s.state}>로그인 상태를 확인하지 못했어요.</Text>
-        <Pressable onPress={() => void retryAuth()}>
+        <Button
+          accessibilityLabel="다시 시도"
+          onPress={() => void retryAuth()}
+          variant="bare"
+        >
           <Text style={s.link}>다시 시도</Text>
-        </Pressable>
+        </Button>
       </View>
     );
   }
@@ -47,9 +52,14 @@ const CartScreen = () => {
     return (
       <View style={s.stateGroup}>
         <Text style={s.state}>장바구니를 불러오지 못했어요.</Text>
-        <Pressable onPress={() => cart.refetch()} testID="e2e.cart.retry">
+        <Button
+          accessibilityLabel="다시 시도"
+          onPress={() => cart.refetch()}
+          testID="e2e.cart.retry"
+          variant="bare"
+        >
           <Text style={s.link}>다시 시도</Text>
-        </Pressable>
+        </Button>
       </View>
     );
   }
@@ -76,7 +86,9 @@ const CartScreen = () => {
             <Text style={s.itemTitle}>{item.product.title}</Text>
             <Text style={s.itemMeta}>{item.sku.optionName}</Text>
             <View style={s.quantityRow}>
-              <Pressable
+              <Button
+                accessibilityLabel={`${item.product.title} 수량 줄이기`}
+                disabled={item.quantity <= 1}
                 onPress={() =>
                   actions.upsert.mutate({
                     skuId: item.sku.skuId,
@@ -84,11 +96,13 @@ const CartScreen = () => {
                   })
                 }
                 testID={`e2e.cart.decrement.${item.sku.skuId}`}
+                variant="bare"
               >
                 <Text style={s.link}>−</Text>
-              </Pressable>
+              </Button>
               <Text>{item.quantity}</Text>
-              <Pressable
+              <Button
+                accessibilityLabel={`${item.product.title} 수량 늘리기`}
                 onPress={() =>
                   actions.upsert.mutate({
                     skuId: item.sku.skuId,
@@ -96,15 +110,18 @@ const CartScreen = () => {
                   })
                 }
                 testID={`e2e.cart.increment.${item.sku.skuId}`}
+                variant="bare"
               >
                 <Text style={s.link}>+</Text>
-              </Pressable>
-              <Pressable
+              </Button>
+              <Button
+                accessibilityLabel={`${item.product.title} 삭제`}
                 onPress={() => actions.remove.mutate(item.sku.skuId)}
                 testID={`e2e.cart.remove.${item.sku.skuId}`}
+                variant="bare"
               >
                 <Text style={s.link}>삭제</Text>
-              </Pressable>
+              </Button>
             </View>
           </View>
         )}
@@ -116,14 +133,13 @@ const CartScreen = () => {
           결제에 실패했어요. 장바구니를 확인해 주세요.
         </Text>
       ) : null}
-      <Pressable
+      <Button
         disabled={cart.data.items.length === 0 || actions.checkout.isPending}
+        label="결제하기"
         onPress={handleCheckout}
         style={s.checkout}
         testID="e2e.checkout.submit"
-      >
-        <Text style={s.checkoutLabel}>결제하기</Text>
-      </Pressable>
+      />
     </View>
   );
 };
@@ -159,7 +175,6 @@ const s = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: colors.primary,
   },
-  checkoutLabel: { color: colors.surface, fontWeight: "700" },
 });
 
 export default CartScreen;

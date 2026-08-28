@@ -12,10 +12,11 @@ import { AuthSessionStateProvider } from "@/features/auth/auth-session-state";
 import { getCurrentUser } from "@/features/auth/api";
 import { authQueryKeys } from "@/features/auth/hooks";
 import { checkoutCart, getCart, removeCartItem } from "@/features/cart/api";
-import { getOrder } from "@/features/order/api";
+import { getOrder, getOrders } from "@/features/order/api";
 import CartScreen from "@/app/cart";
 import WishScreen from "@/app/(tabs)/wish";
 import OrderDetailScreen from "@/app/order/[order-id]";
+import OrdersScreen from "@/app/orders";
 import { getWishlist } from "@/features/wish/api";
 import type { Action } from "@dadamjang/mobile";
 import { layoutLegendList } from "../helpers/layout-legend-list";
@@ -39,6 +40,7 @@ jest.mock("@/shared/components", () => {
   const React = jest.requireActual<typeof import("react")>("react");
   const { Pressable, Text, View } =
     jest.requireActual<typeof import("react-native")>("react-native");
+  const { Button } = jest.requireActual("@/shared/components/button");
 
   return {
     ActionButton: ({ actions }: { actions: Action[] }) => {
@@ -55,22 +57,7 @@ jest.mock("@/shared/components", () => {
           )
         : null;
     },
-    Button: ({
-      children,
-      label,
-      onPress,
-      testID,
-    }: {
-      children?: ReactNode;
-      label?: string;
-      onPress: () => void;
-      testID?: string;
-    }) =>
-      React.createElement(
-        Pressable,
-        { onPress, testID },
-        children ?? React.createElement(Text, null, label),
-      ),
+    Button,
     TitleHeader: ({
       children,
       title,
@@ -224,6 +211,68 @@ describe("cart and wish screens", () => {
     await fireEvent.press(await screen.findByTestId("e2e.checkout.submit"));
 
     await waitFor(() => expect(mockNavigation.path).toBe("/order/order-1"));
+  });
+
+  it("exposes cart quantity, removal, and checkout button states", async () => {
+    jest.mocked(checkoutCart).mockImplementation(() => new Promise(() => undefined));
+    render(<CartScreen />, { wrapper: createWrapper() });
+
+    await screen.findByLabelText("장바구니 상품 목록");
+    layoutLegendList("장바구니 상품 목록");
+    expect(
+      screen.getByRole("button", { name: "테스트 상품 수량 줄이기" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "테스트 상품 수량 늘리기" }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "테스트 상품 삭제" }),
+    ).toBeEnabled();
+
+    const checkout = screen.getByRole("button", { name: "결제하기" });
+    expect(checkout).toHaveProp("accessibilityState", { disabled: false });
+    await fireEvent.press(checkout);
+    await waitFor(() => expect(checkout).toBeDisabled());
+    expect(checkout).toHaveProp("accessibilityState", { disabled: true });
+  });
+
+  it("exposes cart and order retry controls as named buttons", async () => {
+    jest.mocked(getCart).mockRejectedValueOnce(new Error("cart unavailable"));
+    const cartScreen = render(<CartScreen />, { wrapper: createWrapper() });
+
+    expect(
+      await screen.findByRole("button", { name: "다시 시도" }),
+    ).toHaveProp("testID", "e2e.cart.retry");
+    cartScreen.unmount();
+
+    jest.mocked(getOrders).mockRejectedValueOnce(new Error("orders unavailable"));
+    render(<OrdersScreen />, { wrapper: createWrapper() });
+
+    expect(
+      await screen.findByRole("button", { name: "다시 시도" }),
+    ).toHaveProp("testID", "e2e.order.retry");
+  });
+
+  it("names order-row buttons by order number", async () => {
+    jest.mocked(getOrders).mockResolvedValueOnce([
+      {
+        orderId: "order-1",
+        orderNumber: "20260829-1",
+        status: "PAID",
+        paymentStatus: "APPROVED",
+        totalAmount: 8_000,
+        items: [],
+        createdAt: "2026-08-29T00:00:00.000Z",
+      },
+    ]);
+    render(<OrdersScreen />, { wrapper: createWrapper() });
+
+    await screen.findByLabelText("주문 내역");
+    layoutLegendList("주문 내역");
+
+    expect(
+      screen.getByRole("button", { name: "20260829-1" }),
+    ).toBeEnabled();
   });
 
   it.each(
