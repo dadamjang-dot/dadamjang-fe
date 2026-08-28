@@ -14,6 +14,15 @@ test.beforeEach(async ({ context, baseURL }) => {
 });
 
 test.beforeEach(async ({ page }) => {
+  await page.route("**/_next/image?**", (route) =>
+    route.fulfill({
+      contentType: "image/png",
+      body: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+        "base64",
+      ),
+    }),
+  );
   await page.route("https://images.test/**", (route) =>
     route.fulfill({
       contentType: "image/png",
@@ -308,6 +317,10 @@ test("list submits query/state variables and navigates by cursor", async ({
     }),
   );
   await page.goto("/products");
+  await expect(page.locator(".product-cell img").first()).toHaveAttribute(
+    "src",
+    /\/_next\/image\?url=https%3A%2F%2Fimages\.test%2Fproduct\.png/,
+  );
   await page.getByLabel("상품 검색").fill("셔츠");
   await page.getByLabel("카테고리").selectOption("tops");
   await page.getByLabel("상품 상태", { exact: true }).selectOption("REJECTED");
@@ -657,6 +670,14 @@ test("save actions remain disabled until image upload completes", async ({
     mimeType: "image/png",
     buffer: Buffer.from("image"),
   });
+  await expect(page.getByAltText("상품 이미지 1")).toHaveAttribute(
+    "src",
+    /^blob:/,
+  );
+  await expect(page.getByAltText("상품 이미지 1")).not.toHaveAttribute(
+    "src",
+    /_next\/image/,
+  );
   await expect(page.getByRole("button", { name: "임시 저장" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "심사 요청" })).toBeDisabled();
   completeUpload();
@@ -1133,7 +1154,7 @@ test("repeated stale image delete keeps the sibling image", async ({
   await expect(page.locator(".images article")).toHaveCount(1);
   await expect(page.getByAltText("상품 이미지 1")).toHaveAttribute(
     "src",
-    "https://images.test/product-2.png",
+    /\/_next\/image\?url=https%3A%2F%2Fimages\.test%2Fproduct-2\.png/,
   );
 });
 

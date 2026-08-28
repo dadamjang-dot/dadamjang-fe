@@ -20,6 +20,7 @@ import { ActionButton } from "@seed-design/react";
 import { PartnerTextarea, PartnerTextField } from "@/shared/ui";
 import {
   catalogOptions,
+  createUploadSlotRunner,
   createImageUpload,
   getProduct,
   publishProduct,
@@ -89,8 +90,9 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const occupiedImageKeys = useRef(new Set<string>());
   const pendingImageSlots = useRef(0);
   const nextImageOrder = useRef(0);
-  const activeUploadTasks = useRef(0);
-  const queuedUploadTasks = useRef<Array<() => void>>([]);
+  const runWithUploadSlot = useRef(
+    createUploadSlotRunner(MAX_CONCURRENT_UPLOADS),
+  ).current;
   const uploadControllers = useRef(new Map<string, AbortController>());
   const mounted = useRef(true);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -273,20 +275,6 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
         refetchType: "none",
       }),
     ]);
-  const runWithUploadSlot = useCallback(async (task: () => Promise<void>) => {
-    if (activeUploadTasks.current >= MAX_CONCURRENT_UPLOADS)
-      await new Promise<void>((resolve) =>
-        queuedUploadTasks.current.push(resolve),
-      );
-    else activeUploadTasks.current += 1;
-    try {
-      await task();
-    } finally {
-      const next = queuedUploadTasks.current.shift();
-      if (next) next();
-      else activeUploadTasks.current -= 1;
-    }
-  }, []);
   const addFiles = async (files: FileList | File[]) => {
     setError("");
     const tasks: Array<{ file: File; preview: string; order: number }> = [];
@@ -628,7 +616,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                       alt={`상품 이미지 ${i + 1}`}
                       width={190}
                       height={140}
-                      unoptimized
+                      unoptimized={x.preview.startsWith("blob:")}
                     />
                   ) : (
                     <span

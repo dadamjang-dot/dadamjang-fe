@@ -161,7 +161,6 @@ export const ProductsPage = () => {
                             alt=""
                             width={48}
                             height={48}
-                            unoptimized
                           />
                         ) : (
                           <span className="thumbnail" aria-hidden="true" />
