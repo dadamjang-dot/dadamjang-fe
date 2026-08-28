@@ -324,6 +324,76 @@ describe("GraphQL authentication", () => {
     ).toHaveLength(2);
   });
 
+  it("reuses current credentials after a refresh-token-only rotation", async () => {
+    storage.set(sessionKey, storedSession("access-a", "refresh-1"));
+    const requests: CapturedRequest[] = [];
+    let operationRequestCount = 0;
+    let releaseInitialRequests: () => void = () => undefined;
+    let releaseSecondFailure: () => void = () => undefined;
+    const initialRequests = new Promise<void>((resolve) => {
+      releaseInitialRequests = resolve;
+    });
+    const secondFailure = new Promise<void>((resolve) => {
+      releaseSecondFailure = resolve;
+    });
+
+    global.fetch = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const request = {
+        authorization: new Headers(init?.headers).get("Authorization"),
+        body: String(init?.body),
+      };
+      requests.push(request);
+
+      if (request.body.includes("mutation Refresh")) {
+        const refreshCount = requests.filter(({ body }) =>
+          body.includes("mutation Refresh"),
+        ).length;
+        if (refreshCount > 1) return unauthorizedResponse();
+        return jsonResponse({
+          data: {
+            refresh: { accessToken: "access-a", refreshToken: "refresh-2" },
+          },
+        });
+      }
+
+      operationRequestCount += 1;
+      if (operationRequestCount === 1) {
+        await initialRequests;
+        return unauthorizedResponse();
+      }
+      if (operationRequestCount === 2) {
+        releaseInitialRequests();
+        await secondFailure;
+        return unauthorizedResponse();
+      }
+
+      releaseSecondFailure();
+      return jsonResponse({ data: { viewer: { id: "viewer-1" } } });
+    };
+
+    await expect(
+      Promise.all([
+        client.graphqlRequest<{ viewer: { id: string } }>(
+          "query Viewer { viewer { id } }",
+        ),
+        client.graphqlRequest<{ viewer: { id: string } }>(
+          "query Viewer { viewer { id } }",
+        ),
+      ]),
+    ).resolves.toEqual([
+      { viewer: { id: "viewer-1" } },
+      { viewer: { id: "viewer-1" } },
+    ]);
+    expect(
+      requests.filter(({ body }) => body.includes("mutation Refresh")),
+    ).toHaveLength(1);
+    await expect(client.getAccessToken()).resolves.toBe("access-a");
+    await expect(client.getRefreshToken()).resolves.toBe("refresh-2");
+    expect(storage.get(sessionKey)).toBe(
+      storedSession("access-a", "refresh-2"),
+    );
+  });
+
   it("does not restore or retry a session after logout during refresh", async () => {
     storage.set(sessionKey, storedSession("access-a", "refresh-a"));
     let releaseRefresh: () => void = () => undefined;

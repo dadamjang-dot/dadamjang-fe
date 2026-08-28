@@ -44,6 +44,7 @@ export type TokenStorage = {
 };
 
 type SessionSnapshot = StoredAuthTokens & {
+  credentialRevision: number;
   generation: number;
 };
 
@@ -97,6 +98,7 @@ const createAuthenticatedGraphqlClientInternal = (
   const refreshTokenKey = `${storageNamespace}.refresh-token`;
   const invalidatedSession = JSON.stringify({ version: sessionRecordVersion });
   const url = options.url ?? apiUrl;
+  let credentialRevision = 0;
   let generation = 0;
   let sessionTokens: StoredAuthTokens | undefined;
   let sessionResetHandler: SessionResetHandler | undefined;
@@ -116,6 +118,11 @@ const createAuthenticatedGraphqlClientInternal = (
   };
 
   const runSessionResetHandler = async () => sessionResetHandler?.();
+
+  const commitCredentialPair = (tokens: AuthTokens) => {
+    sessionTokens = { ...tokens };
+    credentialRevision += 1;
+  };
 
   const beginSessionReset = (expectedGeneration?: number) => {
     if (expectedGeneration !== undefined && generation !== expectedGeneration)
@@ -285,7 +292,11 @@ const createAuthenticatedGraphqlClientInternal = (
     const requestGeneration = generation;
     const tokens = await loadSessionTokens(requestGeneration);
     if (generation !== requestGeneration) throw createAuthError();
-    return { ...tokens, generation: requestGeneration };
+    return {
+      ...tokens,
+      credentialRevision,
+      generation: requestGeneration,
+    };
   };
 
   const setAuthTokens = async (tokens: AuthTokens) => {
@@ -301,7 +312,7 @@ const createAuthenticatedGraphqlClientInternal = (
         if (generation !== replacementGeneration) return false;
         await writeStoredSession(tokens);
         if (generation !== replacementGeneration) return false;
-        sessionTokens = { ...tokens };
+        commitCredentialPair(tokens);
         return true;
       }),
       runSessionResetHandler(),
@@ -342,12 +353,8 @@ const createAuthenticatedGraphqlClientInternal = (
   ) =>
     enqueueTokenMutation(async () => {
       if (generation !== snapshot.generation) return null;
-      if (
-        sessionTokens?.accessToken &&
-        sessionTokens.accessToken !== snapshot.accessToken
-      ) {
-        return sessionTokens.accessToken;
-      }
+      if (credentialRevision !== snapshot.credentialRevision)
+        return sessionTokens?.accessToken ?? null;
 
       try {
         await writeStoredSession(tokens);
@@ -364,7 +371,7 @@ const createAuthenticatedGraphqlClientInternal = (
       }
       if (generation !== snapshot.generation) return null;
 
-      sessionTokens = { ...tokens };
+      commitCredentialPair(tokens);
       return tokens.accessToken;
     });
 
@@ -394,12 +401,8 @@ const createAuthenticatedGraphqlClientInternal = (
   const refreshAccessTokenOnce = (snapshot: SessionSnapshot) => {
     if (generation !== snapshot.generation)
       return Promise.reject(createAuthError());
-    if (
-      sessionTokens?.accessToken &&
-      sessionTokens.accessToken !== snapshot.accessToken
-    ) {
-      return Promise.resolve(sessionTokens.accessToken);
-    }
+    if (credentialRevision !== snapshot.credentialRevision)
+      return Promise.resolve(sessionTokens?.accessToken ?? null);
     if (refreshFlight?.generation === snapshot.generation)
       return refreshFlight.promise;
 
