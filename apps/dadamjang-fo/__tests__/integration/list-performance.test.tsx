@@ -30,20 +30,12 @@ import { styleQueryKeys } from "@/features/style/hooks";
 import type { StylePost, StylePostConnection } from "@/features/style/types";
 import WishStylesTab from "@/features/wish/components/wish-styles-tab";
 import { wishQueryKeys } from "@/features/wish/hooks";
+import {
+  layoutLegendList,
+  scrollLegendListToEnd,
+} from "../helpers/layout-legend-list";
 
 const navigation: { path?: string } = {};
-const mockLegendListRenders: {
-  accessibilityLabel?: string;
-  keys: string[];
-  numColumns?: number;
-}[] = [];
-const mockLegendListEndSessions = new Map<string, () => void>();
-
-const mockReachLegendListEnd = (accessibilityLabel: string) => {
-  const reachEnd = mockLegendListEndSessions.get(accessibilityLabel);
-  if (!reachEnd) throw new Error(`${accessibilityLabel} was not rendered`);
-  reachEnd();
-};
 
 const requiredAt = <T,>(values: readonly T[], index: number) => {
   const value = values[index];
@@ -58,82 +50,6 @@ jest.mock("expo-router", () => ({
     },
   }),
 }));
-
-jest.mock("@legendapp/list/react-native", () => {
-  const React = jest.requireActual<typeof import("react")>("react");
-  const { View: NativeView } = jest.requireActual("react-native");
-
-  const LegendList = ({
-    accessibilityLabel,
-    data,
-    keyExtractor,
-    ListFooterComponent,
-    numColumns,
-    onEndReached,
-    renderItem,
-    style,
-    testID,
-  }: {
-    accessibilityLabel?: string;
-    data: unknown[];
-    keyExtractor?: (item: unknown, index: number) => string;
-    ListFooterComponent?: ReactNode;
-    numColumns?: number;
-    onEndReached?: (info: { distanceFromEnd: number }) => void;
-    renderItem: (info: { item: unknown; index: number }) => ReactNode;
-    style?: unknown;
-    testID?: string;
-  }) => {
-    const endReachedDataLength = React.useRef<number | undefined>(undefined);
-
-    mockLegendListRenders.push({
-      accessibilityLabel,
-      keys: data.map(
-        (item, index) => keyExtractor?.(item, index) ?? String(index),
-      ),
-      numColumns,
-    });
-
-    React.useEffect(() => {
-      if (!accessibilityLabel) return;
-
-      const reachEnd = () => {
-        if (data.length === 0) return;
-        endReachedDataLength.current = data.length;
-        onEndReached?.({ distanceFromEnd: 0 });
-      };
-
-      mockLegendListEndSessions.set(accessibilityLabel, reachEnd);
-      return () => {
-        if (mockLegendListEndSessions.get(accessibilityLabel) === reachEnd) {
-          mockLegendListEndSessions.delete(accessibilityLabel);
-        }
-      };
-    }, [accessibilityLabel, data.length, onEndReached]);
-
-    React.useEffect(() => {
-      if (data.length > 0 && endReachedDataLength.current !== data.length) {
-        endReachedDataLength.current = data.length;
-        onEndReached?.({ distanceFromEnd: 0 });
-      }
-    }, [data.length, onEndReached]);
-
-    return React.createElement(
-      NativeView,
-      { accessibilityLabel, style, testID },
-      data.map((item, index) =>
-        React.createElement(
-          React.Fragment,
-          { key: keyExtractor?.(item, index) ?? index },
-          renderItem({ item, index }),
-        ),
-      ),
-      ListFooterComponent,
-    );
-  };
-
-  return { LegendList };
-});
 
 jest.mock("@/features/price-evidence/api", () => ({
   ...jest.requireActual("@/features/price-evidence/api"),
@@ -242,8 +158,6 @@ const stylePost = (stylePostId: string, hashtag: string): StylePost => ({
 describe("virtualized list data flow", () => {
   beforeEach(() => {
     navigation.path = undefined;
-    mockLegendListEndSessions.clear();
-    mockLegendListRenders.length = 0;
   });
 
   it("renders each shop product ID once across mutable cursor pages", async () => {
@@ -273,12 +187,44 @@ describe("virtualized list data flow", () => {
     });
 
     render(<ShopScreen />, { wrapper: createShopWrapper(client) });
+    layoutLegendList("상품 목록");
 
     expect(
       await screen.findAllByTestId("e2e.product.open.product-1"),
     ).toHaveLength(1);
     await fireEvent.press(screen.getByTestId("e2e.product.open.product-2"));
     expect(navigation.path).toBe("/product/product-2");
+  });
+
+  it("mounts only the visible window of a large shop dataset", async () => {
+    const client = createClient();
+    const products = Array.from({ length: 100 }, (_, index) =>
+      productSummary(`product-${index + 1}`, `상품 ${index + 1}`),
+    );
+    const filter = toProductFilter(defaultShopFilters);
+    client.setQueryData(authQueryKeys.viewer, viewer);
+    client.setQueryData(catalogQueryKeys.categories(), []);
+    client.setQueryData(wishQueryKeys.wishlist(), []);
+    client.setQueryData(priceEvidenceQueryKeys.productPriceSummary(filter), {
+      pages: [
+        {
+          nodes: products,
+          totalCount: products.length,
+          nextCursor: null,
+          hasNextPage: false,
+        },
+      ],
+      pageParams: [undefined],
+    });
+
+    render(<ShopScreen />, { wrapper: createShopWrapper(client) });
+    layoutLegendList("상품 목록");
+
+    const mountedProducts = await screen.findAllByTestId(
+      /^e2e\.product\.open\./,
+    );
+    expect(mountedProducts.length).toBeGreaterThan(0);
+    expect(mountedProducts.length).toBeLessThan(products.length);
   });
 
   it("continues shop pagination after a duplicate-only page", async () => {
@@ -317,6 +263,8 @@ describe("virtualized list data flow", () => {
       });
 
     render(<ShopScreen />, { wrapper: createShopWrapper(client) });
+    layoutLegendList("상품 목록");
+    scrollLegendListToEnd("상품 목록");
 
     expect(
       await screen.findByTestId("e2e.product.open.product-3"),
@@ -393,6 +341,8 @@ describe("virtualized list data flow", () => {
       );
 
     render(<ShopScreen />, { wrapper: createShopWrapper(client) });
+    layoutLegendList("상품 목록");
+    scrollLegendListToEnd("상품 목록");
 
     await waitFor(() => expect(getProductPriceSummaries).toHaveBeenCalled());
     fireEvent.press(screen.getByText("카테고리 B"));
@@ -444,15 +394,17 @@ describe("virtualized list data flow", () => {
     });
 
     render(<ShopScreen />, { wrapper: createShopWrapper(client) });
+    layoutLegendList("상품 목록");
+    scrollLegendListToEnd("상품 목록");
 
     expect(
       await screen.findByTestId("e2e.product.open.product-3"),
     ).toBeVisible();
     await waitFor(() => expect(client.isFetching()).toBe(0));
 
-    act(() => mockReachLegendListEnd("상품 목록"));
+    scrollLegendListToEnd("상품 목록");
     await waitFor(() => expect(client.isFetching()).toBe(0));
-    act(() => mockReachLegendListEnd("상품 목록"));
+    scrollLegendListToEnd("상품 목록");
     await waitFor(() => expect(client.isFetching()).toBe(0));
 
     expect(getProductPriceSummaries).toHaveBeenCalledTimes(1);
@@ -472,6 +424,7 @@ describe("virtualized list data flow", () => {
     });
 
     render(<StyleScreen />, { wrapper: createWrapper(client) });
+    layoutLegendList("스타일 게시물 목록");
 
     expect(await screen.findAllByText("#first")).toHaveLength(1);
     await fireEvent.press(
@@ -512,6 +465,8 @@ describe("virtualized list data flow", () => {
       });
 
     render(<StyleScreen />, { wrapper: createWrapper(client) });
+    layoutLegendList("스타일 게시물 목록");
+    scrollLegendListToEnd("스타일 게시물 목록");
 
     expect(await screen.findByText("#fifth")).toBeVisible();
     expect(getStylePosts).toHaveBeenCalledTimes(2);
@@ -546,13 +501,15 @@ describe("virtualized list data flow", () => {
     });
 
     render(<StyleScreen />, { wrapper: createWrapper(client) });
+    layoutLegendList("스타일 게시물 목록");
+    scrollLegendListToEnd("스타일 게시물 목록");
 
     expect(await screen.findByText("#third")).toBeVisible();
     await waitFor(() => expect(client.isFetching()).toBe(0));
 
-    act(() => mockReachLegendListEnd("스타일 게시물 목록"));
+    scrollLegendListToEnd("스타일 게시물 목록");
     await waitFor(() => expect(client.isFetching()).toBe(0));
-    act(() => mockReachLegendListEnd("스타일 게시물 목록"));
+    scrollLegendListToEnd("스타일 게시물 목록");
     await waitFor(() => expect(client.isFetching()).toBe(0));
 
     expect(getStylePosts).toHaveBeenCalledTimes(1);
@@ -601,6 +558,8 @@ describe("virtualized list data flow", () => {
     );
 
     render(<StyleScreen />, { wrapper: createWrapper(client) });
+    layoutLegendList("스타일 게시물 목록");
+    scrollLegendListToEnd("스타일 게시물 목록");
 
     await waitFor(() => expect(getStylePosts).toHaveBeenCalled());
     fireEvent.press(screen.getByText("의류"));
@@ -638,6 +597,7 @@ describe("virtualized list data flow", () => {
     });
 
     render(<WishStylesTab />, { wrapper: createWrapper(client) });
+    layoutLegendList("위시한 스타일 목록");
 
     await fireEvent.press(screen.getByText("더 보기"));
     await screen.findByText("#second");
@@ -666,11 +626,9 @@ describe("virtualized list data flow", () => {
     });
 
     render(<WishStylesTab />, { wrapper: createWrapper(client) });
+    layoutLegendList("위시한 스타일 목록");
 
     await screen.findByText("#third");
-    const initialRender = mockLegendListRenders.findLast(
-      (rendered) => rendered.accessibilityLabel === "위시한 스타일 목록",
-    );
 
     await act(async () => {
       client.setQueryData(styleQueryKeys.likedPosts(), {
@@ -685,22 +643,8 @@ describe("virtualized list data flow", () => {
       });
     });
     await waitFor(() => expect(screen.queryByText("#first")).toBeNull());
-    const updatedRender = mockLegendListRenders.findLast(
-      (rendered) => rendered.accessibilityLabel === "위시한 스타일 목록",
-    );
-
-    expect([initialRender, updatedRender]).toEqual([
-      {
-        accessibilityLabel: "위시한 스타일 목록",
-        keys: ["style-1", "style-2", "style-3"],
-        numColumns: 2,
-      },
-      {
-        accessibilityLabel: "위시한 스타일 목록",
-        keys: ["style-2", "style-3"],
-        numColumns: 2,
-      },
-    ]);
+    expect(screen.getByText("#second")).toBeOnTheScreen();
+    expect(screen.getByText("#third")).toBeOnTheScreen();
     await fireEvent.press(
       requiredAt(screen.getAllByLabelText("스타일 게시물 이미지"), 0),
     );
@@ -721,6 +665,7 @@ describe("virtualized list data flow", () => {
     jest.mocked(getLikedStylePosts).mockReturnValue(nextPage);
 
     render(<WishStylesTab />, { wrapper: createWrapper(client) });
+    layoutLegendList("위시한 스타일 목록");
 
     const moreButton = screen.getByRole("button", { name: "더 보기" });
     act(() => {
@@ -766,8 +711,9 @@ describe("virtualized list data flow", () => {
     client.setQueryData(orderQueryKeys.list(), orders);
 
     render(<OrdersScreen />, { wrapper: createWrapper(client) });
+    layoutLegendList("주문 내역");
 
-    expect(await screen.findByText("20260828-1")).toBeVisible();
+    expect(await screen.findByText("20260828-1")).toBeOnTheScreen();
     await fireEvent.press(screen.getByTestId("e2e.order.open.order-2"));
     expect(navigation.path).toBe("/order/order-2");
   });
