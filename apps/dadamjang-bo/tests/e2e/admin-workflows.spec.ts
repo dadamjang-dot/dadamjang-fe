@@ -104,6 +104,28 @@ test("review dialogs discard stale input and mutation errors", async ({
   ).toHaveCount(0);
 });
 
+test("review dialogs allow a same-dialog retry after local validation", async ({
+  page,
+}) => {
+  await authenticateAdmin(page);
+  await page.goto("/partners");
+  await page.getByRole("button", { name: "Pending Partner" }).click();
+  await page.getByRole("button", { name: "반려", exact: true }).click();
+  const dialog = page.getByRole("alertdialog");
+  const reject = dialog.getByRole("button", { name: "반려", exact: true });
+
+  await reject.click();
+  await expect(
+    dialog.getByText("반려 사유를 1~500자로 입력해주세요."),
+  ).toBeVisible();
+
+  await dialog.getByLabel("반려 사유").fill("계약 서류를 보완해 주세요.");
+  await reject.click();
+
+  await expect(page.getByText("파트너를 반려했습니다.")).toBeVisible();
+  await expect(dialog).toHaveCount(0);
+});
+
 test("review dialogs stay open while a review is pending", async ({ page }) => {
   await authenticateAdmin(page);
   let reviewRequests = 0;

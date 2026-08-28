@@ -156,14 +156,14 @@ export const ProductsPage = () => {
     [],
   );
 
-  const confirm = () => {
-    if (!decision) return;
+  const confirm = (): boolean => {
+    if (!decision) return false;
     if (
       !decision.approved &&
       (reason.trim().length < 1 || reason.trim().length > 500)
     ) {
       setReasonError("반려 사유를 1~500자로 입력해주세요.");
-      return;
+      return false;
     }
     const input: ProductReviewInput = {
       productId: decision.productId,
@@ -171,6 +171,7 @@ export const ProductsPage = () => {
       rejectionReason: decision.approved ? undefined : reason.trim(),
     };
     mutation.mutate(input);
+    return true;
   };
 
   return (
