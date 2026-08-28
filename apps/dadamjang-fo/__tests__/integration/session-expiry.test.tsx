@@ -194,8 +194,13 @@ describe("expired auth session", () => {
       0,
     );
     expect(result.current.authFlow.kakaoSignup).toBeUndefined();
-    expect(storage.get("dadamjang.access-token")).toBe("access-b");
-    expect(storage.get("dadamjang.refresh-token")).toBe("refresh-b");
+    expect(storage.get("dadamjang.auth-session")).toBe(
+      JSON.stringify({
+        version: 1,
+        accessToken: "access-b",
+        refreshToken: "refresh-b",
+      }),
+    );
     unmount();
   });
 });

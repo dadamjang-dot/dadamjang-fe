@@ -16,6 +16,9 @@ minimumReleaseAgeExclude:
   - expo-font@57.0.2
   - expo@57.0.18
 
+overrides:
+  expo-constants: 57.0.16
+
 packageExtensions:
   '@sentry/react-native@*':
     dependencies:

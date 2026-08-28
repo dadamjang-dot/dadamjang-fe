@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { startTransition, useMemo, useOptimistic } from "react";
-import { View } from "react-native";
+import { Alert, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { useCurrentUser } from "@/features/auth";
@@ -18,7 +18,8 @@ import {
 } from "@/features/shop";
 import { useWishActions, useWishlist } from "@/features/wish";
 import { ProductLayout } from "@/shared/components";
-import { Action } from "@dadamjang/mobile";
+import { Sentry } from "@/shared/observability/sentry";
+import type { Action } from "@dadamjang/mobile";
 
 const ShopScreen = () => {
   const router = useRouter();
@@ -68,7 +69,10 @@ const ShopScreen = () => {
       updateOptimisticLike({ productId, liked: nextLiked });
       try {
         await mutation.mutateAsync(productId);
-      } catch {}
+      } catch (error) {
+        Sentry.captureException(error);
+        Alert.alert("찜을 저장하지 못했어요.", "잠시 후 다시 시도해 주세요.");
+      }
     });
   };
 

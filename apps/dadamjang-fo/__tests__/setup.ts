@@ -20,6 +20,7 @@ jest.mock("expo-crypto", () => ({
 }));
 
 jest.mock("@sentry/react-native", () => ({
+  captureException: jest.fn(),
   init: jest.fn(),
   wrap: jest.fn((component: unknown) => component),
 }));

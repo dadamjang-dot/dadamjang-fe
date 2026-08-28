@@ -1,13 +1,15 @@
 import { ClientError, GraphQLClient } from "graphql-request";
 import * as SecureStore from "expo-secure-store";
 
-const accessTokenKey = "dadamjang.access-token";
-const refreshTokenKey = "dadamjang.refresh-token";
+const defaultStorageNamespace = "dadamjang";
+const sessionRecordVersion = 1;
 const apiUrl =
   process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/graphql";
 const refreshMutation =
   "mutation Refresh { refresh { accessToken refreshToken } }";
 const expiredSessionMessage = "인증 세션이 만료되었어요. 다시 로그인해 주세요.";
+const sessionCleanupMessage =
+  "인증 정보를 안전하게 정리하지 못했어요. 다시 시도해 주세요.";
 
 export class GraphqlError extends Error {
   readonly status: number;
@@ -35,7 +37,7 @@ type RefreshPayload = {
 
 type SessionResetHandler = () => void | Promise<void>;
 
-type TokenStorage = {
+export type TokenStorage = {
   getItemAsync: (key: string) => Promise<string | null>;
   setItemAsync: (key: string, value: string) => Promise<void>;
   deleteItemAsync: (key: string) => Promise<void>;
@@ -61,14 +63,13 @@ export type AuthenticatedGraphqlClient = {
     retryOnUnauthorized?: boolean,
   ) => Promise<T>;
   resetAuthSession: () => Promise<void>;
-  setAccessToken: (token: string) => Promise<void>;
   setAuthTokens: (tokens: AuthTokens) => Promise<void>;
-  setRefreshToken: (token: string) => Promise<void>;
   setSessionResetHandler: (handler: SessionResetHandler) => () => void;
 };
 
-type AuthenticatedGraphqlClientOptions = {
-  storage?: TokenStorage;
+export type AuthenticatedGraphqlClientOptions = {
+  storage: TokenStorage;
+  storageNamespace: string;
   url?: string;
 };
 
@@ -82,11 +83,19 @@ const isUnauthorizedError = (error: ClientError) =>
   ) === true;
 
 const createAuthError = () => new GraphqlError(expiredSessionMessage, 401);
+const createSessionCleanupError = () => new GraphqlError(sessionCleanupMessage);
 
-export const createAuthenticatedGraphqlClient = (
-  options: AuthenticatedGraphqlClientOptions = {},
+const createAuthenticatedGraphqlClientInternal = (
+  options: AuthenticatedGraphqlClientOptions,
 ): AuthenticatedGraphqlClient => {
-  const storage = options.storage ?? SecureStore;
+  const storage = options.storage;
+  const storageNamespace = options.storageNamespace.trim();
+  if (!storageNamespace) throw new Error("storageNamespace is required");
+  const sessionKey = `${storageNamespace}.auth-session`;
+  const invalidationKey = `${storageNamespace}.auth-session-invalidated`;
+  const accessTokenKey = `${storageNamespace}.access-token`;
+  const refreshTokenKey = `${storageNamespace}.refresh-token`;
+  const invalidatedSession = JSON.stringify({ version: sessionRecordVersion });
   const url = options.url ?? apiUrl;
   let generation = 0;
   let sessionTokens: StoredAuthTokens | undefined;
@@ -106,11 +115,7 @@ export const createAuthenticatedGraphqlClient = (
     return result;
   };
 
-  const runSessionResetHandler = async () => {
-    try {
-      await sessionResetHandler?.();
-    } catch {}
-  };
+  const runSessionResetHandler = async () => sessionResetHandler?.();
 
   const beginSessionReset = (expectedGeneration?: number) => {
     if (expectedGeneration !== undefined && generation !== expectedGeneration)
@@ -118,30 +123,115 @@ export const createAuthenticatedGraphqlClient = (
     generation += 1;
     sessionTokens = { accessToken: null, refreshToken: null };
     refreshFlight = undefined;
-    return {
-      cleanup: runSessionResetHandler(),
-      generation,
-    };
+    return generation;
   };
 
-  const clearStoredTokens = async () => {
-    await Promise.allSettled([
+  const hasRejected = (results: readonly PromiseSettledResult<unknown>[]) =>
+    results.some(({ status }) => status === "rejected");
+
+  const clearSupersededSessionState = async () => {
+    const results = await Promise.allSettled([
+      storage.deleteItemAsync(invalidationKey),
       storage.deleteItemAsync(accessTokenKey),
       storage.deleteItemAsync(refreshTokenKey),
     ]);
+    if (hasRejected(results)) throw createSessionCleanupError();
+  };
+
+  const writeStoredSession = async (tokens: AuthTokens) => {
+    await storage.setItemAsync(
+      sessionKey,
+      JSON.stringify({ version: sessionRecordVersion, ...tokens }),
+    );
+    await clearSupersededSessionState();
+  };
+
+  const invalidatePersistedSession = async () => {
+    const markerResults = await Promise.allSettled([
+      storage.setItemAsync(invalidationKey, "1"),
+      storage.setItemAsync(sessionKey, invalidatedSession),
+    ]);
+    const fallbackResult =
+      markerResults[1]?.status === "rejected"
+        ? await Promise.allSettled([storage.deleteItemAsync(sessionKey)])
+        : [];
+    const legacyResults = await Promise.allSettled([
+      storage.deleteItemAsync(accessTokenKey),
+      storage.deleteItemAsync(refreshTokenKey),
+    ]);
+    if (hasRejected([...markerResults, ...fallbackResult, ...legacyResults]))
+      throw createSessionCleanupError();
   };
 
   const resetSession = async (expectedGeneration?: number) => {
-    const reset = beginSessionReset(expectedGeneration);
-    if (!reset) return false;
-    await Promise.all([enqueueTokenMutation(clearStoredTokens), reset.cleanup]);
+    const resetGeneration = beginSessionReset(expectedGeneration);
+    if (resetGeneration === undefined) return false;
+    const results = await Promise.allSettled([
+      enqueueTokenMutation(async () => {
+        if (generation !== resetGeneration) return;
+        await invalidatePersistedSession();
+      }),
+      runSessionResetHandler(),
+    ]);
+    if (hasRejected(results)) throw createSessionCleanupError();
     return true;
+  };
+
+  const parseStoredSession = (
+    value: string | null,
+  ): StoredAuthTokens | null | undefined => {
+    if (value === null) return undefined;
+    try {
+      const record = JSON.parse(value) as Partial<
+        AuthTokens & { version: number }
+      >;
+      if (
+        record.version === sessionRecordVersion &&
+        typeof record.accessToken === "string" &&
+        record.accessToken.length > 0 &&
+        typeof record.refreshToken === "string" &&
+        record.refreshToken.length > 0
+      ) {
+        return {
+          accessToken: record.accessToken,
+          refreshToken: record.refreshToken,
+        };
+      }
+    } catch {
+      return null;
+    }
+    return null;
   };
 
   const loadSessionTokens = async (expectedGeneration: number) => {
     await tokenMutationQueue;
     if (generation !== expectedGeneration) throw createAuthError();
     if (sessionTokens) return sessionTokens;
+
+    const [invalidationResult, storedSessionResult] = await Promise.allSettled([
+      storage.getItemAsync(invalidationKey),
+      storage.getItemAsync(sessionKey),
+    ]);
+    if (
+      invalidationResult.status === "rejected" ||
+      storedSessionResult.status === "rejected"
+    ) {
+      await resetSession(expectedGeneration);
+      throw createAuthError();
+    }
+    if (generation !== expectedGeneration) throw createAuthError();
+    if (invalidationResult.value !== null) {
+      sessionTokens = { accessToken: null, refreshToken: null };
+      return sessionTokens;
+    }
+    const storedTokens = parseStoredSession(storedSessionResult.value);
+    if (storedTokens !== undefined) {
+      sessionTokens = storedTokens ?? {
+        accessToken: null,
+        refreshToken: null,
+      };
+      return sessionTokens;
+    }
 
     const [accessTokenResult, refreshTokenResult] = await Promise.allSettled([
       storage.getItemAsync(accessTokenKey),
@@ -156,10 +246,38 @@ export const createAuthenticatedGraphqlClient = (
     }
     if (generation !== expectedGeneration) throw createAuthError();
 
-    sessionTokens = {
-      accessToken: accessTokenResult.value,
-      refreshToken: refreshTokenResult.value,
-    };
+    if (accessTokenResult.value && refreshTokenResult.value) {
+      const legacyTokens = {
+        accessToken: accessTokenResult.value,
+        refreshToken: refreshTokenResult.value,
+      };
+      try {
+        const migrated = await enqueueTokenMutation(async () => {
+          if (generation !== expectedGeneration) return false;
+          await writeStoredSession(legacyTokens);
+          if (generation !== expectedGeneration) return false;
+          sessionTokens = legacyTokens;
+          return true;
+        });
+        if (!migrated) throw createAuthError();
+        return legacyTokens;
+      } catch (error) {
+        await resetSession(expectedGeneration);
+        if (
+          error instanceof GraphqlError &&
+          error.message === sessionCleanupMessage
+        ) {
+          throw createSessionCleanupError();
+        }
+        throw error;
+      }
+    }
+    if (accessTokenResult.value || refreshTokenResult.value) {
+      await resetSession(expectedGeneration);
+      throw createAuthError();
+    }
+
+    sessionTokens = { accessToken: null, refreshToken: null };
     return sessionTokens;
   };
 
@@ -170,58 +288,52 @@ export const createAuthenticatedGraphqlClient = (
     return { ...tokens, generation: requestGeneration };
   };
 
-  const setStoredToken = async (
-    key: typeof accessTokenKey | typeof refreshTokenKey,
-    token: string,
-  ) => {
-    const expectedGeneration = generation;
-    const committed = await enqueueTokenMutation(async () => {
-      if (generation !== expectedGeneration) return false;
-      const [write] = await Promise.allSettled([
-        storage.setItemAsync(key, token),
-      ]);
-      if (write.status === "rejected") {
-        const reset = beginSessionReset(expectedGeneration);
-        if (reset) await Promise.all([clearStoredTokens(), reset.cleanup]);
-        return false;
-      }
-      if (generation !== expectedGeneration) return false;
-      if (sessionTokens) {
-        sessionTokens = {
-          ...sessionTokens,
-          ...(key === accessTokenKey
-            ? { accessToken: token }
-            : { refreshToken: token }),
-        };
-      }
-      return true;
-    });
-    if (!committed) throw createAuthError();
-  };
-
   const setAuthTokens = async (tokens: AuthTokens) => {
-    const replacement = beginSessionReset();
-    if (!replacement) throw createAuthError();
+    if (!tokens.accessToken || !tokens.refreshToken) {
+      await resetSession();
+      throw createAuthError();
+    }
+    const replacementGeneration = beginSessionReset();
+    if (replacementGeneration === undefined) throw createAuthError();
 
-    const committed = await enqueueTokenMutation(async () => {
-      await clearStoredTokens();
-      if (generation !== replacement.generation) return false;
+    const [commitResult, cleanupResult] = await Promise.allSettled([
+      enqueueTokenMutation(async () => {
+        if (generation !== replacementGeneration) return false;
+        await writeStoredSession(tokens);
+        if (generation !== replacementGeneration) return false;
+        sessionTokens = { ...tokens };
+        return true;
+      }),
+      runSessionResetHandler(),
+    ]);
+    if (
+      commitResult.status === "fulfilled" &&
+      commitResult.value &&
+      cleanupResult.status === "fulfilled"
+    ) {
+      return;
+    }
 
-      const writes = await Promise.allSettled([
-        storage.setItemAsync(accessTokenKey, tokens.accessToken),
-        storage.setItemAsync(refreshTokenKey, tokens.refreshToken),
-      ]);
-      if (writes.some(({ status }) => status === "rejected")) {
-        await clearStoredTokens();
-        return false;
-      }
-      if (generation !== replacement.generation) return false;
-
-      sessionTokens = { ...tokens };
-      return true;
-    });
-    await replacement.cleanup;
-    if (!committed) throw createAuthError();
+    const invalidationGeneration = beginSessionReset(replacementGeneration);
+    const invalidationResult =
+      invalidationGeneration === undefined
+        ? undefined
+        : await Promise.allSettled([
+            enqueueTokenMutation(async () => {
+              if (generation !== invalidationGeneration) return;
+              await invalidatePersistedSession();
+            }),
+          ]);
+    if (
+      cleanupResult.status === "rejected" ||
+      (commitResult.status === "rejected" &&
+        commitResult.reason instanceof GraphqlError &&
+        commitResult.reason.message === sessionCleanupMessage) ||
+      (invalidationResult && hasRejected(invalidationResult))
+    ) {
+      throw createSessionCleanupError();
+    }
+    throw createAuthError();
   };
 
   const commitRefreshedTokens = async (
@@ -237,13 +349,17 @@ export const createAuthenticatedGraphqlClient = (
         return sessionTokens.accessToken;
       }
 
-      const writes = await Promise.allSettled([
-        storage.setItemAsync(accessTokenKey, tokens.accessToken),
-        storage.setItemAsync(refreshTokenKey, tokens.refreshToken),
-      ]);
-      if (writes.some(({ status }) => status === "rejected")) {
-        const reset = beginSessionReset(snapshot.generation);
-        if (reset) await Promise.all([clearStoredTokens(), reset.cleanup]);
+      try {
+        await writeStoredSession(tokens);
+      } catch {
+        const resetGeneration = beginSessionReset(snapshot.generation);
+        if (resetGeneration !== undefined) {
+          const results = await Promise.allSettled([
+            invalidatePersistedSession(),
+            runSessionResetHandler(),
+          ]);
+          if (hasRejected(results)) throw createSessionCleanupError();
+        }
         return null;
       }
       if (generation !== snapshot.generation) return null;
@@ -383,27 +499,31 @@ export const createAuthenticatedGraphqlClient = (
     getRefreshToken: async () => (await captureSession()).refreshToken,
     graphqlRequest,
     resetAuthSession,
-    setAccessToken: (token) => setStoredToken(accessTokenKey, token),
     setAuthTokens,
-    setRefreshToken: (token) => setStoredToken(refreshTokenKey, token),
     setSessionResetHandler,
   };
 };
 
+export const createAuthenticatedGraphqlClient = (
+  options: AuthenticatedGraphqlClientOptions,
+) => {
+  if (options.storageNamespace.trim() === defaultStorageNamespace) {
+    throw new Error("The default storage namespace is reserved");
+  }
+  return createAuthenticatedGraphqlClientInternal(options);
+};
+
 export const defaultAuthenticatedGraphqlClient =
-  createAuthenticatedGraphqlClient();
+  createAuthenticatedGraphqlClientInternal({
+    storage: SecureStore,
+    storageNamespace: defaultStorageNamespace,
+  });
 
 export const getAccessToken = () =>
   defaultAuthenticatedGraphqlClient.getAccessToken();
 
 export const getRefreshToken = () =>
   defaultAuthenticatedGraphqlClient.getRefreshToken();
-
-export const setAccessToken = (token: string) =>
-  defaultAuthenticatedGraphqlClient.setAccessToken(token);
-
-export const setRefreshToken = (token: string) =>
-  defaultAuthenticatedGraphqlClient.setRefreshToken(token);
 
 export const setAuthTokens = (tokens: AuthTokens) =>
   defaultAuthenticatedGraphqlClient.setAuthTokens(tokens);
