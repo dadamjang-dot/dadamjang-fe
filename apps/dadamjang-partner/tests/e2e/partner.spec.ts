@@ -689,7 +689,7 @@ test("review states control editability and rejected reason", async ({
     await expect(page.getByLabel("상품명")).toBeDisabled();
   }
   state = "APPROVED";
-  await page.unrouteAll();
+  await page.unroute("**/api/graphql");
   await routeGraphQl(
     page,
     protectedHandlers({

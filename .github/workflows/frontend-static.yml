@@ -37,3 +37,29 @@ jobs:
       - run: pnpm bo:fsd
       - run: pnpm bo:test
       - run: pnpm bo:build
+
+  web-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.20.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir apps/dadamjang-partner exec playwright install --with-deps chromium
+      - run: pnpm partner:test:e2e
+      - run: pnpm bo:test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-e2e-artifacts
+          path: |
+            apps/dadamjang-partner/playwright-report
+            apps/dadamjang-partner/test-results
+            apps/dadamjang-bo/playwright-report
+            apps/dadamjang-bo/test-results
