@@ -3,13 +3,18 @@ import * as SecureStore from "expo-secure-store";
 
 const defaultStorageNamespace = "dadamjang";
 const sessionRecordVersion = 1;
-const apiUrl =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/graphql";
 const refreshMutation =
   "mutation Refresh { refresh { accessToken refreshToken } }";
+const logoutMutation = "mutation Logout { logout }";
 const expiredSessionMessage = "인증 세션이 만료되었어요. 다시 로그인해 주세요.";
 const sessionCleanupMessage =
   "인증 정보를 안전하게 정리하지 못했어요. 다시 시도해 주세요.";
+
+export const resolveGraphqlUrl = (value: string | undefined) => {
+  const url = value?.trim();
+  if (!url) throw new Error("EXPO_PUBLIC_API_URL is required");
+  return url;
+};
 
 export class GraphqlError extends Error {
   readonly status: number;
@@ -74,6 +79,7 @@ export type AuthenticatedGraphqlClient = {
     variables?: Record<string, unknown>,
     options?: GraphqlRequestOptions,
   ) => Promise<T>;
+  logoutAuthSession: () => Promise<boolean>;
   resetAuthSession: () => Promise<void>;
   setAuthTokens: (tokens: AuthTokens) => Promise<void>;
   setSessionResetHandler: (handler: SessionResetHandler) => () => void;
@@ -119,7 +125,6 @@ const createAuthenticatedGraphqlClientInternal = (
   const accessTokenKey = `${storageNamespace}.access-token`;
   const refreshTokenKey = `${storageNamespace}.refresh-token`;
   const invalidatedSession = JSON.stringify({ version: sessionRecordVersion });
-  const url = options.url ?? apiUrl;
   let credentialRevision = 0;
   let generation = 0;
   let sessionTokens: StoredAuthTokens | undefined;
@@ -128,7 +133,10 @@ const createAuthenticatedGraphqlClientInternal = (
   let tokenMutationQueue = Promise.resolve();
 
   const createRequestClient = (headers?: HeadersInit) =>
-    new GraphQLClient(url, { headers });
+    new GraphQLClient(
+      resolveGraphqlUrl(options.url ?? process.env.EXPO_PUBLIC_API_URL),
+      { headers },
+    );
 
   const enqueueTokenMutation = <T>(mutation: () => Promise<T>) => {
     const result = tokenMutationQueue.then(mutation, mutation);
@@ -558,6 +566,32 @@ const createAuthenticatedGraphqlClientInternal = (
     await resetSession();
   };
 
+  const logoutAuthSession = async () => {
+    let snapshot: SessionSnapshot;
+    try {
+      snapshot = await captureSession();
+    } catch {
+      await resetSession();
+      return false;
+    }
+
+    let revoked = false;
+    if (snapshot.refreshToken) {
+      try {
+        const client = createRequestClient({
+          Authorization: `Bearer ${snapshot.refreshToken}`,
+        });
+        const data = await client.request<{ logout: boolean }>(logoutMutation);
+        revoked = data.logout === true;
+      } catch {
+        revoked = false;
+      }
+    }
+
+    await resetSession(snapshot.generation);
+    return revoked;
+  };
+
   const setSessionResetHandler = (handler: SessionResetHandler) => {
     sessionResetHandler = handler;
     return () => {
@@ -570,6 +604,7 @@ const createAuthenticatedGraphqlClientInternal = (
     getAccessToken: async () => (await captureSession()).accessToken,
     getRefreshToken: async () => (await captureSession()).refreshToken,
     graphqlRequest,
+    logoutAuthSession,
     resetAuthSession,
     setAuthTokens,
     setSessionResetHandler,
@@ -602,6 +637,9 @@ export const setAuthTokens = (tokens: AuthTokens) =>
 
 export const resetAuthSession = () =>
   defaultAuthenticatedGraphqlClient.resetAuthSession();
+
+export const logoutAuthSession = () =>
+  defaultAuthenticatedGraphqlClient.logoutAuthSession();
 
 export const clearAccessToken = resetAuthSession;
 

@@ -3,12 +3,14 @@ import * as SecureStore from "expo-secure-store";
 import {
   createAuthenticatedGraphqlClient,
   GraphqlError,
+  resolveGraphqlUrl,
   type AuthenticatedGraphqlClient,
 } from "@dadamjang/graphql-client";
 
 import {
   createTestStorage,
   installSecureStoreMocks,
+  installTransport,
   invalidationKey,
   jsonResponse,
   legacyAccessTokenKey,
@@ -58,6 +60,106 @@ describe("GraphQL authentication", () => {
         storageNamespace: "dadamjang",
       }),
     ).toThrow("The default storage namespace is reserved");
+  });
+
+  it("requires a non-blank GraphQL endpoint", () => {
+    expect(resolveGraphqlUrl("https://api.example.test/graphql")).toBe(
+      "https://api.example.test/graphql",
+    );
+    expect(() => resolveGraphqlUrl(undefined)).toThrow(
+      "EXPO_PUBLIC_API_URL is required",
+    );
+    expect(() => resolveGraphqlUrl("")).toThrow(
+      "EXPO_PUBLIC_API_URL is required",
+    );
+    expect(() => resolveGraphqlUrl("   ")).toThrow(
+      "EXPO_PUBLIC_API_URL is required",
+    );
+  });
+
+  it("reads the default GraphQL endpoint when a request starts", async () => {
+    const previousApiUrl = process.env.EXPO_PUBLIC_API_URL;
+    process.env.EXPO_PUBLIC_API_URL = "   ";
+    const requests = installTransport([
+      jsonResponse({ data: { viewer: { id: "viewer-1" } } }),
+    ]);
+
+    try {
+      await expect(
+        client.graphqlRequest("query Viewer { viewer { id } }"),
+      ).rejects.toThrow("EXPO_PUBLIC_API_URL is required");
+      expect(requests).toHaveLength(0);
+    } finally {
+      if (previousApiUrl === undefined) delete process.env.EXPO_PUBLIC_API_URL;
+      else process.env.EXPO_PUBLIC_API_URL = previousApiUrl;
+    }
+  });
+
+  it("keeps explicit client endpoints independent from the environment", async () => {
+    const previousApiUrl = process.env.EXPO_PUBLIC_API_URL;
+    process.env.EXPO_PUBLIC_API_URL = "";
+    const customClient = createAuthenticatedGraphqlClient({
+      storage: SecureStore,
+      storageNamespace: testStorageNamespace,
+      url: "https://api.example.test/graphql",
+    });
+    const requests = installTransport([
+      jsonResponse({ data: { viewer: { id: "viewer-1" } } }),
+    ]);
+
+    try {
+      await expect(
+        customClient.graphqlRequest("query Viewer { viewer { id } }"),
+      ).resolves.toEqual({ viewer: { id: "viewer-1" } });
+      expect(requests).toHaveLength(1);
+    } finally {
+      if (previousApiUrl === undefined) delete process.env.EXPO_PUBLIC_API_URL;
+      else process.env.EXPO_PUBLIC_API_URL = previousApiUrl;
+    }
+  });
+
+  it("revokes the refresh credential and clears the local session", async () => {
+    storage.set(sessionKey, storedSession("access-1", "refresh-1"));
+    const cleanup = jest.fn();
+    client.setSessionResetHandler(cleanup);
+    const requests = installTransport([
+      jsonResponse({ data: { logout: true } }),
+    ]);
+    await expect(client.logoutAuthSession()).resolves.toBe(true);
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.authorization).toBe("Bearer refresh-1");
+    expect(JSON.parse(requests[0]?.body ?? "null")).toEqual({
+      operationName: "Logout",
+      query: "mutation Logout { logout }",
+    });
+    await expect(client.getAccessToken()).resolves.toBeNull();
+    await expect(client.getRefreshToken()).resolves.toBeNull();
+    expect(storage.get(sessionKey)).toBe(JSON.stringify({ version: 1 }));
+    expect(cleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry logout and still clears the local session", async () => {
+    storage.set(sessionKey, storedSession("access-1", "refresh-1"));
+    const cleanup = jest.fn();
+    client.setSessionResetHandler(cleanup);
+    const requests = installTransport([
+      unauthorizedResponse(),
+      jsonResponse({
+        data: {
+          refresh: { accessToken: "access-2", refreshToken: "refresh-2" },
+        },
+      }),
+    ]);
+    await expect(client.logoutAuthSession()).resolves.toBe(false);
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.authorization).toBe("Bearer refresh-1");
+    expect(requests[0]?.body).toContain("mutation Logout");
+    await expect(client.getAccessToken()).resolves.toBeNull();
+    await expect(client.getRefreshToken()).resolves.toBeNull();
+    expect(storage.get(sessionKey)).toBe(JSON.stringify({ version: 1 }));
+    expect(cleanup).toHaveBeenCalledTimes(1);
   });
 
   it("migrates a complete legacy token pair to the atomic record", async () => {

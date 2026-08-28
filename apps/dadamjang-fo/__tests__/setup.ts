@@ -5,6 +5,8 @@ class TestNetworkError extends Error {
   }
 }
 
+process.env.EXPO_PUBLIC_API_URL = "http://127.0.0.1:5500/graphql";
+
 jest.mock("expo-linking", () => ({
   addEventListener: jest.fn(() => ({ remove: jest.fn() })),
   createURL: jest.fn((path: string) => `dadamjang://${path}`),

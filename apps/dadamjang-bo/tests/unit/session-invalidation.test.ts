@@ -145,4 +145,29 @@ describe("admin session invalidation", () => {
     );
     unsubscribe();
   });
+
+  it("invalidates the local session when explicit logout fails", async () => {
+    const { SESSION_INVALIDATION_STORAGE_KEY, subscribeToSessionInvalidation } =
+      requireSessionEvents();
+    const queryClient = new QueryClient();
+    const clear = vi.spyOn(queryClient, "clear");
+    const router = { replace: vi.fn() };
+    const storage = vi.spyOn(Storage.prototype, "setItem");
+    const unsubscribe = subscribeToSessionInvalidation(() => {
+      queryClient.clear();
+      router.replace("/login");
+    });
+    const failure = new Error("logout unavailable");
+    api.requestGraphQl.mockRejectedValue(failure);
+
+    await expect(auth.logoutAdminSession()).rejects.toBe(failure);
+
+    expect(clear).toHaveBeenCalledOnce();
+    expect(router.replace).toHaveBeenCalledWith("/login");
+    expect(storage).toHaveBeenCalledWith(
+      SESSION_INVALIDATION_STORAGE_KEY,
+      expect.any(String),
+    );
+    unsubscribe();
+  });
 });

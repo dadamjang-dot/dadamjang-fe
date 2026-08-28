@@ -28,8 +28,9 @@ export const adminSessionQuery = () =>
 const LOGOUT_MUTATION = `mutation AdminLogout { logout }`;
 
 export const logoutAdminSession = async () => {
-  const result = (await requestGraphQl<{ logout: boolean }>(LOGOUT_MUTATION))
-    .logout;
-  invalidateSession();
-  return result;
+  try {
+    return (await requestGraphQl<{ logout: boolean }>(LOGOUT_MUTATION)).logout;
+  } finally {
+    invalidateSession();
+  }
 };

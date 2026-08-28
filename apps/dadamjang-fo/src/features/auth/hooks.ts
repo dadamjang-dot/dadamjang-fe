@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useCallback } from "react";
 
-import { GraphqlError, resetAuthSession } from "@dadamjang/graphql-client";
+import { GraphqlError, logoutAuthSession } from "@dadamjang/graphql-client";
 
 import {
   completeKakaoSignupFo,
@@ -175,6 +175,4 @@ export const useResetPassword = () =>
       resetPassword(token, password),
   });
 
-export const useSignOut = () => {
-  return resetAuthSession;
-};
+export const useSignOut = () => logoutAuthSession;

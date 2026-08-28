@@ -26,9 +26,11 @@ export const signin = (userid: string, password: string) =>
     { input: { userid, password, portal: "PARTNER" } },
   );
 export const logout = async () => {
-  const result = await requestGraphQl(`mutation Logout { logout }`);
-  invalidateSession();
-  return result;
+  try {
+    return await requestGraphQl(`mutation Logout { logout }`);
+  } finally {
+    invalidateSession();
+  }
 };
 export const myPartner = () =>
   requestGraphQl<{
