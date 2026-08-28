@@ -571,6 +571,61 @@ test("multi-image uploads are bounded, ordered, and keep successful files", asyn
     });
 });
 
+test("overlapping image selections share one upload concurrency bound", async ({
+  page,
+}) => {
+  const started: string[] = [];
+  let active = 0;
+  let maxActive = 0;
+  let releaseReservations = () => {};
+  const reservationsReleased = new Promise<void>((resolve) => {
+    releaseReservations = resolve;
+  });
+  await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      ImageUpload: async (variables) => {
+        const filename = (variables.input as { filename: string }).filename;
+        started.push(filename);
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await reservationsReleased;
+        active -= 1;
+        return {
+          createProductImageUpload: {
+            key: `products/user-1/${filename}`,
+            uploadUrl: `http://127.0.0.1:3002/upload-overlap-${filename}`,
+            originalUrl: `https://images.test/${filename}`,
+            imageUrl: `https://images.test/${filename}`,
+          },
+        };
+      },
+    }),
+  );
+  await page.route("**/upload-overlap-*", (route) =>
+    route.fulfill({ status: 204 }),
+  );
+  await page.goto("/products/new");
+  const input = page.getByLabel("이미지 선택");
+  const files = (prefix: string) =>
+    [1, 2, 3].map((index) => ({
+      name: `${prefix}-${index}.png`,
+      mimeType: "image/png",
+      buffer: Buffer.from(`${prefix}-${index}`),
+    }));
+
+  await input.setInputFiles(files("first"));
+  await expect.poll(() => started).toHaveLength(3);
+  await input.setInputFiles(files("second"));
+
+  await expect.poll(() => started).toHaveLength(3);
+  expect(maxActive).toBe(3);
+  releaseReservations();
+  await expect(page.locator(".images article")).toHaveCount(6);
+  expect(maxActive).toBe(3);
+});
+
 test("save actions remain disabled until image upload completes", async ({
   page,
 }) => {

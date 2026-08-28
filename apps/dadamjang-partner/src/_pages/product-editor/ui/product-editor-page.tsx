@@ -89,6 +89,8 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const occupiedImageKeys = useRef(new Set<string>());
   const pendingImageSlots = useRef(0);
   const nextImageOrder = useRef(0);
+  const activeUploadTasks = useRef(0);
+  const queuedUploadTasks = useRef<Array<() => void>>([]);
   const uploadControllers = useRef(new Map<string, AbortController>());
   const mounted = useRef(true);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -271,6 +273,20 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
         refetchType: "none",
       }),
     ]);
+  const runWithUploadSlot = useCallback(async (task: () => Promise<void>) => {
+    if (activeUploadTasks.current >= MAX_CONCURRENT_UPLOADS)
+      await new Promise<void>((resolve) =>
+        queuedUploadTasks.current.push(resolve),
+      );
+    else activeUploadTasks.current += 1;
+    try {
+      await task();
+    } finally {
+      const next = queuedUploadTasks.current.shift();
+      if (next) next();
+      else activeUploadTasks.current -= 1;
+    }
+  }, []);
   const addFiles = async (files: FileList | File[]) => {
     setError("");
     const tasks: Array<{ file: File; preview: string; order: number }> = [];
@@ -297,71 +313,73 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       while (nextTask < tasks.length) {
         const task = tasks[nextTask++];
         if (!task) return;
-        const { file, preview, order } = task;
-        let pendingSlot = true;
-        const releasePendingSlot = () => {
-          if (!pendingSlot) return;
-          pendingImageSlots.current -= 1;
-          pendingSlot = false;
-        };
-        let controller: AbortController | undefined;
-        let uploadKey: string | undefined;
-        let uploadSucceeded = false;
-        try {
-          if (!mounted.current) continue;
-          const { createProductImageUpload: u } = await createImageUpload({
-            filename: file.name,
-            contentType: file.type,
-            fileSize: file.size,
-          });
-          releasePendingSlot();
-          if (!mounted.current) continue;
-          uploadKey = u.key;
-          occupiedImageKeys.current.add(uploadKey);
-          controller = new AbortController();
-          uploadControllers.current.set(u.key, controller);
-          setImages((value) =>
-            [
-              ...value,
-              { key: u.key, preview, local: true, progress: 0, order },
-            ].sort((left, right) => left.order - right.order),
-          );
+        await runWithUploadSlot(async () => {
+          const { file, preview, order } = task;
+          let pendingSlot = true;
+          const releasePendingSlot = () => {
+            if (!pendingSlot) return;
+            pendingImageSlots.current -= 1;
+            pendingSlot = false;
+          };
+          let controller: AbortController | undefined;
+          let uploadKey: string | undefined;
+          let uploadSucceeded = false;
           try {
-            await uploadFile(
-              u.uploadUrl,
-              file,
-              (progress) => {
-                if (!mounted.current) return;
-                setImages((value) =>
-                  value.map((item) =>
-                    item.key === u.key ? { ...item, progress } : item,
-                  ),
-                );
-              },
-              controller.signal,
-            );
-            uploadSucceeded = true;
-          } finally {
-            uploadControllers.current.delete(u.key);
-          }
-          if (mounted.current) markDirty();
-        } catch (e) {
-          if (uploadKey) occupiedImageKeys.current.delete(uploadKey);
-          if (mounted.current) {
+            if (!mounted.current) return;
+            const { createProductImageUpload: u } = await createImageUpload({
+              filename: file.name,
+              contentType: file.type,
+              fileSize: file.size,
+            });
+            releasePendingSlot();
+            if (!mounted.current) return;
+            uploadKey = u.key;
+            occupiedImageKeys.current.add(uploadKey);
+            controller = new AbortController();
+            uploadControllers.current.set(u.key, controller);
             setImages((value) =>
-              value.filter((item) => item.preview !== preview),
+              [
+                ...value,
+                { key: u.key, preview, local: true, progress: 0, order },
+              ].sort((left, right) => left.order - right.order),
             );
-            if (!controller?.signal.aborted)
-              setError(
-                e instanceof Error
-                  ? e.message
-                  : "이미지 업로드에 실패했습니다.",
+            try {
+              await uploadFile(
+                u.uploadUrl,
+                file,
+                (progress) => {
+                  if (!mounted.current) return;
+                  setImages((value) =>
+                    value.map((item) =>
+                      item.key === u.key ? { ...item, progress } : item,
+                    ),
+                  );
+                },
+                controller.signal,
               );
+              uploadSucceeded = true;
+            } finally {
+              uploadControllers.current.delete(u.key);
+            }
+            if (mounted.current) markDirty();
+          } catch (e) {
+            if (uploadKey) occupiedImageKeys.current.delete(uploadKey);
+            if (mounted.current) {
+              setImages((value) =>
+                value.filter((item) => item.preview !== preview),
+              );
+              if (!controller?.signal.aborted)
+                setError(
+                  e instanceof Error
+                    ? e.message
+                    : "이미지 업로드에 실패했습니다.",
+                );
+            }
+          } finally {
+            releasePendingSlot();
+            if (!uploadSucceeded) URL.revokeObjectURL(preview);
           }
-        } finally {
-          releasePendingSlot();
-          if (!uploadSucceeded) URL.revokeObjectURL(preview);
-        }
+        });
       }
     };
     await Promise.all(
