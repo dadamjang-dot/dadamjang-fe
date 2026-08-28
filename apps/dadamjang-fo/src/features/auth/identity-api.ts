@@ -42,15 +42,18 @@ export const getIdentityVerificationStatus = async (sessionId: string) => {
   return data.identityVerificationStatus;
 };
 
-export const completeIdentityVerification = async (sessionId: string) => {
+export const completeIdentityVerification = async (
+  sessionId: string,
+  callbackToken: string,
+) => {
   const deviceId = await getDeviceId();
   const data = await graphqlRequest<{
     completeIdentityVerification: { identityVerificationToken: string };
   }>(
-    `mutation CompleteIdentityVerification($sessionId: ID!) {
-      completeIdentityVerification(sessionId: $sessionId) { identityVerificationToken }
+    `mutation CompleteIdentityVerification($sessionId: ID!, $callbackToken: String!) {
+      completeIdentityVerification(sessionId: $sessionId, callbackToken: $callbackToken) { identityVerificationToken }
     }`,
-    { sessionId },
+    { sessionId, callbackToken },
     { requestHeaders: { "x-device-id": deviceId } },
   );
   return data.completeIdentityVerification;

@@ -24,7 +24,10 @@ export const startKakaoLogin = async () => {
   return data.startKakaoLogin;
 };
 
-export const completeKakaoLogin = async (flowId: string) => {
+export const completeKakaoLogin = async (
+  flowId: string,
+  callbackToken: string,
+) => {
   const deviceId = await getDeviceId();
   const data = await graphqlRequest<{ completeKakaoLogin: KakaoLoginResult }>(
     `mutation CompleteKakaoLogin($input: CompleteKakaoLoginInput!) {
@@ -36,7 +39,7 @@ export const completeKakaoLogin = async (flowId: string) => {
         emailVerificationRequired
       }
     }`,
-    { input: { flowId } },
+    { input: { flowId, callbackToken } },
     { requestHeaders: { "x-device-id": deviceId } },
   );
   if (data.completeKakaoLogin.tokenPayload)

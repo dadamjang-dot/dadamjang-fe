@@ -1,6 +1,11 @@
 import { getDeviceId } from "@dadamjang/graphql-client";
 
-import { signInFo, startIdentityVerification } from "@/features/auth/api";
+import {
+  completeIdentityVerification,
+  completeKakaoLogin,
+  signInFo,
+  startIdentityVerification,
+} from "@/features/auth/api";
 import { checkoutCart, upsertCartItem } from "@/features/cart/api";
 import { getProducts } from "@/features/catalog/api";
 import { getOrder } from "@/features/order/api";
@@ -96,6 +101,33 @@ describe("feature API contracts", () => {
       input: { purpose: "SIGNUP", provider: "TOSS" },
     });
     expect(mockRequests[0]?.headers).toEqual({ "x-device-id": "device-1" });
+  });
+
+  it("forwards one-time callback tokens through auth completion requests", async () => {
+    const kakaoResult = {
+      status: "SIGNED_IN" as const,
+      tokenPayload: null,
+      kakaoSignupToken: null,
+      email: null,
+      emailVerificationRequired: false,
+    };
+    const identityResult = { identityVerificationToken: "identity-proof" };
+    mockResponses.push(
+      { completeKakaoLogin: kakaoResult },
+      { completeIdentityVerification: identityResult },
+    );
+
+    await expect(
+      completeKakaoLogin("flow-1", "callback-token"),
+    ).resolves.toEqual(kakaoResult);
+    await expect(
+      completeIdentityVerification("identity-session", "callback-token"),
+    ).resolves.toEqual(identityResult);
+
+    expect(mockRequests.map(({ variables }) => variables)).toEqual([
+      { input: { callbackToken: "callback-token", flowId: "flow-1" } },
+      { callbackToken: "callback-token", sessionId: "identity-session" },
+    ]);
   });
 
   it("passes catalog filters without changing the public GraphQL shape", async () => {
