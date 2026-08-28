@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleGraphQlPost } from "@/_app/api-routes/graphql";
 
+const DEVICE_ID = "00000000-0000-4000-8000-000000000001";
+
 const response = (body: unknown, cookies: string[] = []) => {
   const headers = new Headers({ "content-type": "application/json" });
   cookies.forEach((cookie) => headers.append("set-cookie", cookie));
@@ -8,7 +10,7 @@ const response = (body: unknown, cookies: string[] = []) => {
 };
 
 const request = (
-  cookie = "refresh_token=refresh; partner_device_id=device-1",
+  cookie = `refresh_token=refresh; partner_device_id=${DEVICE_ID}`,
 ) =>
   new Request("http://partner.test/api/graphql", {
     method: "POST",
@@ -49,9 +51,8 @@ describe("partner GraphQL BFF refresh", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock.mock.calls[1]?.[1]?.body).toContain("mutation Refresh");
     expect(fetchMock.mock.calls[2]?.[1]?.headers).toMatchObject({
-      cookie:
-        "refresh_token=new-refresh; partner_device_id=device-1; access_token=new-access",
-      "x-device-id": "device-1",
+      cookie: `refresh_token=new-refresh; partner_device_id=${DEVICE_ID}; access_token=new-access`,
+      "x-device-id": DEVICE_ID,
     });
     await expect(result.json()).resolves.toEqual({
       data: { me: { role: "PARTNER" } },
@@ -76,6 +77,29 @@ describe("partner GraphQL BFF refresh", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it.each(["%", "not-a-uuid", "00000000-0000-9000-f000-000000000001"])(
+    "replaces an invalid device cookie value of %s",
+    async (cookieValue) => {
+      const fetchMock = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce(response({ data: { me: null } }));
+
+      const result = await handleGraphQlPost(
+        request(`partner_device_id=${cookieValue}`),
+      );
+
+      const options = fetchMock.mock.calls.at(0)?.[1];
+      if (!options) throw new Error("Expected an upstream request");
+      const replacement = new Headers(options.headers).get("x-device-id");
+      expect(replacement).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+      expect(result.headers.getSetCookie().join("\n")).toContain(
+        `partner_device_id=${replacement}`,
+      );
+    },
+  );
+
   it("drops malformed cookie pairs before refresh and retry", async () => {
     const unauthenticated = {
       errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
@@ -98,7 +122,7 @@ describe("partner GraphQL BFF refresh", () => {
 
     await handleGraphQlPost(
       request(
-        "malformed; refresh_token=refresh; =missing-name; partner_device_id=device-1",
+        `malformed; refresh_token=refresh; =missing-name; partner_device_id=${DEVICE_ID}`,
       ),
     );
 
@@ -130,6 +154,26 @@ describe("partner GraphQL BFF refresh", () => {
     expect(cookies).toContain("access_token=");
     expect(cookies).toContain("refresh_token=");
     expect(cookies).toContain("Max-Age=0");
+  });
+
+  it.each([
+    ["null", null],
+    ["scalar", "PARTNER"],
+    ["array", [{ role: "PARTNER" }]],
+    ["missing role", {}],
+    ["non-string role", { role: 1 }],
+  ])("rejects %s refresh data", async (_, refreshData) => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        response({ errors: [{ extensions: { code: "UNAUTHENTICATED" } }] }),
+      )
+      .mockResolvedValueOnce(response({ data: { refresh: refreshData } }))
+      .mockResolvedValueOnce(response({ data: { me: null } }));
+
+    await handleGraphQlPost(request());
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("does not recursively refresh public authentication operations", async () => {

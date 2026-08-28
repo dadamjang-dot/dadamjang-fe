@@ -7,7 +7,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { ActionButton } from "@seed-design/react";
@@ -41,7 +46,14 @@ const emptySku = (): Sku => ({
   price: 0,
   stock: 0,
 });
-const moveItem = <T,>(items: T[], from: number, to: number) => {
+const moveItem = <T, K extends keyof T>(
+  items: T[],
+  identityKey: K,
+  identity: T[K],
+  direction: -1 | 1,
+) => {
+  const from = items.findIndex((item) => item[identityKey] === identity);
+  const to = from + direction;
   const item = items[from];
   if (item === undefined || to < 0 || to >= items.length) return items;
   const next = [...items];
@@ -55,8 +67,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const qc = useQueryClient();
   const existing = useQuery({
     queryKey: ["product", productId],
-    queryFn: productId ? () => getProduct(productId) : undefined,
-    enabled: !!productId,
+    queryFn: productId ? () => getProduct(productId) : skipToken,
   });
   const options = useQuery({
     queryKey: ["catalog-options"],
@@ -252,28 +263,37 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       }
     }
   };
-  const remove = (i: number) =>
+  const removeImage = (key: string) =>
     setImages((v) => {
-      const item = v[i];
+      const index = v.findIndex((item) => item.key === key);
+      const item = v[index];
       if (!item) return v;
       uploadControllers.current.get(item.key)?.abort();
       if (item.local) URL.revokeObjectURL(item.preview);
       setDirty(true);
-      return v.filter((_, n) => n !== i);
+      return v.filter((_, currentIndex) => currentIndex !== index);
     });
-  const move = (i: number, d: -1 | 1) =>
+  const moveImage = (key: string, direction: -1 | 1) =>
     setImages((v) => {
-      const n = moveItem(v, i, i + d);
-      if (n === v) return v;
+      const next = moveItem(v, "key", key, direction);
+      if (next === v) return v;
       setDirty(true);
-      return n;
+      return next;
     });
-  const moveSku = (i: number, d: -1 | 1) =>
+  const moveSku = (identity: string, direction: -1 | 1) =>
     setSkus((value) => {
-      const next = moveItem(value, i, i + d);
+      const next = moveItem(value, "identity", identity, direction);
       if (next === value) return value;
       setDirty(true);
       return next;
+    });
+  const removeSku = (identity: string) =>
+    setSkus((value) => {
+      if (value.length <= 1) return value;
+      const index = value.findIndex((sku) => sku.identity === identity);
+      if (index < 0) return value;
+      setDirty(true);
+      return value.filter((_, currentIndex) => currentIndex !== index);
     });
   const mutation = useMutation({
     mutationFn: async ({ submit }: { submit: boolean }) => {
@@ -474,18 +494,21 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   <ActionButton
                     type="button"
                     disabled={i === 0}
-                    onClick={() => move(i, -1)}
+                    onClick={() => moveImage(x.key, -1)}
                   >
                     앞으로
                   </ActionButton>
                   <ActionButton
                     type="button"
                     disabled={i === images.length - 1}
-                    onClick={() => move(i, 1)}
+                    onClick={() => moveImage(x.key, 1)}
                   >
                     뒤로
                   </ActionButton>
-                  <ActionButton type="button" onClick={() => remove(i)}>
+                  <ActionButton
+                    type="button"
+                    onClick={() => removeImage(x.key)}
+                  >
                     삭제
                   </ActionButton>
                 </article>
@@ -586,7 +609,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   aria-label={`SKU ${i + 1} 위로 이동`}
                   type="button"
                   disabled={i === 0}
-                  onClick={() => moveSku(i, -1)}
+                  onClick={() => moveSku(s.identity, -1)}
                 >
                   위로
                 </ActionButton>
@@ -594,17 +617,14 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   aria-label={`SKU ${i + 1} 아래로 이동`}
                   type="button"
                   disabled={i === skus.length - 1}
-                  onClick={() => moveSku(i, 1)}
+                  onClick={() => moveSku(s.identity, 1)}
                 >
                   아래로
                 </ActionButton>
                 <ActionButton
                   type="button"
                   disabled={skus.length === 1}
-                  onClick={() => {
-                    setSkus((v) => v.filter((_, n) => n !== i));
-                    setDirty(true);
-                  }}
+                  onClick={() => removeSku(s.identity)}
                 >
                   행 삭제
                 </ActionButton>

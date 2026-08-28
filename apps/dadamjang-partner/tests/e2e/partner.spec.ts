@@ -126,6 +126,22 @@ const product = (approvalStatus = "DRAFT", status = "DRAFT") => ({
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
 });
+const productWithReorderableItems = () => ({
+  ...product(),
+  imageUrls: [
+    "https://images.test/product-1.png",
+    "https://images.test/product-2.png",
+  ],
+  imageKeys: [
+    "products/user-1/00000000-0000-4000-8000-000000000001.png",
+    "products/user-1/00000000-0000-4000-8000-000000000002.png",
+  ],
+  skus: [
+    sku,
+    { ...sku, skuId: "sku-2", code: "B", optionName: "흰색 L" },
+    { ...sku, skuId: "sku-3", code: "C", optionName: "파랑 S" },
+  ],
+});
 const options = {
   catalogFilterOptions: {
     categories: [{ categoryId: "tops", name: "상의" }],
@@ -650,18 +666,16 @@ test("SKU reorder is preserved in the update payload", async ({ page }) => {
     .toEqual(["B", "A"]);
 });
 
-test("stale SKU reorder after removal leaves the remaining row intact", async ({
+test("repeated stale SKU delete and move keep sibling order", async ({
   page,
 }) => {
-  const twoSkus = {
-    ...product(),
-    skus: [sku, { ...sku, skuId: "sku-2", code: "B", optionName: "흰색 L" }],
-  };
   await routeGraphQl(
     page,
     protectedHandlers({
       CatalogOptions: () => options,
-      PartnerProduct: () => ({ myPartnerProduct: twoSkus }),
+      PartnerProduct: () => ({
+        myPartnerProduct: productWithReorderableItems(),
+      }),
     }),
   );
   await page.goto("/products/product-1/edit");
@@ -678,32 +692,69 @@ test("stale SKU reorder after removal leaves the remaining row intact", async ({
       );
       if (!up || !remove) throw new Error("Expected SKU row controls");
       remove.click();
+      remove.click();
       up.click();
     });
 
-  await expect(page.locator(".sku")).toHaveCount(1);
+  await expect(page.locator(".sku")).toHaveCount(2);
   await expect(page.getByLabel("SKU 1 코드")).toHaveValue("A");
+  await expect(page.getByLabel("SKU 2 코드")).toHaveValue("C");
 });
 
-test("repeated image removal does not read a stale index", async ({ page }) => {
+test("repeated stale SKU move only moves the captured SKU", async ({
+  page,
+}) => {
   await routeGraphQl(
     page,
     protectedHandlers({
       CatalogOptions: () => options,
-      PartnerProduct: () => ({ myPartnerProduct: product() }),
+      PartnerProduct: () => ({
+        myPartnerProduct: productWithReorderableItems(),
+      }),
+    }),
+  );
+  await page.goto("/products/product-1/edit");
+  await page.getByLabel("SKU 2 아래로 이동").evaluate((button) => {
+    if (!(button instanceof HTMLButtonElement))
+      throw new Error("Expected button");
+    button.click();
+    button.click();
+  });
+
+  await expect(page.getByLabel("SKU 1 코드")).toHaveValue("A");
+  await expect(page.getByLabel("SKU 2 코드")).toHaveValue("C");
+  await expect(page.getByLabel("SKU 3 코드")).toHaveValue("B");
+});
+
+test("repeated stale image delete keeps the sibling image", async ({
+  page,
+}) => {
+  await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => ({
+        myPartnerProduct: productWithReorderableItems(),
+      }),
     }),
   );
   await page.goto("/products/product-1/edit");
   await page
+    .locator(".images article")
+    .first()
     .getByRole("button", { name: "삭제", exact: true })
     .evaluate((button) => {
       if (!(button instanceof HTMLButtonElement))
-        throw new Error("Expected an image removal button");
+        throw new Error("Expected button");
       button.click();
       button.click();
     });
 
-  await expect(page.getByAltText("상품 이미지 1")).toHaveCount(0);
+  await expect(page.locator(".images article")).toHaveCount(1);
+  await expect(page.getByAltText("상품 이미지 1")).toHaveAttribute(
+    "src",
+    "https://images.test/product-2.png",
+  );
 });
 
 test("unsaved edits block internal navigation until confirmed", async ({

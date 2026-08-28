@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleGraphQlPost } from "@/_app/api-routes/graphql";
 
+const DEVICE_ID = "00000000-0000-4000-8000-000000000001";
+
 const request = (query: string, headers: Record<string, string> = {}) =>
   new Request("http://localhost:3001/api/graphql", {
     method: "POST",
@@ -90,7 +92,7 @@ describe("GraphQL BFF", () => {
       request(
         "query AdminDashboard { adminDashboard { pendingPartnerCount } }",
         {
-          cookie: "refresh_token=original; bo_device_id=device-1",
+          cookie: `refresh_token=original; bo_device_id=${DEVICE_ID}`,
         },
       ),
     );
@@ -108,7 +110,7 @@ describe("GraphQL BFF", () => {
       "access_token=fresh",
     );
     expect(new Headers(retryOptions.headers).get("x-device-id")).toBe(
-      "device-1",
+      DEVICE_ID,
     );
     expect(response.headers.get("set-cookie")).toContain(
       "refresh_token=rotated",
@@ -137,6 +139,32 @@ describe("GraphQL BFF", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
+  it.each(["%", "not-a-uuid", "00000000-0000-9000-f000-000000000001"])(
+    "replaces an invalid device cookie value of %s",
+    async (cookieValue) => {
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(graphqlResponse({ data: { me: null } }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const response = await handleGraphQlPost(
+        request("query Me { me { role } }", {
+          cookie: `bo_device_id=${cookieValue}`,
+        }),
+      );
+
+      const options = fetchMock.mock.calls.at(0)?.[1];
+      if (!options) throw new Error("Expected an upstream request");
+      const replacement = new Headers(options.headers).get("x-device-id");
+      expect(replacement).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+      expect(response.headers.getSetCookie().join("\n")).toContain(
+        `bo_device_id=${replacement}`,
+      );
+    },
+  );
+
   it("drops malformed cookie pairs before refresh and retry", async () => {
     const unauthenticated = {
       errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
@@ -160,8 +188,7 @@ describe("GraphQL BFF", () => {
 
     await handleGraphQlPost(
       request("query Me { me { role } }", {
-        cookie:
-          "malformed; refresh_token=original; =missing-name; bo_device_id=device-1",
+        cookie: `malformed; refresh_token=original; =missing-name; bo_device_id=${DEVICE_ID}`,
       }),
     );
 
@@ -199,6 +226,30 @@ describe("GraphQL BFF", () => {
     expect(response.headers.get("set-cookie")).toContain(
       "refresh_token=; Path=/; Max-Age=0",
     );
+  });
+
+  it.each([
+    ["null", null],
+    ["scalar", "ADMIN"],
+    ["array", [{ role: "ADMIN" }]],
+    ["missing role", {}],
+    ["non-string role", { role: 1 }],
+  ])("rejects %s refresh data", async (_, refreshData) => {
+    const unauthenticated = {
+      errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(graphqlResponse(unauthenticated))
+      .mockResolvedValueOnce(
+        graphqlResponse({ data: { refresh: refreshData } }),
+      )
+      .mockResolvedValueOnce(graphqlResponse({ data: { me: null } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await handleGraphQlPost(request("query Me { me { role } }"));
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("does not attempt refresh for public authentication operations", async () => {

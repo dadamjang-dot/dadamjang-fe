@@ -19,6 +19,8 @@ const setCookies = (headers: Headers) => {
 };
 
 const COOKIE_NAME_PATTERN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const parseCookiePair = (value: string): [string, string] | null => {
   const cookie = value.split(";", 1).at(0)?.trim();
@@ -59,6 +61,16 @@ const forward = (body: string, cookie: string, deviceId: string) =>
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
+const decodeDeviceId = (value: string | undefined) => {
+  if (!value) return undefined;
+  try {
+    const decoded = decodeURIComponent(value);
+    return UUID_PATTERN.test(decoded) ? decoded : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 const readPayload = (body: string): GraphQlPayload | null => {
   try {
     const payload: unknown = JSON.parse(body);
@@ -83,7 +95,8 @@ const isUnauthenticated = (payload: GraphQlPayload | null) => {
 
 const hasRefreshData = (payload: GraphQlPayload | null) => {
   const data = payload?.data;
-  return isRecord(data) && Boolean(data.refresh);
+  if (!isRecord(data) || !isRecord(data.refresh)) return false;
+  return typeof data.refresh.role === "string";
 };
 
 const responseWithCookies = (
@@ -148,14 +161,9 @@ export const handleGraphQlPost = async (request: Request) => {
 
   const cookieHeader = request.headers.get("cookie") ?? "";
   const cookieMatch = cookieHeader.match(/(?:^|;\s*)bo_device_id=([^;]+)/);
-  const matchedDeviceId = cookieMatch?.[1];
-  let createdDeviceId: string | undefined;
-  let deviceId: string;
-  if (matchedDeviceId) deviceId = decodeURIComponent(matchedDeviceId);
-  else {
-    createdDeviceId = crypto.randomUUID();
-    deviceId = createdDeviceId;
-  }
+  const matchedDeviceId = decodeDeviceId(cookieMatch?.[1]);
+  const deviceId = matchedDeviceId ?? crypto.randomUUID();
+  const createdDeviceId = matchedDeviceId ? undefined : deviceId;
   const initial = await forward(body, cookieHeader, deviceId);
   const initialBody = await initial.text();
   const initialCookies = setCookies(initial.headers);
