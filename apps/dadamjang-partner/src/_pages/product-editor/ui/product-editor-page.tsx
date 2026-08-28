@@ -80,6 +80,8 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const [categoryId, setCategory] = useState("");
   const [images, setImages] = useState<ImageItem[]>([]);
   const imageRef = useRef<ImageItem[]>([]);
+  const occupiedImageKeys = useRef(new Set<string>());
+  const pendingImageSlots = useRef(0);
   const uploadControllers = useRef(new Map<string, AbortController>());
   const mounted = useRef(true);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -95,11 +97,12 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const hydrated = useRef(false);
   useEffect(() => {
     const p = existing.data?.myPartnerProduct;
-    if (!p || hydrated.current) return;
+    if (!p || existing.isFetching || hydrated.current) return;
     hydrated.current = true;
     setTitle(p.title);
     setDescription(p.description);
     setCategory(p.categoryId);
+    occupiedImageKeys.current = new Set(p.imageKeys);
     setImages(
       p.imageKeys.map((key, i) => ({
         key,
@@ -121,7 +124,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     );
     setSale(p.isOnSale);
     setExpress(p.isExpressDelivery);
-  }, [existing.data]);
+  }, [existing.data, existing.isFetching]);
   useEffect(() => {
     const guard = (event: BeforeUnloadEvent) => {
       if (!dirty) return;
@@ -199,12 +202,18 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     !productId ||
     (!!existing.data &&
       isProductEditable(effectiveProductState(existing.data.myPartnerProduct)));
+  const invalidateProductCaches = (id: string) =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: ["products"] }),
+      qc.invalidateQueries({ queryKey: ["dashboard"] }),
+      qc.invalidateQueries({
+        queryKey: ["product", id],
+        refetchType: "none",
+      }),
+    ]);
   const addFiles = async (files: FileList | File[]) => {
     setError("");
-    const available = Math.max(0, 10 - images.length);
-    if (files.length > available)
-      setError("이미지는 최대 10장까지 등록할 수 있습니다.");
-    for (const file of Array.from(files).slice(0, available)) {
+    for (const file of Array.from(files)) {
       if (
         !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
         file.size > 10 * 1024 * 1024
@@ -214,8 +223,14 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
         );
         continue;
       }
+      if (occupiedImageKeys.current.size + pendingImageSlots.current >= 10) {
+        setError("이미지는 최대 10장까지 등록할 수 있습니다.");
+        continue;
+      }
       const preview = URL.createObjectURL(file);
+      pendingImageSlots.current += 1;
       let controller: AbortController | undefined;
+      let uploadKey: string | undefined;
       try {
         const { createProductImageUpload: u } = await createImageUpload({
           filename: file.name,
@@ -223,9 +238,13 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
           fileSize: file.size,
         });
         if (!mounted.current) {
+          pendingImageSlots.current -= 1;
           URL.revokeObjectURL(preview);
           return;
         }
+        pendingImageSlots.current -= 1;
+        uploadKey = u.key;
+        occupiedImageKeys.current.add(uploadKey);
         controller = new AbortController();
         uploadControllers.current.set(u.key, controller);
         setImages((value) => [
@@ -251,6 +270,8 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
         }
         if (mounted.current) setDirty(true);
       } catch (e) {
+        if (uploadKey) occupiedImageKeys.current.delete(uploadKey);
+        else pendingImageSlots.current -= 1;
         if (mounted.current) {
           setImages((value) =>
             value.filter((item) => item.preview !== preview),
@@ -269,6 +290,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       const index = v.findIndex((item) => item.key === key);
       const item = v[index];
       if (!item) return v;
+      occupiedImageKeys.current.delete(item.key);
       uploadControllers.current.get(item.key)?.abort();
       if (item.local) URL.revokeObjectURL(item.preview);
       setDirty(true);
@@ -370,9 +392,9 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       }
       return draft;
     },
-    onSuccess: async () => {
+    onSuccess: async (draft) => {
       setDirty(false);
-      await qc.invalidateQueries({ queryKey: ["products"] });
+      await invalidateProductCaches(draft.productId);
       router.push("/products");
     },
     onError: (e) => setError(e.message),
@@ -390,9 +412,10 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     setPublishPending(true);
     setError("");
     publishProduct(productId)
-      .then(() => {
+      .then(async () => {
         setConfirm(false);
-        return existing.refetch();
+        await invalidateProductCaches(productId);
+        await existing.refetch();
       })
       .catch((publishError: Error) => setError(publishError.message))
       .finally(() => setPublishPending(false));

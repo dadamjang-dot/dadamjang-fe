@@ -512,6 +512,79 @@ test("save actions remain disabled until image upload completes", async ({
   await expect(page.getByRole("button", { name: "심사 요청" })).toBeEnabled();
 });
 
+test("concurrent image selections reserve the ten-image limit", async ({
+  page,
+}) => {
+  const crowded = {
+    ...product(),
+    imageKeys: Array.from(
+      { length: 9 },
+      (_, index) =>
+        `products/user-1/00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}.png`,
+    ),
+    imageUrls: Array.from(
+      { length: 9 },
+      (_, index) => `https://images.test/product-${index + 1}.png`,
+    ),
+  };
+  let completeFirstSetup = () => {};
+  const firstSetup = new Promise<void>((resolve) => {
+    completeFirstSetup = resolve;
+  });
+  let uploadNumber = 0;
+  const calls = await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => ({ myPartnerProduct: crowded }),
+      ImageUpload: async () => {
+        uploadNumber += 1;
+        if (uploadNumber === 1) await firstSetup;
+        return {
+          createProductImageUpload: {
+            key: `products/user-1/10000000-0000-4000-8000-${String(uploadNumber).padStart(12, "0")}.png`,
+            uploadUrl: `http://127.0.0.1:3002/upload-slot-${uploadNumber}`,
+            originalUrl: `https://images.test/upload-${uploadNumber}.png`,
+            imageUrl: `https://images.test/upload-${uploadNumber}.png`,
+          },
+        };
+      },
+    }),
+  );
+  await page.route("**/upload-slot-*", (route) =>
+    route.fulfill({ status: 204 }),
+  );
+  await page.goto("/products/product-1/edit");
+  const input = page.getByLabel("이미지 선택");
+
+  await input.setInputFiles({
+    name: "first.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("first"),
+  });
+  await expect
+    .poll(
+      () => calls.filter((call) => call.query.includes("ImageUpload")).length,
+    )
+    .toBe(1);
+  await input.setInputFiles({
+    name: "second.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("second"),
+  });
+  completeFirstSetup();
+
+  await expect(page.locator(".images article")).toHaveCount(10);
+  await expect(
+    page.getByText("이미지는 최대 10장까지 등록할 수 있습니다.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect(
+    calls.filter((call) => call.query.includes("ImageUpload")),
+  ).toHaveLength(1);
+});
+
 test("removing an uploading image does not show a cancellation error", async ({
   page,
 }) => {
@@ -664,6 +737,56 @@ test("SKU reorder is preserved in the update payload", async ({ page }) => {
       )?.skus?.map(({ code }) => code);
     })
     .toEqual(["B", "A"]);
+});
+
+test("saving invalidates product list, dashboard, and detail caches", async ({
+  page,
+}) => {
+  let savedProduct = product();
+  const calls = await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerDashboard: () => ({
+        myPartnerDashboard: {
+          draftCount: 1,
+          pendingCount: 0,
+          rejectedCount: 0,
+          approvedCount: 0,
+          publishedCount: 0,
+        },
+      }),
+      PartnerProducts: () => list([savedProduct]),
+      PartnerProduct: () => ({ myPartnerProduct: savedProduct }),
+      UpdateProduct: (variables) => {
+        const input = variables.input as { title: string };
+        savedProduct = { ...savedProduct, title: input.title };
+        return { updatePartnerProductDraft: savedProduct };
+      },
+    }),
+  );
+
+  await page.goto("/products");
+  await expect(page.getByText("테스트 셔츠", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "수정", exact: true }).click();
+  await expect(page.getByLabel("상품명")).toHaveValue("테스트 셔츠");
+  await page.getByLabel("상품명").fill("수정된 셔츠");
+  await page.getByRole("button", { name: "임시 저장" }).click();
+
+  await expect(page).toHaveURL(/\/products$/);
+  await expect(page.getByText("수정된 셔츠", { exact: true })).toBeVisible();
+  expect(
+    calls.filter((call) => call.query.includes("query PartnerProducts")),
+  ).toHaveLength(2);
+  expect(
+    calls.filter((call) => call.query.includes("query PartnerDashboard")),
+  ).toHaveLength(2);
+
+  await page.getByRole("link", { name: "수정", exact: true }).click();
+  await expect(page.getByLabel("상품명")).toHaveValue("수정된 셔츠");
+  expect(
+    calls.filter((call) => call.query.includes("query PartnerProduct(")),
+  ).toHaveLength(2);
 });
 
 test("repeated stale SKU delete and move keep sibling order", async ({
