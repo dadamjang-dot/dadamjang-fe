@@ -1,4 +1,5 @@
 import { readFile, readdir } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
@@ -27,6 +28,57 @@ const readJob = (workflow, name) => {
   const next = workflow.slice(bodyStart).search(/\n  [a-z][a-z0-9-]*:\n/u);
   return workflow.slice(bodyStart, next < 0 ? undefined : bodyStart + next);
 };
+const readRunStep = (job, name) => {
+  const lines = job.split("\n");
+  const stepStart = lines.indexOf(`      - name: ${name}`);
+  if (stepStart < 0) return "";
+  const nextStep = lines.findIndex(
+    (line, index) => index > stepStart && line.startsWith("      - "),
+  );
+  const stepEnd = nextStep < 0 ? lines.length : nextStep;
+  const runStart = lines.findIndex(
+    (line, index) =>
+      index > stepStart && index < stepEnd && line === "        run: |",
+  );
+  if (runStart < 0) return "";
+  return lines
+    .slice(runStart + 1, stepEnd)
+    .map((line) => line.slice(10))
+    .join("\n")
+    .trim();
+};
+const runEasPreflight = (script, remoteApiUrl, remoteExpectedApiUrl) =>
+  spawnSync(
+    "/bin/bash",
+    [
+      "-eu",
+      "-o",
+      "pipefail",
+      "-c",
+      `eas() {
+  test "$#" = 4
+  test "$1" = "env:exec"
+  test "$2" = "preview"
+  test "$4" = "--non-interactive"
+  command env \
+    EXPO_PUBLIC_API_URL="$REMOTE_API_URL" \
+    EXPECTED_E2E_API_URL="$REMOTE_EXPECTED_API_URL" \
+    RUNNER_TEMP=/dev/null \
+    remote_api_url_file=/dev/null \
+    /bin/sh -c "$3"
+}
+${script}`,
+    ],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        EXPECTED_E2E_API_URL: "https://trusted.example/graphql",
+        REMOTE_API_URL: remoteApiUrl,
+        REMOTE_EXPECTED_API_URL: remoteExpectedApiUrl,
+      },
+    },
+  );
 
 const expectedActions = new Map([
   ["actions/checkout", "11d5960a326750d5838078e36cf38b85af677262"],
@@ -125,17 +177,59 @@ for (const [path, workflow] of mobileWorkflows) {
   }
   for (const jobName of buildJobNames) {
     const buildJob = readJob(workflow, jobName);
-    const preflight =
-      'eas env:exec preview \'test "$EXPO_PUBLIC_API_URL" = "$EXPECTED_E2E_API_URL"\' --non-interactive';
+    const preflightScript = readRunStep(buildJob, "Verify remote EAS API URL");
+    const envExec =
+      'eas env:exec preview "$remote_api_url_command" --non-interactive';
+    const parentComparison =
+      'test "$(cat "$remote_api_url_file")" = "$EXPECTED_E2E_API_URL"';
+    const childCommandIndex = preflightScript.indexOf(
+      "printf -v remote_api_url_command",
+    );
+    const envExecIndex = preflightScript.indexOf(envExec);
+    const parentComparisonIndex = preflightScript.indexOf(parentComparison);
     check(
       buildJob.includes("EXPECTED_E2E_API_URL: ${{ vars.E2E_API_URL }}") &&
-        buildJob.indexOf(preflight) >= 0 &&
-        buildJob.indexOf(preflight) < buildJob.indexOf("eas build"),
+        preflightScript.includes('remote_api_url_file="$(mktemp)"') &&
+        preflightScript.includes(
+          "trap 'rm -f \"$remote_api_url_file\"' EXIT",
+        ) &&
+        preflightScript.includes(
+          'printf -v remote_api_url_command \'printf "%%s" "$EXPO_PUBLIC_API_URL" > %q\' "$remote_api_url_file"',
+        ) &&
+        envExecIndex >= 0 &&
+        parentComparisonIndex > envExecIndex &&
+        buildJob.indexOf("Verify remote EAS API URL") <
+          buildJob.indexOf("eas build"),
       `${path}: ${jobName} must verify the remote EAS API URL before building`,
+    );
+    check(
+      childCommandIndex >= 0 &&
+        !preflightScript
+          .slice(childCommandIndex, envExecIndex + envExec.length)
+          .includes("EXPECTED_E2E_API_URL"),
+      `${path}: ${jobName} must keep the trusted API URL out of the EAS child`,
     );
     check(
       !buildJob.includes("EXPO_PUBLIC_API_URL: ${{ vars.E2E_API_URL }}"),
       `${path}: ${jobName} must not imply runner env reaches EAS Build`,
+    );
+    const trustedRemote = runEasPreflight(
+      preflightScript,
+      "https://trusted.example/graphql",
+      "https://collision.example/graphql",
+    );
+    check(
+      trustedRemote.status === 0,
+      `${path}: ${jobName} lets remote EAS variables override the trusted comparison operand`,
+    );
+    const mismatchedRemote = runEasPreflight(
+      preflightScript,
+      "https://collision.example/graphql",
+      "https://collision.example/graphql",
+    );
+    check(
+      mismatchedRemote.status === 1,
+      `${path}: ${jobName} accepts a remote EAS URL collision`,
     );
   }
   for (const [name, job] of [
