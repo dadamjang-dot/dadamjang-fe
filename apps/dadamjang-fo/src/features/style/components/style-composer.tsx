@@ -1,5 +1,5 @@
 import * as Crypto from "expo-crypto";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Image } from "expo-image";
 import { Modal, ScrollView, Text, TextInput, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
@@ -15,6 +15,7 @@ import {
   validateStylePostDraft,
 } from "../rules";
 import type { PurchasedStyleProduct, StylePostCategory, StylePostImageAsset } from "../types";
+import { loadStyleImagePicker } from "./style-image-picker";
 import { Button, TitleHeader } from "@/shared/components";
 
 type StyleComposerProps = { onClose: () => void };
@@ -39,6 +40,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string>();
   const [idempotencyKey] = useState(() => Crypto.randomUUID());
+  const submitLock = useRef(false);
 
   const mentionProducts = useMemo(() => {
     const query = getStyleMentionQuery(body);
@@ -86,7 +88,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
   const pickImages = async () => {
     if (images.length >= 5) return;
     try {
-      const ImagePicker = await import("expo-image-picker");
+      const ImagePicker = await loadStyleImagePicker();
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         setMessage("사진을 추가하려면 사진 보관함 접근을 허용해 주세요.");
@@ -113,18 +115,26 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
   };
 
   const handleSubmit = async () => {
+    if (submitLock.current) return;
+    submitLock.current = true;
     const content = body.trim();
     const validationMessage = validateStylePostDraft({
       content,
       productCount: selectedProducts.length,
       imageCount: images.length,
     });
-    if (validationMessage) return setMessage(validationMessage);
+    if (validationMessage) {
+      submitLock.current = false;
+      setMessage(validationMessage);
+      return;
+    }
 
     setMessage(undefined);
     setIsSubmitting(true);
     try {
-      const imageKeys = await Promise.all(images.map((image, index) => uploadStylePostImage(image, index)));
+      const imageKeys: string[] = [];
+      for (const [index, image] of images.entries())
+        imageKeys.push(await uploadStylePostImage(image, index));
       await createMutation.mutateAsync({
         category,
         productIds: selectedProducts.map((product) => product.productId),
@@ -138,6 +148,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "스타일을 등록하지 못했어요. 입력한 내용을 확인해 주세요.");
     } finally {
+      submitLock.current = false;
       setIsSubmitting(false);
     }
   };

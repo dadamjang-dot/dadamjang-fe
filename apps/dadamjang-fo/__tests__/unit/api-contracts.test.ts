@@ -4,7 +4,11 @@ import { signInFo, startIdentityVerification } from "@/features/auth/api";
 import { checkoutCart, upsertCartItem } from "@/features/cart/api";
 import { getProducts } from "@/features/catalog/api";
 import { getOrder } from "@/features/order/api";
-import { createStylePost, getStylePosts } from "@/features/style/api";
+import {
+  createStylePost,
+  getStylePosts,
+  uploadStylePostImage,
+} from "@/features/style/api";
 import { addWish } from "@/features/wish/api";
 
 type CapturedRequest = {
@@ -149,5 +153,25 @@ describe("feature API contracts", () => {
         productIds: ["product-1"],
       },
     });
+  });
+
+  it("rejects a known oversized style image before reading its blob", async () => {
+    const fetchMock = jest.fn();
+    global.fetch = fetchMock;
+
+    await expect(
+      uploadStylePostImage(
+        {
+          uri: "file:///oversized.jpg",
+          fileName: "oversized.jpg",
+          fileSize: 10 * 1024 * 1024 + 1,
+          mimeType: "image/jpeg",
+        },
+        0,
+      ),
+    ).rejects.toThrow("10 MiB");
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mockRequests).toHaveLength(0);
   });
 });

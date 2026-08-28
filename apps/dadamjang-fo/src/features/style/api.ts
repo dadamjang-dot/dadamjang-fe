@@ -83,6 +83,9 @@ type ImageUploadTarget = {
   imageUrl: string;
 };
 
+const maxStylePostImageSize = 10 * 1024 * 1024;
+const oversizedStylePostImageMessage = "이미지는 10 MiB 이하로 선택해 주세요.";
+
 const imageContentType = (asset: StylePostImageAsset) =>
   asset.mimeType?.toLowerCase() ??
   (asset.fileName?.toLowerCase().endsWith(".heic") || asset.fileName?.toLowerCase().endsWith(".heif")
@@ -92,6 +95,8 @@ const imageContentType = (asset: StylePostImageAsset) =>
 const imageFilename = (asset: StylePostImageAsset, index: number) => asset.fileName ?? `style-post-${index}.jpg`;
 
 export const uploadStylePostImage = async (asset: StylePostImageAsset, index: number): Promise<string> => {
+  if (asset.fileSize !== null && asset.fileSize !== undefined && asset.fileSize > maxStylePostImageSize)
+    throw new Error(oversizedStylePostImageMessage);
   const contentType = imageContentType(asset);
   const filename = imageFilename(asset, index);
   const fileResponse = await fetch(asset.uri);
