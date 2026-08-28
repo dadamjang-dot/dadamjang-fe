@@ -52,6 +52,58 @@ test("partner and product approval", async ({ page }) => {
   await expect(page.getByText("상품을 반려했습니다.")).toBeVisible();
 });
 
+test("review dialogs discard stale input and mutation errors", async ({
+  page,
+}) => {
+  await authenticateAdmin(page);
+  let failProductReview = true;
+  await page.route("**/api/graphql", async (route) => {
+    const payload = route.request().postDataJSON() as { query: string };
+    if (failProductReview && payload.query.includes("mutation ReviewProduct")) {
+      failProductReview = false;
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ errors: [{ message: "일시적인 검토 오류" }] }),
+      });
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.goto("/products");
+  await page.getByRole("button", { name: "Pending Product" }).click();
+  await page.getByRole("button", { name: "반려", exact: true }).click();
+  let dialog = page.getByRole("alertdialog");
+  await dialog.getByLabel("반려 사유").fill("이전 상품 사유");
+  await dialog.getByRole("button", { name: "반려", exact: true }).click();
+  await expect(dialog.getByText("일시적인 검토 오류")).toBeVisible();
+  await dialog.getByRole("button", { name: "취소" }).click();
+
+  await page.getByRole("button", { name: "Pending Product" }).click();
+  await page.getByRole("button", { name: "반려", exact: true }).click();
+  dialog = page.getByRole("alertdialog");
+  await expect(dialog.getByLabel("반려 사유")).toHaveValue("");
+  await expect(dialog.getByText("일시적인 검토 오류")).toHaveCount(0);
+  await dialog.getByRole("button", { name: "취소" }).click();
+
+  await page.goto("/partners");
+  await page.getByRole("button", { name: "Pending Partner" }).click();
+  await page.getByRole("button", { name: "반려", exact: true }).click();
+  dialog = page.getByRole("alertdialog");
+  await dialog.getByRole("button", { name: "반려", exact: true }).click();
+  await expect(
+    dialog.getByText("반려 사유를 1~500자로 입력해주세요."),
+  ).toBeVisible();
+  await dialog.getByRole("button", { name: "취소" }).click();
+
+  await page.getByRole("button", { name: "Pending Partner" }).click();
+  await page.getByRole("button", { name: "반려", exact: true }).click();
+  dialog = page.getByRole("alertdialog");
+  await expect(
+    dialog.getByText("반려 사유를 1~500자로 입력해주세요."),
+  ).toHaveCount(0);
+});
+
 test("order transition uses server-provided next states", async ({ page }) => {
   await authenticateAdmin(page);
   await page.goto("/orders/order-1");

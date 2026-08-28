@@ -78,6 +78,7 @@ export const PartnersPage = () => {
       setDecision(null);
       setSelectedId(null);
       setReason("");
+      setReasonError("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: partnerQueries.all() }),
         queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] }),
@@ -85,6 +86,22 @@ export const PartnersPage = () => {
       ]);
     },
   });
+  const openDecision = (nextDecision: {
+    partnerId: string;
+    approved: boolean;
+  }) => {
+    mutation.reset();
+    setReason("");
+    setReasonError("");
+    setDecision(nextDecision);
+    setSelectedId(null);
+  };
+  const closeDecision = () => {
+    mutation.reset();
+    setDecision(null);
+    setReason("");
+    setReasonError("");
+  };
   const nodes = list.data?.pages.flatMap((page) => page.nodes) ?? [];
   const totalCount = list.data?.pages[0]?.totalCount ?? 0;
   const columns = useMemo<DataTableColumn<AdminPartner>[]>(
@@ -266,25 +283,23 @@ export const PartnersPage = () => {
                 <InlineActions>
                   <ActionButton
                     variant="neutralSolid"
-                    onClick={() => {
-                      setDecision({
+                    onClick={() =>
+                      openDecision({
                         partnerId: detail.data.partnerId,
                         approved: true,
-                      });
-                      setSelectedId(null);
-                    }}
+                      })
+                    }
                   >
                     승인
                   </ActionButton>
                   <ActionButton
                     variant="criticalSolid"
-                    onClick={() => {
-                      setDecision({
+                    onClick={() =>
+                      openDecision({
                         partnerId: detail.data.partnerId,
                         approved: false,
-                      });
-                      setSelectedId(null);
-                    }}
+                      })
+                    }
                   >
                     반려
                   </ActionButton>
@@ -307,7 +322,7 @@ export const PartnersPage = () => {
       </DetailPanel>
       <ConfirmDialog
         open={!!decision}
-        onOpenChange={(open) => !open && setDecision(null)}
+        onOpenChange={(open) => !open && closeDecision()}
         title={
           decision?.approved ? "파트너를 승인할까요?" : "파트너를 반려할까요?"
         }

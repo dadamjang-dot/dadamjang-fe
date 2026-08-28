@@ -83,6 +83,7 @@ export const ProductsPage = () => {
       setDecision(null);
       setSelectedId(null);
       setReason("");
+      setReasonError("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: productQueries.all() }),
         queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] }),
@@ -90,6 +91,22 @@ export const ProductsPage = () => {
       ]);
     },
   });
+  const openDecision = (nextDecision: {
+    productId: string;
+    approved: boolean;
+  }) => {
+    mutation.reset();
+    setReason("");
+    setReasonError("");
+    setDecision(nextDecision);
+    setSelectedId(null);
+  };
+  const closeDecision = () => {
+    mutation.reset();
+    setDecision(null);
+    setReason("");
+    setReasonError("");
+  };
   const nodes = list.data?.pages.flatMap((page) => page.nodes) ?? [];
   const totalCount = list.data?.pages[0]?.totalCount ?? 0;
   const columns = useMemo<DataTableColumn<AdminProduct>[]>(
@@ -351,25 +368,23 @@ export const ProductsPage = () => {
                 <InlineActions>
                   <ActionButton
                     variant="neutralSolid"
-                    onClick={() => {
-                      setDecision({
+                    onClick={() =>
+                      openDecision({
                         productId: detail.data.productId,
                         approved: true,
-                      });
-                      setSelectedId(null);
-                    }}
+                      })
+                    }
                   >
                     승인
                   </ActionButton>
                   <ActionButton
                     variant="criticalSolid"
-                    onClick={() => {
-                      setDecision({
+                    onClick={() =>
+                      openDecision({
                         productId: detail.data.productId,
                         approved: false,
-                      });
-                      setSelectedId(null);
-                    }}
+                      })
+                    }
                   >
                     반려
                   </ActionButton>
@@ -392,7 +407,7 @@ export const ProductsPage = () => {
       </DetailPanel>
       <ConfirmDialog
         open={!!decision}
-        onOpenChange={(open) => !open && setDecision(null)}
+        onOpenChange={(open) => !open && closeDecision()}
         title={decision?.approved ? "상품을 승인할까요?" : "상품을 반려할까요?"}
         description={
           decision?.approved
