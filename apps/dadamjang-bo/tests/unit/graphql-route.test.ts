@@ -7,15 +7,20 @@ const DEVICE_ID = "00000000-0000-4000-8000-000000000001";
 const payloadRequest = (
   payload: Record<string, unknown>,
   headers: Record<string, string> = {},
+  signal?: AbortSignal,
 ) =>
   new Request("http://localhost:3001/api/graphql", {
     method: "POST",
     headers: { "content-type": "application/json", ...headers },
     body: JSON.stringify(payload),
+    signal,
   });
 
-const request = (query: string, headers: Record<string, string> = {}) =>
-  payloadRequest({ query }, headers);
+const request = (
+  query: string,
+  headers: Record<string, string> = {},
+  signal?: AbortSignal,
+) => payloadRequest({ query }, headers, signal);
 
 const graphqlResponse = (
   body: unknown,
@@ -469,6 +474,114 @@ describe("GraphQL BFF", () => {
     );
 
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("returns 504 when the upstream deadline aborts", async () => {
+    const deadline = new AbortController();
+    const timeout = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockReturnValue(deadline.signal);
+    const fetchMock = vi.fn((_input, options: RequestInit | undefined) =>
+      new Promise((_resolve, reject) =>
+        options?.signal?.addEventListener(
+          "abort",
+          () => reject(options.signal?.reason),
+          { once: true },
+        ),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = handleGraphQlPost(request("query AdminMe { me { role } }"));
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(timeout).toHaveBeenCalledWith(10_000));
+    deadline.abort(new DOMException("deadline", "TimeoutError"));
+    const response = await pending;
+
+    expect(response.status).toBe(504);
+  });
+
+  it("returns 504 when the incoming request aborts", async () => {
+    const controller = new AbortController();
+    const fetchMock = vi.fn((_input, options: RequestInit | undefined) =>
+      new Promise((_resolve, reject) =>
+        options?.signal?.addEventListener(
+          "abort",
+          () => reject(options.signal?.reason),
+          { once: true },
+        ),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = handleGraphQlPost(
+      request("query AdminMe { me { role } }", {}, controller.signal),
+    );
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBeDefined();
+    controller.abort();
+    const response = await pending;
+
+    expect(response.status).toBe(504);
+  });
+
+  it("returns 502 and cancels an oversized upstream response", async () => {
+    const cancel = vi.fn();
+    const read = vi
+      .fn()
+      .mockResolvedValueOnce({
+        done: false,
+        value: new Uint8Array(1024 * 1024),
+      })
+      .mockResolvedValueOnce({ done: false, value: new Uint8Array(1) });
+    const text = vi.fn().mockResolvedValue("x".repeat(1024 * 1024 + 1));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        {
+          body: { getReader: () => ({ read, cancel }) },
+          headers: new Headers({ "content-type": "application/json" }),
+          ok: true,
+          status: 200,
+          text,
+        } as unknown as Response,
+      ),
+    );
+
+    const response = await handleGraphQlPost(
+      request("query AdminMe { me { role } }"),
+    );
+
+    expect(response.status).toBe(502);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(text).not.toHaveBeenCalled();
+  });
+
+  it("returns 502 for a network failure", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
+
+    const response = await handleGraphQlPost(
+      request("query AdminMe { me { role } }"),
+    );
+
+    expect(response.status).toBe(502);
+  });
+
+  it("returns 502 for malformed successful upstream JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("not-json", {
+          headers: { "content-type": "application/json" },
+        }),
+      ),
+    );
+
+    const response = await handleGraphQlPost(
+      request("query AdminMe { me { role } }"),
+    );
+
+    expect(response.status).toBe(502);
   });
 });
 

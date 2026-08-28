@@ -11,6 +11,7 @@ const response = (body: unknown, cookies: string[] = [], status = 200) => {
 
 const request = (
   cookie = `refresh_token=refresh; partner_device_id=${DEVICE_ID}`,
+  signal?: AbortSignal,
 ) =>
   new Request("http://partner.test/api/graphql", {
     method: "POST",
@@ -20,6 +21,7 @@ const request = (
       origin: "http://partner.test",
     },
     body: JSON.stringify({ query: "query PartnerMe { me { role } }" }),
+    signal,
   });
 
 describe("partner GraphQL BFF refresh", () => {
@@ -506,5 +508,101 @@ describe("partner GraphQL BFF refresh", () => {
 
     expect(result.status).toBe(413);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 504 when the upstream deadline aborts", async () => {
+    const deadline = new AbortController();
+    const timeout = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockReturnValue(deadline.signal);
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((_input, options) =>
+        new Promise((_resolve, reject) =>
+          options?.signal?.addEventListener(
+            "abort",
+            () => reject(options.signal?.reason),
+            { once: true },
+          ),
+        ),
+      );
+
+    const pending = handleGraphQlPost(request());
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(timeout).toHaveBeenCalledWith(10_000));
+    deadline.abort(new DOMException("deadline", "TimeoutError"));
+    const result = await pending;
+
+    expect(result.status).toBe(504);
+  });
+
+  it("returns 504 when the incoming request aborts", async () => {
+    const controller = new AbortController();
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((_input, options) =>
+        new Promise((_resolve, reject) =>
+          options?.signal?.addEventListener(
+            "abort",
+            () => reject(options.signal?.reason),
+            { once: true },
+          ),
+        ),
+      );
+
+    const pending = handleGraphQlPost(request(undefined, controller.signal));
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBeDefined();
+    controller.abort();
+    const result = await pending;
+
+    expect(result.status).toBe(504);
+  });
+
+  it("returns 502 and cancels an oversized upstream response", async () => {
+    const cancel = vi.fn();
+    const read = vi
+      .fn()
+      .mockResolvedValueOnce({
+        done: false,
+        value: new Uint8Array(1024 * 1024),
+      })
+      .mockResolvedValueOnce({ done: false, value: new Uint8Array(1) });
+    const text = vi.fn().mockResolvedValue("x".repeat(1024 * 1024 + 1));
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      {
+        body: { getReader: () => ({ read, cancel }) },
+        headers: new Headers({ "content-type": "application/json" }),
+        ok: true,
+        status: 200,
+        text,
+      } as unknown as Response,
+    );
+
+    const result = await handleGraphQlPost(request());
+
+    expect(result.status).toBe(502);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(text).not.toHaveBeenCalled();
+  });
+
+  it("returns 502 for a network failure", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("offline"));
+
+    const result = await handleGraphQlPost(request());
+
+    expect(result.status).toBe(502);
+  });
+
+  it("returns 502 for malformed successful upstream JSON", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("not-json", {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+
+    const result = await handleGraphQlPost(request());
+
+    expect(result.status).toBe(502);
   });
 });
