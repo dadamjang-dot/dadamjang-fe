@@ -13,12 +13,13 @@ const StyleComposeScreen = () => {
   const currentUser = useCurrentUser();
 
   useEffect(() => {
-    if (!currentUser.isLoading && !currentUser.data) {
+    if (currentUser.authStatus === "unauthenticated") {
       router.replace({ pathname: "/auth/signin", params: { returnTo: "/style-compose" } });
     }
-  }, [currentUser.data, currentUser.isLoading, router]);
+  }, [currentUser.authStatus, router]);
 
-  if (currentUser.isLoading || !currentUser.data) return <View style={s.loading}><ActivityIndicator color={colors.primary} /></View>;
+  if (currentUser.authStatus !== "authenticated" || !currentUser.data)
+    return <View style={s.loading}><ActivityIndicator color={colors.primary} /></View>;
   return <StyleComposer onClose={() => router.back()} />;
 };
 

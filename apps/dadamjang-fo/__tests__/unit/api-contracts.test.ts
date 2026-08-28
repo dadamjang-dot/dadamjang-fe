@@ -4,7 +4,11 @@ import { signInFo, startIdentityVerification } from "@/features/auth/api";
 import { checkoutCart, upsertCartItem } from "@/features/cart/api";
 import { getProducts } from "@/features/catalog/api";
 import { getOrder } from "@/features/order/api";
-import { createStylePost, getStylePosts } from "@/features/style/api";
+import {
+  createStylePost,
+  getStylePosts,
+  uploadStylePostImage,
+} from "@/features/style/api";
 import { addWish } from "@/features/wish/api";
 
 type CapturedRequest = {
@@ -16,6 +20,16 @@ type CapturedRequest = {
 const mockRequests: CapturedRequest[] = [];
 const mockResponses: unknown[] = [];
 const mockStoredTokens: unknown[] = [];
+const mockFileSizes = new Map<string, number>();
+const mockFileUpload = jest.fn();
+
+jest.mock("expo-file-system", () => ({
+  File: jest.fn().mockImplementation((uri: string) => ({
+    size: mockFileSizes.get(uri) ?? 0,
+    upload: (url: string, options: unknown) =>
+      mockFileUpload(uri, url, options),
+  })),
+}));
 
 jest.mock("@dadamjang/graphql-client", () => ({
   getDeviceId: jest.fn(async () => "device-1"),
@@ -23,9 +37,13 @@ jest.mock("@dadamjang/graphql-client", () => ({
     (
       query: string,
       variables?: Record<string, unknown>,
-      headers?: Record<string, string>,
+      options?: { requestHeaders?: Record<string, string> },
     ) => {
-      mockRequests.push({ query, variables, headers });
+      mockRequests.push({
+        query,
+        variables,
+        headers: options?.requestHeaders,
+      });
       return Promise.resolve(mockResponses.shift());
     },
   ),
@@ -39,6 +57,8 @@ describe("feature API contracts", () => {
     mockRequests.length = 0;
     mockResponses.length = 0;
     mockStoredTokens.length = 0;
+    mockFileSizes.clear();
+    mockFileUpload.mockResolvedValue({ body: "", headers: {}, status: 200 });
     jest.mocked(getDeviceId).mockResolvedValue("device-1");
   });
 
@@ -50,7 +70,9 @@ describe("feature API contracts", () => {
     };
     mockResponses.push({ signinFo: tokens });
 
-    await expect(signInFo("buyer@example.com", "password")).resolves.toEqual(tokens);
+    await expect(signInFo("buyer@example.com", "password")).resolves.toEqual(
+      tokens,
+    );
     expect(mockRequests[0]?.query).toContain("mutation SigninFo");
     expect(mockRequests[0]?.variables).toEqual({
       input: { email: "buyer@example.com", password: "password" },
@@ -67,7 +89,9 @@ describe("feature API contracts", () => {
     };
     mockResponses.push({ startIdentityVerification: started });
 
-    await expect(startIdentityVerification("SIGNUP", "TOSS")).resolves.toEqual(started);
+    await expect(startIdentityVerification("SIGNUP", "TOSS")).resolves.toEqual(
+      started,
+    );
     expect(mockRequests[0]?.variables).toEqual({
       input: { purpose: "SIGNUP", provider: "TOSS" },
     });
@@ -84,7 +108,10 @@ describe("feature API contracts", () => {
     mockResponses.push({ products: connection });
 
     await expect(
-      getProducts({ categoryIds: ["category-2", "category-1"], sort: "LOW_PRICE" }),
+      getProducts({
+        categoryIds: ["category-2", "category-1"],
+        sort: "LOW_PRICE",
+      }),
     ).resolves.toEqual(connection);
     expect(mockRequests[0]?.query).toContain("query Products");
     expect(mockRequests[0]?.variables).toEqual({
@@ -122,7 +149,11 @@ describe("feature API contracts", () => {
     mockResponses.push({ stylePosts: connection }, { createStylePost: post });
 
     await expect(
-      getStylePosts({ filter: { category: "CLOTHING", sort: "LATEST" }, after: "cursor-1", first: 20 }),
+      getStylePosts({
+        filter: { category: "CLOTHING", sort: "LATEST" },
+        after: "cursor-1",
+        first: 20,
+      }),
     ).resolves.toEqual(connection);
     await expect(
       createStylePost({
@@ -153,5 +184,136 @@ describe("feature API contracts", () => {
         productIds: ["product-1"],
       },
     });
+  });
+
+  it("rejects a known oversized style image before opening it", async () => {
+    const fetchMock = jest.fn();
+    global.fetch = fetchMock;
+
+    await expect(
+      uploadStylePostImage(
+        {
+          uri: "file:///oversized.jpg",
+          fileName: "oversized.jpg",
+          fileSize: 10 * 1024 * 1024 + 1,
+          mimeType: "image/jpeg",
+        },
+        0,
+      ),
+    ).rejects.toThrow("10 MiB");
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mockRequests).toHaveLength(0);
+  });
+
+  it.each([
+    ["unknown", null],
+    ["underreported", 1],
+  ])(
+    "rejects an oversized style image with %s metadata before presigning",
+    async (_, fileSize) => {
+      mockFileSizes.set("file:///oversized.jpg", 10 * 1024 * 1024 + 1);
+      const oversizedBlob = { size: 10 * 1024 * 1024 + 1 } as Blob;
+      const fetchMock = jest.fn(async () => ({
+        ok: true,
+        blob: async () => oversizedBlob,
+      }));
+      global.fetch = fetchMock as unknown as typeof fetch;
+      mockResponses.push({
+        createStylePostImageUpload: {
+          imageUrl: "https://cdn.example.com/style.jpg",
+          key: "style-posts/user-1/style.jpg",
+          uploadUrl: "https://upload.example.com/style.jpg",
+        },
+      });
+
+      await expect(
+        uploadStylePostImage(
+          {
+            uri: "file:///oversized.jpg",
+            fileName: "oversized.jpg",
+            fileSize,
+            mimeType: "image/jpeg",
+          },
+          0,
+        ),
+      ).rejects.toThrow("10 MiB");
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(mockFileUpload).not.toHaveBeenCalled();
+      expect(mockRequests).toHaveLength(0);
+    },
+  );
+
+  it("presigns and streams an accepted style image with its native file size", async () => {
+    mockFileSizes.set("file:///style.jpg", 2048);
+    const file = { size: 2048 } as Blob;
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, blob: async () => file })
+      .mockResolvedValueOnce({ ok: true });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    mockResponses.push({
+      createStylePostImageUpload: {
+        imageUrl: "https://cdn.example.com/style.jpg",
+        key: "style-posts/user-1/style.jpg",
+        uploadUrl: "https://upload.example.com/style.jpg",
+      },
+    });
+
+    await expect(
+      uploadStylePostImage(
+        {
+          uri: "file:///style.jpg",
+          fileName: "style.jpg",
+          fileSize: 1,
+          mimeType: "image/jpeg",
+        },
+        0,
+      ),
+    ).resolves.toBe("style-posts/user-1/style.jpg");
+
+    expect(mockRequests[0]?.variables).toEqual({
+      input: {
+        contentType: "image/jpeg",
+        fileSize: 2048,
+        filename: "style.jpg",
+      },
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mockFileUpload).toHaveBeenCalledWith(
+      "file:///style.jpg",
+      "https://upload.example.com/style.jpg",
+      {
+        headers: { "Content-Type": "image/jpeg" },
+        httpMethod: "PUT",
+        mimeType: "image/jpeg",
+      },
+    );
+  });
+
+  it("rejects image metadata outside the supported MIME allowlist", async () => {
+    mockFileSizes.set("file:///style.svg", 1024);
+    const fetchMock = jest.fn(async () => ({
+      blob: async () => ({ size: 1024 }),
+      ok: true,
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(
+      uploadStylePostImage(
+        {
+          uri: "file:///style.svg",
+          fileName: "style.svg",
+          fileSize: 1024,
+          mimeType: "image/svg+xml",
+        },
+        0,
+      ),
+    ).rejects.toThrow("지원하지 않는 이미지 형식");
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mockFileUpload).not.toHaveBeenCalled();
+    expect(mockRequests).toHaveLength(0);
   });
 });

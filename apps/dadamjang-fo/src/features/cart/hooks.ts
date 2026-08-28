@@ -9,7 +9,10 @@ import { cartQueryKeys } from "./query-keys";
 import type { CheckoutCartOptions } from "./types";
 
 export const useCart = () =>
-  useQuery({ queryKey: cartQueryKeys.detail(), queryFn: getCart });
+  useQuery({
+    queryKey: cartQueryKeys.detail(),
+    queryFn: ({ signal }) => getCart(signal),
+  });
 
 export const useCartActions = () => {
   const queryClient = useQueryClient();

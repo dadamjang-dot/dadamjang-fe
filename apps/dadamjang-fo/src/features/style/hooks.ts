@@ -21,7 +21,6 @@ import type {
   StylePostConnection,
   StylePostSort,
 } from "./types";
-
 const getNextStylePostCursor = (
   lastPage: StylePostConnection,
   allPages: StylePostConnection[],
@@ -53,12 +52,11 @@ export const useStylePosts = (
 ) =>
   useInfiniteQuery({
     queryKey: styleQueryKeys.posts(category, sort),
-    queryFn: ({ pageParam }) =>
-      getStylePosts({
-        filter: { category, sort },
-        after: pageParam,
-        first: 20,
-      }),
+    queryFn: ({ pageParam, signal }) =>
+      getStylePosts(
+        { filter: { category, sort }, after: pageParam, first: 20 },
+        signal,
+      ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: getNextStylePostCursor,
   });
@@ -66,8 +64,8 @@ export const useStylePosts = (
 export const useLikedStylePosts = (enabled = true) =>
   useInfiniteQuery({
     queryKey: styleQueryKeys.likedPosts(),
-    queryFn: ({ pageParam }) =>
-      getLikedStylePosts({ after: pageParam, first: 20 }),
+    queryFn: ({ pageParam, signal }) =>
+      getLikedStylePosts({ after: pageParam, first: 20 }, signal),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: getNextStylePostCursor,
     enabled,
@@ -76,14 +74,14 @@ export const useLikedStylePosts = (enabled = true) =>
 export const useStylePost = (stylePostId: string) =>
   useQuery({
     queryKey: styleQueryKeys.post(stylePostId),
-    queryFn: () => getStylePost(stylePostId),
+    queryFn: ({ signal }) => getStylePost(stylePostId, signal),
     enabled: Boolean(stylePostId),
   });
 
 export const usePurchasedStyleProducts = (enabled = true) =>
   useQuery({
     queryKey: styleQueryKeys.purchasedProducts(),
-    queryFn: getPurchasedStyleProducts,
+    queryFn: ({ signal }) => getPurchasedStyleProducts(signal),
     enabled,
   });
 

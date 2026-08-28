@@ -1,7 +1,13 @@
 import { hashKey } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { View } from "react-native";
+import {
+  startTransition,
+  useLayoutEffect,
+  useMemo,
+  useOptimistic,
+  useRef,
+} from "react";
+import { Alert, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { useCurrentUser } from "@/features/auth";
@@ -23,6 +29,7 @@ import {
 import { useWishActions, useWishlist } from "@/features/wish";
 import { ProductLayout } from "@/shared/components";
 import { fetchUntilRowsGrow, uniqueBy } from "@/shared/lib";
+import { Sentry } from "@/shared/observability/sentry";
 import type { IconAction } from "@dadamjang/mobile";
 
 const ShopScreen = () => {
@@ -32,8 +39,18 @@ const ShopScreen = () => {
   const { data: currentUser } = useCurrentUser();
   const { data: wishlist = [] } = useWishlist(Boolean(currentUser));
   const { add: addWish, remove: removeWish } = useWishActions();
-  const [likedProductIds, setLikedProductIds] = useState<Set<string>>(
-    () => new Set(),
+  const likedProductIds = useMemo(
+    () => new Set(wishlist.map((item) => item.productId)),
+    [wishlist],
+  );
+  const [optimisticLikedProductIds, updateOptimisticLike] = useOptimistic(
+    likedProductIds,
+    (current, { productId, liked }: { productId: string; liked: boolean }) => {
+      const next = new Set(current);
+      if (liked) next.add(productId);
+      else next.delete(productId);
+      return next;
+    },
   );
   const productFilter = useMemo(() => toProductFilter(filters), [filters]);
   const productQueryIdentity = hashKey(
@@ -55,13 +72,6 @@ const ShopScreen = () => {
   useLayoutEffect(() => {
     currentProductQueryIdentity.current = productQueryIdentity;
   }, [productQueryIdentity]);
-
-  useEffect(() => {
-    if (currentUser) {
-      setLikedProductIds(new Set(wishlist.map((item) => item.productId)));
-    }
-  }, [currentUser, wishlist]);
-
   const openFilter = (
     mode: "category" | "brand" | "color" | "size" | "price",
   ) => {
@@ -86,25 +96,16 @@ const ShopScreen = () => {
   ];
 
   const handleToggleLike = (productId: string, nextLiked: boolean) => {
-    const previousLiked = likedProductIds.has(productId);
-    setLikedProductIds((current) => {
-      const next = new Set(current);
-      if (nextLiked) next.add(productId);
-      else next.delete(productId);
-      return next;
-    });
-
     if (!currentUser) return;
-
     const mutation = nextLiked ? addWish : removeWish;
-    mutation.mutate(productId, {
-      onError: () =>
-        setLikedProductIds((current) => {
-          const rollback = new Set(current);
-          if (previousLiked) rollback.add(productId);
-          else rollback.delete(productId);
-          return rollback;
-        }),
+    startTransition(async () => {
+      updateOptimisticLike({ productId, liked: nextLiked });
+      try {
+        await mutation.mutateAsync(productId);
+      } catch (error) {
+        Sentry.captureException(error);
+        Alert.alert("찜을 저장하지 못했어요.", "잠시 후 다시 시도해 주세요.");
+      }
     });
   };
 
@@ -161,7 +162,7 @@ const ShopScreen = () => {
           isError={productsQuery.isError}
           isFetchingNextPage={productsQuery.isFetchingNextPage}
           isLoading={productsQuery.isLoading}
-          likedProductIds={likedProductIds}
+          likedProductIds={optimisticLikedProductIds}
           onLoadMore={handleLoadMore}
           onProductPress={(productId) => router.push(`/product/${productId}`)}
           onRetry={() => productsQuery.refetch()}

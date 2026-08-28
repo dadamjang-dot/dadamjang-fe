@@ -37,7 +37,7 @@ const WishBrandsTab = () => {
 
   return (
     <LegendList
-      accessibilityLabel="팔로우 브랜드 목록"
+      accessibilityLabel="팔로우한 브랜드 목록"
       contentContainerStyle={s.content}
       contentInsetAdjustmentBehavior="automatic"
       data={followedBrands.data}

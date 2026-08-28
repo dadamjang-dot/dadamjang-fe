@@ -1,4 +1,4 @@
-import { Modal, Pressable, Text, View } from "react-native";
+import { Modal, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
@@ -32,16 +32,26 @@ const WishSortSheet = ({
     transparent
     visible={visible}
   >
-    <View style={s.backdrop}>
-      <Pressable onPress={onClose} style={s.dismiss} />
+    <View
+      accessibilityViewIsModal
+      importantForAccessibility="yes"
+      style={s.backdrop}
+    >
+      <Button
+        accessibilityLabel="정렬 닫기"
+        onPress={onClose}
+        style={s.dismiss}
+        variant="bare"
+      />
       <View style={s.sheet}>
         <View style={s.handle} />
         {sortOptions.map((option) => {
           const isSelected = option.id === selectedSort;
           return (
             <Button
+              accessibilityLabel={option.label}
               accessibilityRole="radio"
-              accessibilityState={{ selected: isSelected }}
+              accessibilityState={{ checked: isSelected }}
               key={option.id}
               onPress={() => onSelect(option.id)}
               style={s.option}

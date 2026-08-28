@@ -19,7 +19,7 @@ export const startIdentityVerification = async (
       startIdentityVerification(input: $input) { sessionId launchUrl expiresAt }
     }`,
     { input: { purpose, provider } },
-    { "x-device-id": deviceId },
+    { requestHeaders: { "x-device-id": deviceId } },
   );
   return data.startIdentityVerification;
 };
@@ -37,7 +37,7 @@ export const getIdentityVerificationStatus = async (sessionId: string) => {
       identityVerificationStatus(sessionId: $sessionId) { sessionId status expiresAt }
     }`,
     { sessionId },
-    { "x-device-id": deviceId },
+    { requestHeaders: { "x-device-id": deviceId } },
   );
   return data.identityVerificationStatus;
 };
@@ -51,7 +51,7 @@ export const completeIdentityVerification = async (sessionId: string) => {
       completeIdentityVerification(sessionId: $sessionId) { identityVerificationToken }
     }`,
     { sessionId },
-    { "x-device-id": deviceId },
+    { requestHeaders: { "x-device-id": deviceId } },
   );
   return data.completeIdentityVerification;
 };

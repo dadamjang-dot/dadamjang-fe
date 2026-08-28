@@ -2,7 +2,7 @@ import { graphqlRequest } from "@dadamjang/graphql-client";
 
 import type { Cart, CheckoutCartInput, CheckoutCartResult } from "./types";
 
-export const getCart = async () => {
+export const getCart = async (signal?: AbortSignal) => {
   const data = await graphqlRequest<{ cart: Cart }>(
     `query Cart {
       cart {
@@ -16,6 +16,8 @@ export const getCart = async () => {
         }
       }
     }`,
+    undefined,
+    { signal },
   );
 
   return data.cart;

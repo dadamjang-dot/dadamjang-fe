@@ -12,6 +12,7 @@ const meta = {
     onToggleLike: () => undefined,
     originalPrice: 29900,
     price: 19900,
+    productId: "storybook-product",
   },
 } satisfies Meta<typeof ProductCard>;
 

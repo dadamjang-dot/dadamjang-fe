@@ -35,8 +35,8 @@ const getNextProductPriceSummaryCursor = (
 export const useProductPriceSummaries = (filter: ProductPriceSummaryFilter) =>
   useInfiniteQuery({
     queryKey: priceEvidenceQueryKeys.productPriceSummary(filter),
-    queryFn: ({ pageParam }) =>
-      getProductPriceSummaries({ ...filter, after: pageParam }),
+    queryFn: ({ pageParam, signal }) =>
+      getProductPriceSummaries({ ...filter, after: pageParam }, signal),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: getNextProductPriceSummaryCursor,
   });
@@ -51,7 +51,8 @@ export const useProductPriceEvidence = (
       productId,
       priceRevision,
     ),
-    queryFn: () => getProductPriceEvidence(productId, priceRevision),
+    queryFn: ({ signal }) =>
+      getProductPriceEvidence(productId, priceRevision, signal),
     enabled,
     staleTime: 60_000,
   });
@@ -61,7 +62,7 @@ export const useComparisonPriceSummaries = () =>
     queryKey: priceEvidenceQueryKeys.productPriceSummary({
       query: "comparison",
     }),
-    queryFn: getComparisonPriceSummaries,
+    queryFn: ({ signal }) => getComparisonPriceSummaries(signal),
   });
 
 export const usePriceEvidenceInvalidation = () => {

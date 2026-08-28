@@ -35,6 +35,7 @@ type AuthFlowContextValue = {
   kakaoSignup?: KakaoSignupContext;
   setKakaoSignup: (signup: KakaoSignupContext) => void;
   clearKakaoSignup: () => void;
+  resetAuthFlow: () => void;
 };
 
 const AuthFlowContext = createContext<AuthFlowContextValue | null>(null);
@@ -71,6 +72,10 @@ export const AuthFlowProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const clearKakaoSignup = useCallback(() => setKakaoSignupState(undefined), []);
+  const resetAuthFlow = useCallback(() => {
+    cancelIdentityRequest();
+    setKakaoSignupState(undefined);
+  }, [cancelIdentityRequest]);
   const value = useMemo<AuthFlowContextValue>(
     () => ({
       identityRequest,
@@ -80,6 +85,7 @@ export const AuthFlowProvider = ({ children }: { children: ReactNode }) => {
       kakaoSignup,
       setKakaoSignup: setKakaoSignupState,
       clearKakaoSignup,
+      resetAuthFlow,
     }),
     [
       cancelIdentityRequest,
@@ -88,6 +94,7 @@ export const AuthFlowProvider = ({ children }: { children: ReactNode }) => {
       identityRequest,
       kakaoSignup,
       openIdentityProviderSheet,
+      resetAuthFlow,
     ],
   );
 

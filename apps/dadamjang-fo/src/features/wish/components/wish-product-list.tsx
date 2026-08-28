@@ -76,9 +76,11 @@ const WishProductList = ({
       />
       {visibleProducts.length ? (
         <LegendList
+          accessibilityLabel="위시 상품 목록"
           contentContainerStyle={s.content}
           contentInsetAdjustmentBehavior="automatic"
           data={visibleProducts}
+          extraData={onRemoveWish}
           keyExtractor={(product) => product.productId}
           recycleItems
           renderItem={({ item: product }) => (

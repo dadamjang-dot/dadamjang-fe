@@ -35,7 +35,12 @@ const WishProductCard = ({ product, onPress, onRemove }: WishProductCardProps) =
       >
         <View style={s.imageWrap}>
           {imageUrl ? (
-            <Image contentFit="cover" source={{ uri: imageUrl }} style={s.image} />
+            <Image
+              contentFit="cover"
+              recyclingKey={product.productId}
+              source={{ uri: imageUrl }}
+              style={s.image}
+            />
           ) : (
             <View style={s.imagePlaceholder} />
           )}

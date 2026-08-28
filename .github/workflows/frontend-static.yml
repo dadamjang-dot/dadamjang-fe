@@ -30,6 +30,7 @@ jobs:
       - run: pnpm partner:build
       - run: pnpm fo:lint
       - run: pnpm fo:typecheck
+      - run: pnpm fo:verify:autolinking
       - run: pnpm fo:test:unit
       - run: pnpm fo:test:integration
       - run: pnpm fo:test:android

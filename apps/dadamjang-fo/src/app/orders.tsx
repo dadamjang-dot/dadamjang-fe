@@ -26,9 +26,11 @@ const OrdersScreen = () => {
 
   return (
     <LegendList
+      accessibilityLabel="주문 내역"
       contentContainerStyle={s.content}
       data={orders.data ?? []}
       keyExtractor={(order) => order.orderId}
+      ListEmptyComponent={<Text style={s.state}>주문 내역이 없어요.</Text>}
       recycleItems
       renderItem={({ item: order }) => (
         <Pressable
@@ -40,6 +42,7 @@ const OrdersScreen = () => {
           <Text style={s.meta}>{order.paymentStatus}</Text>
         </Pressable>
       )}
+      showsVerticalScrollIndicator={false}
       style={s.container}
       testID="e2e.order.history"
     />

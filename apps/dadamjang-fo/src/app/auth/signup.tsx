@@ -1,5 +1,5 @@
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -50,10 +50,6 @@ const SignupScreen = () => {
   const [identityVerificationToken, setIdentityVerificationToken] = useState<string>();
   const [isIdentityPending, setIsIdentityPending] = useState(false);
   const [message, setMessage] = useState<string>();
-
-  useEffect(() => {
-    if (kakaoSignup?.email) setEmail(kakaoSignup.email);
-  }, [kakaoSignup?.email]);
 
   const documents = useMemo(() => consentsQuery.data ?? [], [consentsQuery.data]);
   const emailVerified = isKakao && !kakaoSignup?.emailVerificationRequired

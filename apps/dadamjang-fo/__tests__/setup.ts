@@ -1,9 +1,3 @@
-import { cleanup } from "@testing-library/react-native";
-
-jest.mock("@legendapp/list/react-native", () => ({
-  LegendList: jest.requireActual("react-native").FlatList,
-}));
-
 class TestNetworkError extends Error {
   constructor() {
     super("Unexpected GraphQL network request in test");
@@ -24,6 +18,7 @@ jest.mock("expo-crypto", () => ({
 }));
 
 jest.mock("@sentry/react-native", () => ({
+  captureException: jest.fn(),
   init: jest.fn(),
   wrap: jest.fn((component: unknown) => component),
 }));
@@ -38,8 +33,7 @@ global.fetch = jest.fn(async () => {
   throw new TestNetworkError();
 });
 
-afterEach(async () => {
-  await cleanup();
+afterEach(() => {
   jest.clearAllMocks();
   jest.restoreAllMocks();
 });

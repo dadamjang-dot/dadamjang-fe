@@ -1,4 +1,8 @@
-import { getDeviceId, graphqlRequest, setAuthTokens } from "@dadamjang/graphql-client";
+import {
+  getDeviceId,
+  graphqlRequest,
+  setAuthTokens,
+} from "@dadamjang/graphql-client";
 
 import type {
   ConsentAcceptance,
@@ -7,9 +11,11 @@ import type {
   TokenPayload,
 } from "./types";
 
-export const getCurrentUser = async () => {
+export const getCurrentUser = async (signal?: AbortSignal) => {
   const data = await graphqlRequest<{ me: CurrentUser }>(
     "query Me { me { userId userid email role } }",
+    undefined,
+    { signal },
   );
   return data.me;
 };
@@ -21,14 +27,16 @@ export const signInFo = async (email: string, password: string) => {
       signinFo(input: $input) { accessToken refreshToken role }
     }`,
     { input: { email, password } },
-    { "x-device-id": deviceId },
+    { requestHeaders: { "x-device-id": deviceId } },
   );
   await setAuthTokens(data.signinFo);
   return data.signinFo;
 };
 
 export const requestSignupEmailCode = async (email: string) => {
-  const data = await graphqlRequest<{ requestSignupEmailCode: { ok: boolean } }>(
+  const data = await graphqlRequest<{
+    requestSignupEmailCode: { ok: boolean };
+  }>(
     `mutation RequestSignupEmailCode($input: RequestEmailCodeInput!) {
       requestSignupEmailCode(input: $input) { ok }
     }`,
@@ -49,12 +57,16 @@ export const verifySignupEmailCode = async (email: string, code: string) => {
   return data.verifySignupEmailCode;
 };
 
-export const getActiveSignupConsentDocuments = async () => {
+export const getActiveSignupConsentDocuments = async (signal?: AbortSignal) => {
   const data = await graphqlRequest<{
     activeSignupConsentDocuments: SignupConsentDocument[];
-  }>(`query ActiveSignupConsentDocuments {
+  }>(
+    `query ActiveSignupConsentDocuments {
     activeSignupConsentDocuments { documentId type title body version required activeFrom }
-  }`);
+  }`,
+    undefined,
+    { signal },
+  );
   return data.activeSignupConsentDocuments;
 };
 
@@ -71,7 +83,7 @@ export const signUpFo = async (input: {
       signupFo(input: $input) { accessToken refreshToken role }
     }`,
     { input },
-    { "x-device-id": deviceId },
+    { requestHeaders: { "x-device-id": deviceId } },
   );
   await setAuthTokens(data.signupFo);
   return data.signupFo;

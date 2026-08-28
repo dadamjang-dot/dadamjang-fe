@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
 import ShopScreen from "@/app/(tabs)/shop";
 import StyleScreen from "@/app/(tabs)/style";
 import OrdersScreen from "@/app/orders";
-import { authQueryKeys } from "@/features/auth";
+import { AuthSessionStateProvider, authQueryKeys } from "@/features/auth";
 import {
   catalogQueryKeys,
   defaultShopFilters,
@@ -179,7 +179,13 @@ const createClient = () =>
 
 const createWrapper = (client: QueryClient) => {
   const TestWrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    <QueryClientProvider client={client}>
+      <AuthSessionStateProvider
+        value={{ error: null, hasSession: true, retry: async () => undefined }}
+      >
+        {children}
+      </AuthSessionStateProvider>
+    </QueryClientProvider>
   );
   TestWrapper.displayName = "ListPerformanceTestWrapper";
   return TestWrapper;
@@ -188,7 +194,11 @@ const createWrapper = (client: QueryClient) => {
 const createShopWrapper = (client: QueryClient) => {
   const TestWrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>
-      <ShopFiltersProvider>{children}</ShopFiltersProvider>
+      <AuthSessionStateProvider
+        value={{ error: null, hasSession: true, retry: async () => undefined }}
+      >
+        <ShopFiltersProvider>{children}</ShopFiltersProvider>
+      </AuthSessionStateProvider>
     </QueryClientProvider>
   );
   TestWrapper.displayName = "ShopListPerformanceTestWrapper";

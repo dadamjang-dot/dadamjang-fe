@@ -9,8 +9,8 @@
     ".": "./src/index.ts"
   },
   "peerDependencies": {
-    "expo-crypto": "~55.0.16",
-    "expo-secure-store": "~55.0.15"
+    "expo-crypto": "~57.0.2",
+    "expo-secure-store": "~57.0.2"
   },
   "dependencies": {
     "graphql-request": "^7.4.0"
