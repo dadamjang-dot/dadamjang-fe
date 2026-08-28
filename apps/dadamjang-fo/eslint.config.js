@@ -13,6 +13,7 @@ module.exports = defineConfig([
   expoConfig,
   {
     rules: {
+      "react/jsx-no-leaked-render": "error",
       "import/no-unresolved": [
         "error",
         {
