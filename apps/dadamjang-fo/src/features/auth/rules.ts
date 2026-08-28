@@ -49,7 +49,14 @@ export const hasCompleteSignupConsentDocuments = (
 ) => documents.length === signupConsentTypes.size &&
   documents.every(({ type }) => signupConsentTypes.has(type));
 
-const allowedExactPaths = new Set(["/", "/cart", "/orders", "/style-compose"]);
+const allowedExactPaths = new Set([
+  "/",
+  "/cart",
+  "/compare",
+  "/orders",
+  "/shop",
+  "/style-compose",
+]);
 const allowedPathPrefixes = ["/product/", "/style/", "/order/"];
 
 export const resolveAuthReturnTo = (returnTo: string | undefined) => {

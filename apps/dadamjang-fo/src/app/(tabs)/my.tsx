@@ -5,12 +5,13 @@ import { StyleSheet } from "react-native-unistyles";
 import { colors, spacing } from "@dadamjang/design-tokens";
 import { ActionButtonGroup } from "@dadamjang/mobile";
 
-import { useCurrentUser } from "@/features/auth";
+import { useCurrentUser, useSignOut } from "@/features/auth";
 import { Button, TitleHeader } from "@/shared/components";
 
 const MyScreen = () => {
   const router = useRouter();
   const currentUser = useCurrentUser();
+  const signOut = useSignOut();
   const isWaiting =
     currentUser.authStatus === "loading" ||
     currentUser.authStatus === "offline";
@@ -22,21 +23,27 @@ const MyScreen = () => {
           <ActionButtonGroup
             actions={[
               {
-                accessibilityLabel: "설정",
-                icon: { md: "settings", sf: "gear" },
-                onPress: () => {},
+                accessibilityLabel: "주문 내역",
+                icon: { md: "menu", sf: "list.bullet.rectangle" },
+                onPress: () => router.push("/orders"),
               },
               {
                 accessibilityLabel: "장바구니",
                 icon: { md: "shopping_cart", sf: "cart" },
-                onPress: () => {},
+                onPress: () => router.push("/cart"),
               },
             ]}
             variant="circularPair"
           />
         ) : null}
       </TitleHeader>
-      {isWaiting ? (
+      {currentUser.authStatus === "authenticated" && currentUser.data ? (
+        <View style={s.account}>
+          <Text style={s.accountId}>{currentUser.data.userid}</Text>
+          <Text style={s.stateDescription}>{currentUser.data.email}</Text>
+          <Button label="로그아웃" onPress={() => void signOut()} />
+        </View>
+      ) : isWaiting ? (
         <View style={s.state}>
           <ActivityIndicator color={colors.primary} />
           <Text style={s.stateTitle}>
@@ -88,6 +95,8 @@ const s = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
   },
+  account: { gap: spacing.md, padding: spacing.xl },
+  accountId: { color: colors.ink, fontSize: 22, fontWeight: "700" },
 });
 
 export default MyScreen;

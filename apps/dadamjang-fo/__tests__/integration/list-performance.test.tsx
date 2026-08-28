@@ -762,6 +762,7 @@ describe("virtualized list data flow", () => {
         createdAt: "2026-08-28T00:01:00.000Z",
       },
     ];
+    client.setQueryData(authQueryKeys.viewer, viewer);
     client.setQueryData(orderQueryKeys.list(), orders);
 
     render(<OrdersScreen />, { wrapper: createWrapper(client) });

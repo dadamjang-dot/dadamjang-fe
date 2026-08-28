@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 
 import { AuthSessionStateProvider } from "@/features/auth/auth-session-state";
 import { getCurrentUser } from "@/features/auth/api";
+import { authQueryKeys } from "@/features/auth/hooks";
 import { checkoutCart, getCart, removeCartItem } from "@/features/cart/api";
 import { getOrder } from "@/features/order/api";
 import CartScreen from "@/app/cart";
@@ -114,6 +115,12 @@ const createWrapper = () => {
       mutations: { gcTime: Infinity, retry: false },
       queries: { gcTime: Infinity, retry: false },
     },
+  });
+  client.setQueryData(authQueryKeys.viewer, {
+    userId: "user-1",
+    userid: "buyer",
+    email: "buyer@example.com",
+    role: "USER",
   });
   const TestWrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>

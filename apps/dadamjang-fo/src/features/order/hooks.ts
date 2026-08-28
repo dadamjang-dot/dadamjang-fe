@@ -3,8 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { getOrder, getOrders } from "./api";
 import { orderQueryKeys } from "./query-keys";
 
-export const useOrders = () =>
+export const useOrders = (enabled = true) =>
   useQuery({
+    enabled,
     queryKey: orderQueryKeys.list(),
     queryFn: ({ signal }) => getOrders(signal),
   });

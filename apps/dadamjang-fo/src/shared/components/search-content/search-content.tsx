@@ -1,19 +1,89 @@
-import { View, Text } from "react-native";
+import { LegendList } from "@legendapp/list/react-native";
+import { usePathname, useRouter } from "expo-router";
+import { useMemo } from "react";
+import { ActivityIndicator, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { colors } from "@dadamjang/design-tokens";
+
+import { useAuthActionGate } from "@/features/auth";
+import { useProductSearch } from "@/features/catalog";
+import { useWishActions, useWishlist } from "@/features/wish";
+import { Button, ProductCard } from "@/shared/components";
+import { uniqueBy } from "@/shared/lib";
 
 import type { SearchContentProps } from "./search-content.types";
 
 const SearchContent = ({ keyword }: SearchContentProps) => {
+  const router = useRouter();
+  const auth = useAuthActionGate(usePathname());
+  const query = useProductSearch(keyword ?? "");
+  const wishlist = useWishlist(auth.isAuthenticated);
+  const wishActions = useWishActions();
+  const products = useMemo(
+    () =>
+      uniqueBy(
+        query.data?.pages.flatMap((page) => page.nodes) ?? [],
+        (product) => product.productId,
+      ),
+    [query.data?.pages],
+  );
+  const likedProductIds = useMemo(
+    () => new Set(wishlist.data?.map((item) => item.productId) ?? []),
+    [wishlist.data],
+  );
+
+  if (!keyword) {
+    return (
+      <View style={s.container}>
+        <Text style={s.title}>최근 검색어</Text>
+        <Text style={s.emptyText}>최근 검색어가 없어요.</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={s.container}>
-      {keyword ? (
-        <Text style={s.title}>{`"${keyword}" 검색 결과`}</Text>
+      <Text style={s.title}>{`"${keyword}" 검색 결과`}</Text>
+      {query.isLoading ? (
+        <ActivityIndicator color={colors.primary} />
+      ) : query.isError ? (
+        <View style={s.state}>
+          <Text style={s.emptyText}>검색 결과를 불러오지 못했어요.</Text>
+          <Button label="다시 시도" onPress={() => query.refetch()} />
+        </View>
+      ) : products.length === 0 ? (
+        <Text style={s.emptyText}>검색 결과가 없어요.</Text>
       ) : (
-        <>
-          <Text style={s.title}>최근 검색어</Text>
-          <Text style={s.emptyText}>최근 검색어가 없어요.</Text>
-        </>
+        <LegendList
+          accessibilityLabel="검색 상품 목록"
+          data={products}
+          keyExtractor={(product) => product.productId}
+          recycleItems
+          renderItem={({ item: product }) => {
+            const sku = product.skus[0];
+            const isLiked = likedProductIds.has(product.productId);
+            return (
+              <ProductCard
+                imageUrl={product.imageUrls[0]}
+                isExpressDelivery={product.isExpressDelivery}
+                isLiked={isLiked}
+                isOnSale={product.isOnSale}
+                name={product.title}
+                price={sku?.price ?? 0}
+                productId={product.productId}
+                onPress={() => router.push(`/product/${product.productId}`)}
+                onToggleLike={(nextLiked) => {
+                  auth.runProtectedAction(() => {
+                    const mutation = nextLiked ? wishActions.add : wishActions.remove;
+                    mutation.mutate(product.productId);
+                  });
+                }}
+              />
+            );
+          }}
+          showsVerticalScrollIndicator={false}
+          style={s.list}
+        />
       )}
     </View>
   );
@@ -35,6 +105,8 @@ const s = StyleSheet.create({
     fontSize: 14,
     color: colors.muted,
   },
+  list: { flex: 1 },
+  state: { gap: 12 },
 });
 
 export default SearchContent;

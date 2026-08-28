@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
+import { useCallback } from "react";
 
 import { GraphqlError, resetAuthSession } from "@dadamjang/graphql-client";
 
@@ -16,6 +18,7 @@ import {
   verifySignupEmailCode,
 } from "./api";
 import { useAuthSessionState } from "./auth-session-state";
+import { resolveAuthReturnTo } from "./rules";
 
 export const authQueryKeys = {
   viewer: ["viewer"] as const,
@@ -77,6 +80,42 @@ export const useCurrentUser = () => {
   };
 
   return { ...query, authStatus, retryAuth };
+};
+
+export const useAuthActionGate = (returnTo: string) => {
+  const router = useRouter();
+  const currentUser = useCurrentUser();
+  const sanitizedReturnTo = resolveAuthReturnTo(returnTo);
+  const redirectToSignIn = useCallback(
+    (replace = false) => {
+      const href = {
+        pathname: "/auth/signin" as const,
+        params: { returnTo: sanitizedReturnTo },
+      };
+      if (replace) router.replace(href);
+      else router.push(href);
+    },
+    [router, sanitizedReturnTo],
+  );
+  const runProtectedAction = useCallback(
+    (action: () => void) => {
+      if (currentUser.authStatus === "unauthenticated") {
+        redirectToSignIn();
+        return false;
+      }
+      if (currentUser.authStatus !== "authenticated") return false;
+      action();
+      return true;
+    },
+    [currentUser.authStatus, redirectToSignIn],
+  );
+
+  return {
+    ...currentUser,
+    isAuthenticated: currentUser.authStatus === "authenticated",
+    redirectToSignIn,
+    runProtectedAction,
+  };
 };
 
 const useViewerMutation = <TVariables>(

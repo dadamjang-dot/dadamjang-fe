@@ -5,8 +5,9 @@ import { priceEvidenceQueryKeys } from "@/features/price-evidence";
 import { addComparisonItem, getComparison, removeComparisonItem } from "./api";
 import { comparisonQueryKeys } from "./query-keys";
 
-export const useComparison = () =>
+export const useComparison = (enabled = true) =>
   useQuery({
+    enabled,
     queryKey: comparisonQueryKeys.list(),
     queryFn: ({ signal }) => getComparison(signal),
   });

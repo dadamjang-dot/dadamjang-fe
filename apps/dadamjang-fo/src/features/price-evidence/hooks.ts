@@ -57,8 +57,9 @@ export const useProductPriceEvidence = (
     staleTime: 60_000,
   });
 
-export const useComparisonPriceSummaries = () =>
+export const useComparisonPriceSummaries = (enabled = true) =>
   useQuery({
+    enabled,
     queryKey: priceEvidenceQueryKeys.productPriceSummary({
       query: "comparison",
     }),

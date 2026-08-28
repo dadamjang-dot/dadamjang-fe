@@ -10,7 +10,7 @@ import {
 import { Alert, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
-import { useCurrentUser } from "@/features/auth";
+import { useAuthActionGate } from "@/features/auth";
 import {
   toProductFilter,
   useCategories,
@@ -36,8 +36,8 @@ const ShopScreen = () => {
   const router = useRouter();
   const { filters, updateFilters, startDraft } = useShopFilters();
   const { data: categories = [] } = useCategories();
-  const { data: currentUser } = useCurrentUser();
-  const { data: wishlist = [] } = useWishlist(Boolean(currentUser));
+  const currentUser = useAuthActionGate("/shop");
+  const { data: wishlist = [] } = useWishlist(currentUser.isAuthenticated);
   const { add: addWish, remove: removeWish } = useWishActions();
   const likedProductIds = useMemo(
     () => new Set(wishlist.map((item) => item.productId)),
@@ -84,28 +84,29 @@ const ShopScreen = () => {
 
   const headerActions: IconAction[] = [
     {
-      accessibilityLabel: "메뉴",
-      icon: { md: "menu", sf: "line.3.horizontal" },
-      onPress: () => {},
+      accessibilityLabel: "비교함",
+      icon: { md: "menu", sf: "arrow.left.arrow.right" },
+      onPress: () => router.push("/compare"),
     },
     {
       accessibilityLabel: "장바구니",
       icon: { md: "shopping_cart", sf: "cart" },
-      onPress: () => {},
+      onPress: () => router.push("/cart"),
     },
   ];
 
   const handleToggleLike = (productId: string, nextLiked: boolean) => {
-    if (!currentUser) return;
-    const mutation = nextLiked ? addWish : removeWish;
-    startTransition(async () => {
-      updateOptimisticLike({ productId, liked: nextLiked });
-      try {
-        await mutation.mutateAsync(productId);
-      } catch (error) {
-        Sentry.captureException(error);
-        Alert.alert("찜을 저장하지 못했어요.", "잠시 후 다시 시도해 주세요.");
-      }
+    currentUser.runProtectedAction(() => {
+      const mutation = nextLiked ? addWish : removeWish;
+      startTransition(async () => {
+        updateOptimisticLike({ productId, liked: nextLiked });
+        try {
+          await mutation.mutateAsync(productId);
+        } catch (error) {
+          Sentry.captureException(error);
+          Alert.alert("찜을 저장하지 못했어요.", "잠시 후 다시 시도해 주세요.");
+        }
+      });
     });
   };
 

@@ -17,7 +17,15 @@ jest.mock("expo-router", () => ({
 }));
 
 jest.mock("@/features/auth", () => ({
-  useCurrentUser: () => ({ data: { userId: "user-1" } }),
+  useAuthActionGate: () => ({
+    authStatus: "authenticated",
+    data: { userId: "user-1" },
+    isAuthenticated: true,
+    runProtectedAction: (action: () => void) => {
+      action();
+      return true;
+    },
+  }),
 }));
 
 jest.mock("@/features/catalog", () => ({

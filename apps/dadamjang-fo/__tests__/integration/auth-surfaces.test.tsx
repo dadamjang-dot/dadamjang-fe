@@ -25,7 +25,10 @@ jest.mock("expo-router", () => ({
   }),
 }));
 
-jest.mock("@/features/auth", () => ({ useCurrentUser: jest.fn() }));
+jest.mock("@/features/auth", () => ({
+  useCurrentUser: jest.fn(),
+  useSignOut: () => jest.fn(),
+}));
 
 jest.mock("@/shared/components", () => {
   const React = jest.requireActual<typeof import("react")>("react");

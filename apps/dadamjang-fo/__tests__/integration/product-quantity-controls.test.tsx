@@ -1,7 +1,7 @@
 import { render, screen, userEvent } from "@testing-library/react-native";
 
 import ProductScreen from "@/app/product/[product-id]";
-import { useCurrentUser } from "@/features/auth";
+import { useAuthActionGate } from "@/features/auth";
 import { useCartActions } from "@/features/cart";
 import { useProduct } from "@/features/catalog";
 import {
@@ -16,7 +16,7 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
 
-jest.mock("@/features/auth", () => ({ useCurrentUser: jest.fn() }));
+jest.mock("@/features/auth", () => ({ useAuthActionGate: jest.fn() }));
 jest.mock("@/features/cart", () => ({ useCartActions: jest.fn() }));
 jest.mock("@/features/catalog", () => ({ useProduct: jest.fn() }));
 jest.mock("@/features/wish", () => ({
@@ -77,7 +77,15 @@ describe("product quantity controls", () => {
     jest.mocked(useCartActions).mockReturnValue({
       upsert: { mutate: mockUpsert },
     } as never);
-    jest.mocked(useCurrentUser).mockReturnValue({ data: undefined } as never);
+    jest.mocked(useAuthActionGate).mockReturnValue({
+      authStatus: "authenticated",
+      data: { userId: "user-1" },
+      isAuthenticated: true,
+      runProtectedAction: (action: () => void) => {
+        action();
+        return true;
+      },
+    } as never);
     jest.mocked(useFollowedBrands).mockReturnValue({ data: [] } as never);
     jest.mocked(useBrandFollowActions).mockReturnValue({
       follow: { mutate: jest.fn() },

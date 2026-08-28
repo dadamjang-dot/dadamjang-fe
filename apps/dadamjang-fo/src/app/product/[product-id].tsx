@@ -6,7 +6,7 @@ import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 
-import { useCurrentUser } from "@/features/auth";
+import { useAuthActionGate } from "@/features/auth";
 import { useCartActions } from "@/features/cart";
 import { useProduct } from "@/features/catalog";
 import {
@@ -23,10 +23,10 @@ const ProductScreen = () => {
   }>();
   const product = useProduct(productId);
   const cart = useCartActions();
-  const currentUser = useCurrentUser();
+  const currentUser = useAuthActionGate(`/product/${productId}`);
   const currentUserId = currentUser.data?.userId;
   const followedBrands = useFollowedBrands(
-    Boolean(currentUser.data && product.data?.brand),
+    Boolean(currentUser.isAuthenticated && product.data?.brand),
   );
   const brandActions = useBrandFollowActions();
   const { mutate: recordRecentProductView } = useRecordRecentProductView();
@@ -69,9 +69,11 @@ const ProductScreen = () => {
 
   const handleAddCart = () => {
     if (!canAddToCart) return;
-    cart.upsert.mutate(
-      { skuId, quantity },
-      { onSuccess: () => router.push("/cart") },
+    currentUser.runProtectedAction(() =>
+      cart.upsert.mutate(
+        { skuId, quantity },
+        { onSuccess: () => router.push("/cart") },
+      ),
     );
   };
 
@@ -85,8 +87,10 @@ const ProductScreen = () => {
 
   const handleToggleBrandFollow = () => {
     if (!brand) return;
-    const mutation = isFollowing ? brandActions.unfollow : brandActions.follow;
-    mutation.mutate(brand.brandId);
+    currentUser.runProtectedAction(() => {
+      const mutation = isFollowing ? brandActions.unfollow : brandActions.follow;
+      mutation.mutate(brand.brandId);
+    });
   };
 
   return (
@@ -101,23 +105,21 @@ const ProductScreen = () => {
           {brand ? (
             <View style={s.brandRow}>
               <Text style={s.brandName}>{brand.name}</Text>
-              {currentUser.data ? (
-                <Pressable
-                  accessibilityState={{ selected: isFollowing }}
-                  onPress={handleToggleBrandFollow}
-                  style={[s.brandButton, isFollowing && s.followingBrandButton]}
-                  testID={`e2e.product.brand.follow.${brand.brandId}`}
+              <Pressable
+                accessibilityState={{ selected: isFollowing }}
+                onPress={handleToggleBrandFollow}
+                style={[s.brandButton, isFollowing && s.followingBrandButton]}
+                testID={`e2e.product.brand.follow.${brand.brandId}`}
+              >
+                <Text
+                  style={[
+                    s.brandButtonLabel,
+                    isFollowing && s.followingBrandButtonLabel,
+                  ]}
                 >
-                  <Text
-                    style={[
-                      s.brandButtonLabel,
-                      isFollowing && s.followingBrandButtonLabel,
-                    ]}
-                  >
-                    {isFollowing ? "팔로잉" : "팔로우"}
-                  </Text>
-                </Pressable>
-              ) : null}
+                  {isFollowing ? "팔로잉" : "팔로우"}
+                </Text>
+              </Pressable>
             </View>
           ) : null}
           <Text style={s.title}>{product.data.title}</Text>
