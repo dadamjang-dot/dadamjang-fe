@@ -145,13 +145,13 @@ export const PartnersPage = () => {
   );
 
   const confirm = () => {
-    if (!decision) return false;
+    if (!decision) return;
     if (
       !decision.approved &&
       (reason.trim().length < 1 || reason.trim().length > 500)
     ) {
       setReasonError("반려 사유를 1~500자로 입력해주세요.");
-      return false;
+      return;
     }
     const input: PartnerReviewInput = {
       partnerId: decision.partnerId,
