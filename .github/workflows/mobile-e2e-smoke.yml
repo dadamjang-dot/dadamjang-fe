@@ -8,11 +8,44 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: mobile-e2e
   cancel-in-progress: true
 
 jobs:
+  prepare-e2e:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    environment: mobile-e2e
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          role-to-assume: ${{ vars.E2E_AWS_ROLE_ARN }}
+          aws-region: ${{ vars.E2E_AWS_REGION }}
+      - name: Start API and reset fixtures
+        env:
+          AWS_ECS_CLUSTER: ${{ vars.AWS_ECS_CLUSTER }}
+          AWS_ECS_SERVICE: ${{ vars.AWS_ECS_SERVICE }}
+          AWS_ECS_TASK_DEFINITION: ${{ vars.AWS_ECS_TASK_DEFINITION }}
+          AWS_PRIVATE_SUBNET_IDS: ${{ vars.AWS_PRIVATE_SUBNET_IDS }}
+          AWS_API_SECURITY_GROUP_ID: ${{ vars.AWS_API_SECURITY_GROUP_ID }}
+        run: |
+          aws ecs update-service --cluster "$AWS_ECS_CLUSTER" --service "$AWS_ECS_SERVICE" --desired-count 1 >/dev/null
+          aws ecs wait services-stable --cluster "$AWS_ECS_CLUSTER" --services "$AWS_ECS_SERVICE"
+          task_arn=$(aws ecs run-task \
+            --cluster "$AWS_ECS_CLUSTER" \
+            --task-definition "$AWS_ECS_TASK_DEFINITION" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$AWS_PRIVATE_SUBNET_IDS],securityGroups=[$AWS_API_SECURITY_GROUP_ID],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"api","command":["pnpm","e2e:reset"],"environment":[{"name":"NODE_ENV","value":"e2e"},{"name":"POSTGRES_DATABASE","value":"dadamjang_e2e"}]}]}' \
+            --query 'tasks[0].taskArn' --output text)
+          aws ecs wait tasks-stopped --cluster "$AWS_ECS_CLUSTER" --tasks "$task_arn"
+          test "$(aws ecs describe-tasks --cluster "$AWS_ECS_CLUSTER" --tasks "$task_arn" --query 'tasks[0].containers[0].exitCode' --output text)" = 0
+
   ios-smoke:
+    needs: prepare-e2e
     if: github.event.pull_request.head.repo.full_name == github.repository
     environment: mobile-e2e
     runs-on: macos-15
@@ -81,6 +114,7 @@ jobs:
           retention-days: 7
 
   android-smoke:
+    needs: prepare-e2e
     if: github.event.pull_request.head.repo.full_name == github.repository
     environment: mobile-e2e
     runs-on: ubuntu-latest
@@ -145,3 +179,22 @@ jobs:
           name: android-smoke-maestro
           path: apps/dadamjang-fo/.maestro-artifacts
           retention-days: 7
+
+  cleanup-e2e:
+    needs: [prepare-e2e, ios-smoke, android-smoke]
+    if: always() && github.event.pull_request.head.repo.full_name == github.repository
+    environment: mobile-e2e
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          role-to-assume: ${{ vars.E2E_AWS_ROLE_ARN }}
+          aws-region: ${{ vars.E2E_AWS_REGION }}
+      - name: Stop API
+        env:
+          AWS_ECS_CLUSTER: ${{ vars.AWS_ECS_CLUSTER }}
+          AWS_ECS_SERVICE: ${{ vars.AWS_ECS_SERVICE }}
+        run: aws ecs update-service --cluster "$AWS_ECS_CLUSTER" --service "$AWS_ECS_SERVICE" --desired-count 0 >/dev/null

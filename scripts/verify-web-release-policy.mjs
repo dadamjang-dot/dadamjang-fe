@@ -6,6 +6,14 @@ const failures = [];
 const check = (condition, message) => {
   if (!condition) failures.push(message);
 };
+const readJob = (workflow, name) => {
+  const marker = `\n  ${name}:\n`;
+  const start = workflow.indexOf(marker);
+  if (start < 0) return "";
+  const bodyStart = start + marker.length;
+  const next = workflow.slice(bodyStart).search(/\n  [a-z][a-z0-9-]*:\n/u);
+  return workflow.slice(bodyStart, next < 0 ? undefined : bodyStart + next);
+};
 
 const expectedActions = new Map([
   ["actions/checkout", "11d5960a326750d5838078e36cf38b85af677262"],
@@ -13,6 +21,10 @@ const expectedActions = new Map([
   ["actions/setup-node", "49933ea5288caeca8642d1e84afbd3f7d6820020"],
   ["expo/expo-github-action", "c7b66a9c327a43a8fa7c0158e7f30d6040d2481e"],
   ["actions/upload-artifact", "ea165f8d65b6e75b540449e92b4886f43607fa02"],
+  [
+    "aws-actions/configure-aws-credentials",
+    "7474bc4690e29a8392af63c5b98e7449536d5c3a",
+  ],
   [
     "ReactiveCircus/android-emulator-runner",
     "a421e43855164a8197daf9d8d40fe71c6996bb0d",
@@ -46,6 +58,9 @@ for (const [path, workflow] of workflows) {
 
 const mobileWorkflows = workflows.filter(([path]) => path.includes("mobile"));
 for (const [path, workflow] of mobileWorkflows) {
+  const prepareJob = readJob(workflow, "prepare-e2e");
+  const cleanupJob = readJob(workflow, "cleanup-e2e");
+
   check(
     !workflow.includes("mobile-dev-inc/action-maestro"),
     `${path}: mutable Maestro action remains`,
@@ -66,7 +81,50 @@ for (const [path, workflow] of mobileWorkflows) {
     ),
     `${path}: Maestro checksum is not verified`,
   );
+  check(
+    /^\s*group:\s*mobile-e2e\s*$/mu.test(workflow),
+    `${path}: mobile E2E runs must share one concurrency group`,
+  );
+  for (const [name, job] of [
+    ["prepare", prepareJob],
+    ["cleanup", cleanupJob],
+  ]) {
+    check(
+      job.includes("environment: mobile-e2e") &&
+        job.includes("id-token: write") &&
+        job.includes("aws-actions/configure-aws-credentials") &&
+        job.includes("vars.E2E_AWS_ROLE_ARN") &&
+        job.includes("vars.E2E_AWS_REGION"),
+      `${path}: ${name} job does not own the protected AWS OIDC contract`,
+    );
+  }
+  check(
+    prepareJob.includes("aws ecs update-service") &&
+      prepareJob.includes("--desired-count 1"),
+    `${path}: E2E API is not scaled up`,
+  );
+  check(
+    prepareJob.includes("aws ecs wait services-stable"),
+    `${path}: E2E API health is not awaited`,
+  );
+  check(
+    prepareJob.includes("aws ecs run-task") &&
+      prepareJob.includes("aws ecs wait tasks-stopped") &&
+      prepareJob.includes("containers[0].exitCode"),
+    `${path}: E2E fixture reset is not validated`,
+  );
+  check(
+    /^    if: always\(\)/mu.test(cleanupJob) &&
+      cleanupJob.includes("--desired-count 0"),
+    `${path}: E2E API cleanup is not guaranteed`,
+  );
 }
+
+const eas = JSON.parse(await read("apps/dadamjang-fo/eas.json"));
+check(
+  eas.cli?.version === "23.0.0",
+  "eas.json: EAS CLI must be exactly 23.0.0",
+);
 
 const workspace = await read("pnpm-workspace.yaml");
 check(

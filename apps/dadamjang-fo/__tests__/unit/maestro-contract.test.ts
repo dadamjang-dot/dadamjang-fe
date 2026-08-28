@@ -5,6 +5,11 @@ type MaestroCommand = [string, boolean | string];
 
 const readFlow = () =>
   readFileSync(resolve(__dirname, "../../.maestro/ios-full.yaml"), "utf8");
+const readWorkflow = () =>
+  readFileSync(
+    resolve(__dirname, "../../../../.github/workflows/mobile-e2e-full.yml"),
+    "utf8",
+  );
 
 const parseCommands = (flow: string) => {
   const documents = flow.split(/^---\s*$/mu);
@@ -39,6 +44,19 @@ describe("iOS Maestro contract", () => {
     expect(flow).toContain("inputText: ${E2E_USER_EMAIL}");
     expect(flow).not.toContain("e2e.auth.userid.input");
     expect(flow).not.toContain("E2E_USER_ID");
+  });
+
+  it("receives every flow variable from the full workflow", () => {
+    const flowVariables = [
+      ...readFlow().matchAll(/\$\{(E2E_[A-Z_]+)\}/gu),
+    ].map((match) => match[1]);
+    const workflowVariables = [
+      ...readWorkflow().matchAll(/^\s+(E2E_[A-Z_]+):/gmu),
+    ].map((match) => match[1]);
+
+    expect([...new Set(workflowVariables)].sort()).toEqual(
+      [...new Set(flowVariables)].sort(),
+    );
   });
 
   it("runs the authenticated commerce actions in order", () => {
