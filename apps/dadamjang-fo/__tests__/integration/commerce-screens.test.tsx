@@ -10,9 +10,10 @@ import { getWishlist } from "@/features/wish/api";
 import type { Action } from "@dadamjang/mobile";
 
 const mockNavigation: { path?: string } = {};
+const mockSearchParams: { forcePaymentFailure?: string } = {};
 
 jest.mock("expo-router", () => ({
-  useLocalSearchParams: () => ({}),
+  useLocalSearchParams: () => mockSearchParams,
   useRouter: () => ({
     push: (path: string) => {
       mockNavigation.path = path;
@@ -138,6 +139,7 @@ const wishlist = [
 describe("cart and wish screens", () => {
   beforeEach(() => {
     mockNavigation.path = undefined;
+    delete mockSearchParams.forcePaymentFailure;
     jest.mocked(getCurrentUser).mockResolvedValue({
       userId: "user-1",
       userid: "buyer",
@@ -156,8 +158,8 @@ describe("cart and wish screens", () => {
     jest.mocked(checkoutCart).mockResolvedValue({
       orderId: "order-1",
       orderNumber: "20260812-1",
-      status: "PAID",
-      paymentStatus: "PAID",
+      status: "PAYMENT_PENDING",
+      paymentStatus: "PENDING",
       totalAmount: 8_000,
     });
     render(<CartScreen />, { wrapper: createWrapper() });
@@ -165,6 +167,26 @@ describe("cart and wish screens", () => {
     await fireEvent.press(await screen.findByTestId("e2e.checkout.submit"));
 
     await waitFor(() => expect(mockNavigation.path).toBe("/order/order-1"));
+  });
+
+  it("does not forward checkout test controls from deep links", async () => {
+    mockSearchParams.forcePaymentFailure = "true";
+    jest.mocked(checkoutCart).mockResolvedValue({
+      orderId: "order-1",
+      orderNumber: "20260812-1",
+      status: "PAYMENT_PENDING",
+      paymentStatus: "PENDING",
+      totalAmount: 8_000,
+    });
+    render(<CartScreen />, { wrapper: createWrapper() });
+
+    await fireEvent.press(await screen.findByTestId("e2e.checkout.submit"));
+
+    await waitFor(() =>
+      expect(checkoutCart).toHaveBeenCalledWith({
+        idempotencyKey: "00000000-0000-4000-8000-000000000000",
+      }),
+    );
   });
 
   it("shows the checkout failure state when payment is rejected", async () => {

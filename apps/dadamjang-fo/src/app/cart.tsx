@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -8,7 +8,6 @@ import { useCart, useCartActions } from "@/features/cart";
 
 const CartScreen = () => {
   const router = useRouter();
-  const { forcePaymentFailure } = useLocalSearchParams<{ forcePaymentFailure?: string }>();
   const cart = useCart();
   const actions = useCartActions();
 
@@ -24,7 +23,7 @@ const CartScreen = () => {
 
   const handleCheckout = () => {
     actions.checkout.mutate(
-      { forcePaymentFailure: forcePaymentFailure === "true" },
+      undefined,
       { onSuccess: (order) => router.replace(`/order/${order.orderId}`) },
     );
   };

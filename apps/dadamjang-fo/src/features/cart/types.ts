@@ -11,10 +11,8 @@ export type Cart = {
 
 export type CheckoutCartInput = {
   idempotencyKey: string;
-  forcePaymentFailure?: boolean;
 };
 
 export type CheckoutCartOptions = {
   idempotencyKey?: string;
-  forcePaymentFailure?: boolean;
 };

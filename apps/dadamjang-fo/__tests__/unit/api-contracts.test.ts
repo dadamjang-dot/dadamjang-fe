@@ -99,15 +99,13 @@ describe("feature API contracts", () => {
 
     await upsertCartItem("sku-1", 3);
     await addWish("product-1");
-    await expect(
-      checkoutCart({ idempotencyKey: "checkout-1", forcePaymentFailure: true }),
-    ).resolves.toEqual(checkout);
+    await expect(checkoutCart({ idempotencyKey: "checkout-1" })).resolves.toEqual(checkout);
     await expect(getOrder("order-1")).resolves.toEqual(order);
 
     expect(mockRequests.map(({ variables }) => variables)).toEqual([
       { input: { quantity: 3, skuId: "sku-1" } },
       { productId: "product-1" },
-      { input: { forcePaymentFailure: true, idempotencyKey: "checkout-1" } },
+      { input: { idempotencyKey: "checkout-1" } },
       { orderId: "order-1" },
     ]);
   });

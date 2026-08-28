@@ -34,7 +34,6 @@ export const useCartActions = () => {
       mutationFn: (input?: CheckoutCartOptions) =>
         checkoutCart({
           idempotencyKey: input?.idempotencyKey ?? Crypto.randomUUID(),
-          forcePaymentFailure: input?.forcePaymentFailure,
         }),
       onSuccess: invalidateCheckout,
       onError: refetchCart,
