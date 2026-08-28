@@ -27,6 +27,7 @@ const PUBLIC_FIELDS = new Set(["signin", "refresh"]);
 const PUBLIC_ROOT_FIELD = 1;
 const PROTECTED_ROOT_FIELD = 2;
 const MAX_FRAGMENT_DEPTH = 64;
+// ponytail: Process-local singleflight cannot coordinate refreshes across app replicas.
 const refreshGroups = new Map<string, RefreshGroup>();
 
 const upstreamUrl = () => {
@@ -365,7 +366,10 @@ export const handleGraphQlPost = async (request: Request) => {
     const initial = await forward(body, cookieHeader, deviceId);
     const initialBody = await initial.text();
     const initialCookies = setCookies(initial.headers);
-    if (!isUnauthenticated(readPayload(initialBody)) || isPublicOperation(input))
+    if (
+      !isUnauthenticated(readPayload(initialBody)) ||
+      isPublicOperation(input)
+    )
       return responseWithCookies(
         initialBody,
         initial.status,

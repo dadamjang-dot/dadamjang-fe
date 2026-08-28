@@ -92,7 +92,10 @@ describe("partner GraphQL BFF refresh", () => {
         return response(unauthenticated);
       });
 
-    const pending = [handleGraphQlPost(request()), handleGraphQlPost(request())];
+    const pending = [
+      handleGraphQlPost(request()),
+      handleGraphQlPost(request()),
+    ];
     await vi.waitFor(() => expect(initialCalls).toBe(2));
     await vi.waitFor(() => expect(refreshCalls).toBeGreaterThan(0));
     releaseRefresh();

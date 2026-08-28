@@ -1,14 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleGraphQlPost } from "@/_app/api-routes/graphql";
+import { isPublicOperation } from "@/_app/api-routes/graphql-operation";
 
 const DEVICE_ID = "00000000-0000-4000-8000-000000000001";
 
-const request = (query: string, headers: Record<string, string> = {}) =>
+const payloadRequest = (
+  payload: Record<string, unknown>,
+  headers: Record<string, string> = {},
+) =>
   new Request("http://localhost:3001/api/graphql", {
     method: "POST",
     headers: { "content-type": "application/json", ...headers },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify(payload),
   });
+
+const request = (query: string, headers: Record<string, string> = {}) =>
+  payloadRequest({ query }, headers);
 
 const graphqlResponse = (
   body: unknown,
@@ -59,6 +66,37 @@ describe("GraphQL BFF", () => {
         )
       ).status,
     ).toBe(413);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("cancels a chunked body as soon as the streaming limit is exceeded", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const read = vi
+      .fn()
+      .mockResolvedValueOnce({
+        done: false,
+        value: new Uint8Array(600 * 1024),
+      })
+      .mockResolvedValueOnce({
+        done: false,
+        value: new Uint8Array(600 * 1024),
+      });
+    const cancel = vi.fn().mockResolvedValue(undefined);
+    const text = vi.fn().mockResolvedValue("x".repeat(1024 * 1024 + 1));
+    const chunkedRequest = {
+      url: "http://localhost:3001/api/graphql",
+      headers: new Headers({ "content-type": "application/json" }),
+      body: { getReader: () => ({ read, cancel }) },
+      text,
+    } as unknown as Request;
+
+    const response = await handleGraphQlPost(chunkedRequest);
+
+    expect(response.status).toBe(413);
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(text).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -371,4 +409,126 @@ describe("GraphQL BFF", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    [
+      "comment",
+      "query AdminDashboard { adminDashboard { pendingPartnerCount } } # signin",
+    ],
+    [
+      "alias",
+      "query AdminDashboard { signin: adminDashboard { pendingPartnerCount } }",
+    ],
+    [
+      "string value",
+      'query AuditLogs { adminAuditLogs(filter: { query: "signin" }) { totalCount } }',
+    ],
+  ])(
+    "does not classify a protected operation by a public %s",
+    async (_, query) => {
+      const unauthenticated = {
+        errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+      };
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(graphqlResponse(unauthenticated))
+        .mockResolvedValueOnce(
+          graphqlResponse({ data: { refresh: { role: "ADMIN" } } }),
+        )
+        .mockResolvedValueOnce(graphqlResponse({ data: { ok: true } }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      await handleGraphQlPost(request(query));
+
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock.mock.calls.at(1)?.[1]?.body).toContain(
+        "mutation Refresh",
+      );
+    },
+  );
+
+  it("uses operationName and root fields instead of public text elsewhere", async () => {
+    const unauthenticated = {
+      errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(graphqlResponse(unauthenticated))
+      .mockResolvedValueOnce(
+        graphqlResponse({ data: { refresh: { role: "ADMIN" } } }),
+      )
+      .mockResolvedValueOnce(graphqlResponse({ data: { ok: true } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await handleGraphQlPost(
+      payloadRequest({
+        operationName: "Protected",
+        query:
+          "mutation Public { signin(input: {}) { role } } query Protected { adminDashboard { pendingPartnerCount } }",
+      }),
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("public GraphQL operation classification", () => {
+  it.each([
+    [
+      true,
+      'mutation Signin { signin(input: { password: "adminDashboard" }) { role } }',
+      undefined,
+    ],
+    [true, "mutation Signin { login: signin(input: {}) { role } }", undefined],
+    [
+      true,
+      "query Protected { adminDashboard { pendingPartnerCount } } mutation Signin { signin(input: {}) { role } }",
+      "Signin",
+    ],
+    [
+      true,
+      "mutation Signin { ...Public } fragment Public on Mutation { signin(input: {}) { role } }",
+      undefined,
+    ],
+    [
+      false,
+      "query AdminDashboard { adminDashboard { pendingPartnerCount } } # signin",
+      undefined,
+    ],
+    [
+      false,
+      "query AdminDashboard { signin: adminDashboard { pendingPartnerCount } }",
+      undefined,
+    ],
+    [
+      false,
+      'query AuditLogs { adminAuditLogs(filter: { query: "signin" }) { totalCount } }',
+      undefined,
+    ],
+    [
+      false,
+      "mutation Signin { inviteAdmin(input: {}) { invitationId } }",
+      undefined,
+    ],
+    [
+      false,
+      "mutation Signin { signin(input: {}) { role } inviteAdmin(input: {}) { invitationId } }",
+      undefined,
+    ],
+    [
+      false,
+      "mutation Signin { signin(input: {}) { role } } query Protected { adminDashboard { pendingPartnerCount } }",
+      "Protected",
+    ],
+    [
+      false,
+      "mutation Signin { ...Cycle } fragment Cycle on Mutation { ...Cycle }",
+      undefined,
+    ],
+  ])(
+    "returns %s for the selected operation root fields",
+    (expected, query, operationName) => {
+      expect(isPublicOperation({ query, operationName })).toBe(expected);
+    },
+  );
 });
