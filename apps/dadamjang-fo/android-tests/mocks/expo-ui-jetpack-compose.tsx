@@ -20,6 +20,7 @@ interface ButtonProps extends ContainerProps {
 
 interface IconProps {
   contentDescription?: string;
+  size?: number;
   source: ImageSourcePropType;
 }
 
@@ -48,17 +49,19 @@ const FilledTonalButton = ComposeButton;
 const FilledTonalIconButton = ComposeButton;
 const IconButton = ComposeButton;
 
-const Icon = ({ contentDescription, source }: IconProps) => (
-  <View>
+const Icon = ({ contentDescription, size, source }: IconProps) => {
+  const style = { height: size, width: size };
+
+  return (
     <Image
       accessible
-      aria-label={contentDescription}
+      accessibilityLabel={contentDescription}
       role="img"
       source={source}
+      style={style}
     />
-    <NativeText>{contentDescription}</NativeText>
-  </View>
-);
+  );
+};
 
 const Text = ({ children }: ContainerProps) => (
   <NativeText>{children}</NativeText>

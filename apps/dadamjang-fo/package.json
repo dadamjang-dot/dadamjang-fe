@@ -21,8 +21,10 @@
     "verify:config": "expo config --type public",
     "nosync": "npx nosync-icloud && npx nosync-icloud -f .expo",
     "test": "jest --runInBand",
+    "test:android": "jest --config jest.android.config.ts --runInBand",
     "test:unit": "jest __tests__/unit --runInBand",
-    "test:integration": "jest __tests__/integration --runInBand"
+    "test:integration": "jest __tests__/integration --runInBand",
+    "verify:android-export": "sh ./scripts/smoke-android-public-graph.sh"
   },
   "dependencies": {
     "@callstack/liquid-glass": "^0.8.0",

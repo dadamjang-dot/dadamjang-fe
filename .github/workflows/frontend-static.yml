@@ -32,6 +32,8 @@ jobs:
       - run: pnpm fo:typecheck
       - run: pnpm fo:test:unit
       - run: pnpm fo:test:integration
+      - run: pnpm fo:test:android
+      - run: pnpm fo:verify:android-export
       - run: pnpm bo:lint
       - run: pnpm bo:typecheck
       - run: pnpm bo:fsd

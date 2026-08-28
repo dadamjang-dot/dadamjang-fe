@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 
-import { Action } from "@dadamjang/mobile";
+import type { IconAction } from "@dadamjang/mobile";
 
 import { useCurrentUser } from "@/features/auth";
 import {
@@ -37,7 +37,7 @@ const StyleScreen = () => {
     if (requireSignIn("/style-compose")) router.push("/style-compose");
   };
 
-  const headerActions: Action[] = [
+  const headerActions: IconAction[] = [
     {
       accessibilityLabel: "스타일 작성",
       icon: { md: "add", sf: "plus" },

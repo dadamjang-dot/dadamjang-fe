@@ -3,10 +3,10 @@ import { StyleSheet } from "react-native-unistyles";
 import {
   ProductLayout,
 } from "@/shared/components";
-import { Action } from "@dadamjang/mobile";
+import type { IconAction } from "@dadamjang/mobile";
 
 const HomeScreen = () => {
-  const headerActions: Action[] = [
+  const headerActions: IconAction[] = [
     {
       accessibilityLabel: "알림",
       icon: { md: "notifications", sf: "bell" },

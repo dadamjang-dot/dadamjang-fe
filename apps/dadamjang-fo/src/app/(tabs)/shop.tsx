@@ -18,7 +18,7 @@ import {
 } from "@/features/shop";
 import { useWishActions, useWishlist } from "@/features/wish";
 import { ProductLayout } from "@/shared/components";
-import { Action } from "@dadamjang/mobile";
+import type { IconAction } from "@dadamjang/mobile";
 
 const ShopScreen = () => {
   const router = useRouter();
@@ -51,7 +51,7 @@ const ShopScreen = () => {
     });
   };
 
-  const headerActions: Action[] = [
+  const headerActions: IconAction[] = [
     {
       accessibilityLabel: "메뉴",
       icon: { md: "menu", sf: "line.3.horizontal" },

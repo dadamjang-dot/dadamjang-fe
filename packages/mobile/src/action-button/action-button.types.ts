@@ -1,7 +1,12 @@
 import type { AndroidSymbol, SFSymbol } from "expo-symbols";
 
+export type ActionMaterialSymbol = Extract<
+  AndroidSymbol,
+  "add" | "close" | "menu" | "notifications" | "settings" | "shopping_cart"
+>;
+
 export interface ActionIcon {
-  md: AndroidSymbol;
+  md: ActionMaterialSymbol;
   sf: SFSymbol;
 }
 
@@ -13,7 +18,7 @@ interface ActionBase {
 export interface IconAction extends ActionBase {
   accessibilityLabel: string;
   icon: ActionIcon;
-  label?: string;
+  label?: never;
 }
 
 export interface TextAction extends ActionBase {

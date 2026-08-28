@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import type { Action, ActionButtonGroupVariant } from "@dadamjang/mobile";
+import type { ActionButtonGroupVariant, IconAction } from "@dadamjang/mobile";
 
 export interface ProductLayoutProps {
-  headerActions: Action[];
+  headerActions: IconAction[];
   variant: ActionButtonGroupVariant;
   children: ReactNode;
 }

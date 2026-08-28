@@ -20,9 +20,10 @@ const config: Config = {
       "<rootDir>/android-tests/mocks/expo-ui-jetpack-compose.tsx",
     "^@expo/ui/jetpack-compose/modifiers$":
       "<rootDir>/android-tests/mocks/expo-ui-jetpack-compose-modifiers.ts",
+    "^@expo/material-symbols/.*\\.xml$":
+      "<rootDir>/android-tests/mocks/material-symbol.ts",
     "^expo-router/unstable-native-tabs$":
       "<rootDir>/android-tests/mocks/expo-router-native-tabs.tsx",
-    "^expo-symbols$": "<rootDir>/android-tests/mocks/expo-symbols.ts",
     ...baseModuleNameMapper,
   },
 };

@@ -1,35 +1,36 @@
-import type { Action } from "@dadamjang/mobile";
+import type {
+  Action,
+  ActionButtonGroupProps,
+  ActionButtonProps,
+  IconAction,
+} from "@dadamjang/mobile";
+import type { ProductLayoutProps } from "../src/shared/components/product-layout/product-layout.types";
 
 type Handler = () => void;
 type IsAssignable<From, To> = [From] extends [To] ? true : false;
 type Assert<T extends true> = T;
 type Reject<T extends false> = T;
 
+type IconActionInput = {
+  accessibilityLabel: "장바구니";
+  icon: { md: "shopping_cart"; sf: "cart" };
+  onPress: Handler;
+};
+
+type TextActionInput = { label: "취소"; onPress: Handler };
+
+type LabeledIconActionInput = IconActionInput & { label: "장바구니" };
+
 export type IconActionIsValid = Assert<
-  IsAssignable<
-    {
-      accessibilityLabel: "장바구니";
-      icon: { md: "shopping_cart"; sf: "cart" };
-      onPress: Handler;
-    },
-    Action
-  >
+  IsAssignable<IconActionInput, Action>
 >;
 
 export type TextActionIsValid = Assert<
-  IsAssignable<{ label: "취소"; onPress: Handler }, Action>
+  IsAssignable<TextActionInput, Action>
 >;
 
-export type IconAndLabelActionIsValid = Assert<
-  IsAssignable<
-    {
-      accessibilityLabel: "장바구니 열기";
-      icon: { md: "shopping_cart"; sf: "cart" };
-      label: "장바구니";
-      onPress: Handler;
-    },
-    Action
-  >
+export type IconAndLabelActionIsInvalid = Reject<
+  IsAssignable<LabeledIconActionInput, IconAction>
 >;
 
 export type EmptyActionIsInvalid = Reject<
@@ -61,5 +62,54 @@ export type IconAndLabelWithoutAccessibleNameIsInvalid = Reject<
       onPress: Handler;
     },
     Action
+  >
+>;
+
+export type TextWithIconIsInvalid = Reject<
+  IsAssignable<
+    {
+      icon: { md: "shopping_cart"; sf: "cart" };
+      label: "장바구니";
+      onPress: Handler;
+    },
+    Action
+  >
+>;
+
+export type ActionButtonAcceptsIconActions = Assert<
+  IsAssignable<{ actions: IconActionInput[] }, ActionButtonProps>
+>;
+
+export type ActionButtonAcceptsTextActions = Assert<
+  IsAssignable<{ actions: TextActionInput[] }, ActionButtonProps>
+>;
+
+export type ActionButtonGroupAcceptsIconActions = Assert<
+  IsAssignable<{ actions: IconActionInput[] }, ActionButtonGroupProps>
+>;
+
+export type ActionButtonGroupRejectsTextActions = Reject<
+  IsAssignable<{ actions: TextActionInput[] }, ActionButtonGroupProps>
+>;
+
+export type ProductLayoutAcceptsIconHeaderActions = Assert<
+  IsAssignable<
+    {
+      children: null;
+      headerActions: IconActionInput[];
+      variant: "capsule";
+    },
+    ProductLayoutProps
+  >
+>;
+
+export type ProductLayoutRejectsTextHeaderActions = Reject<
+  IsAssignable<
+    {
+      children: null;
+      headerActions: TextActionInput[];
+      variant: "capsule";
+    },
+    ProductLayoutProps
   >
 >;

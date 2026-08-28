@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-import type { ImageSourcePropType } from "react-native";
 import {
   Host,
   Row,
@@ -18,7 +16,7 @@ import {
 import { colors } from "@dadamjang/design-tokens";
 
 import type { Action, ActionButtonProps } from "./action-button.types";
-import { getMaterialSymbolSourceAsync } from "./material-symbol-source";
+import { materialSymbolSources } from "./material-symbol-sources.android";
 
 interface ActionButtonContentProps {
   action: Action;
@@ -26,41 +24,15 @@ interface ActionButtonContentProps {
 
 export const ActionButtonContent = ({ action }: ActionButtonContentProps) => {
   const iconSize = action.iconSize ?? 20;
-  const materialIcon = action.icon?.md;
-  const [source, setSource] = useState<ImageSourcePropType | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    setSource(null);
-
-    if (materialIcon) {
-      void getMaterialSymbolSourceAsync(
-        materialIcon,
-        iconSize,
-        "white",
-      ).then(
-        (nextSource) => {
-          if (active) setSource(nextSource);
-        },
-        () => {
-          if (active) setSource(null);
-        },
-      );
-    }
-
-    return () => {
-      active = false;
-    };
-  }, [iconSize, materialIcon]);
 
   if (action.icon) {
-    return source ? (
+    return (
       <Icon
         contentDescription={action.accessibilityLabel}
         size={iconSize}
-        source={source}
+        source={materialSymbolSources[action.icon.md]}
       />
-    ) : null;
+    );
   }
 
   return action.label ? <Text>{action.label}</Text> : null;

@@ -7,20 +7,22 @@ import { View } from "react-native";
 
 import {
   ActionButton,
-  type Action,
+  type IconAction,
 } from "@dadamjang/mobile";
 import TabLayout from "../src/app/(tabs)/_layout";
 import { ProductLayout } from "../src/shared/components/product-layout";
 
 jest.useFakeTimers();
 
-const notificationAction = (onPress: () => void): Action => ({
+const materialIconSource = 1;
+
+const notificationAction = (onPress: () => void): IconAction => ({
   accessibilityLabel: "알림",
   icon: { md: "notifications", sf: "bell" },
   onPress,
 });
 
-const cartAction = (onPress: () => void): Action => ({
+const cartAction = (onPress: () => void): IconAction => ({
   accessibilityLabel: "장바구니",
   icon: { md: "shopping_cart", sf: "cart" },
   onPress,
@@ -30,7 +32,7 @@ const createUser = () =>
   userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
 describe("Android native actions", () => {
-  it("renders separate accessible actions and invokes their callbacks", async () => {
+  it("passes synchronous accessible icon props and invokes each action", async () => {
     const onNotificationPress = jest.fn();
     const onCartPress = jest.fn();
     const user = createUser();
@@ -48,18 +50,15 @@ describe("Android native actions", () => {
 
     expect(buttons).toHaveLength(2);
 
-    const notificationButton = screen.getByRole("button", { name: "알림" });
-    const cartButton = screen.getByRole("button", { name: "장바구니" });
+    const notificationImage = screen.getByRole("img", { name: "알림" });
+    const cartImage = screen.getByRole("img", { name: "장바구니" });
 
-    expect(notificationButton).toHaveAccessibleName("알림");
-    expect(cartButton).toHaveAccessibleName("장바구니");
-    expect(screen.getByRole("img", { name: "장바구니" })).toHaveProp(
-      "source",
-      { uri: "material-symbol://shopping_cart/20/white" },
-    );
+    expect(notificationImage).toHaveProp("source", materialIconSource);
+    expect(cartImage).toHaveProp("source", materialIconSource);
+    expect(cartImage).toHaveStyle({ height: 20, width: 20 });
 
-    await user.press(notificationButton);
-    await user.press(cartButton);
+    await user.press(buttons[0]);
+    await user.press(buttons[1]);
 
     expect(onNotificationPress).toHaveBeenCalledTimes(1);
     expect(onCartPress).toHaveBeenCalledTimes(1);
@@ -86,16 +85,38 @@ describe("Android native actions", () => {
 
     expect(buttons).toHaveLength(2);
 
-    const notificationButton = screen.getByRole("button", { name: "알림" });
-    const cartButton = screen.getByRole("button", { name: "장바구니" });
+    const notificationButton = buttons[0];
+    const cartButton = buttons[1];
 
     expect(notificationButton).toHaveStyle({ borderRadius: 20 });
     expect(cartButton).toHaveStyle({ borderRadius: 20 });
+    expect(screen.getByRole("img", { name: "알림" })).toHaveProp(
+      "source",
+      materialIconSource,
+    );
+    expect(screen.getByRole("img", { name: "장바구니" })).toHaveProp(
+      "source",
+      materialIconSource,
+    );
 
     await user.press(cartButton);
 
     expect(onNotificationPress).not.toHaveBeenCalled();
     expect(onCartPress).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps standalone text actions working", async () => {
+    const onPress = jest.fn();
+    const user = createUser();
+
+    await renderAsync(
+      <ActionButton actions={[{ label: "취소", onPress }]} />,
+    );
+
+    const button = screen.getByRole("button", { name: "취소" });
+    await user.press(button);
+
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 
   it("provides a Material icon for every native tab", async () => {
