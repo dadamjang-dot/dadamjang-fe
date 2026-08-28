@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { resetAuthSession } from "@dadamjang/graphql-client";
+import { GraphqlError, resetAuthSession } from "@dadamjang/graphql-client";
 
 import {
   completeKakaoSignupFo,
@@ -15,14 +15,69 @@ import {
   verifyPasswordResetCode,
   verifySignupEmailCode,
 } from "./api";
+import { useAuthSessionState } from "./auth-session-state";
 
 export const authQueryKeys = {
   viewer: ["viewer"] as const,
   signupConsents: ["auth", "signup-consents"] as const,
 };
 
-export const useCurrentUser = () =>
-  useQuery({ queryKey: authQueryKeys.viewer, queryFn: getCurrentUser, retry: false });
+export type AuthStatus =
+  "authenticated" | "error" | "loading" | "offline" | "unauthenticated";
+
+type AuthStatusInput = {
+  hasSession: boolean;
+  hasUser: boolean;
+  isError: boolean;
+  isPaused: boolean;
+  queryError: unknown;
+  sessionError: unknown | null;
+};
+
+const getAuthStatus = ({
+  hasSession,
+  hasUser,
+  isError,
+  isPaused,
+  queryError,
+  sessionError,
+}: AuthStatusInput): AuthStatus => {
+  if (sessionError !== null) return "error";
+  if (hasUser) return "authenticated";
+  if (!hasSession) return "unauthenticated";
+  if (isPaused) return "offline";
+  if (queryError instanceof GraphqlError && queryError.status === 401)
+    return "unauthenticated";
+  if (isError) return "error";
+  return "loading";
+};
+
+export const useCurrentUser = () => {
+  const session = useAuthSessionState();
+  const query = useQuery({
+    enabled: session.error === null && session.hasSession,
+    queryKey: authQueryKeys.viewer,
+    queryFn: getCurrentUser,
+    retry: false,
+  });
+  const authStatus = getAuthStatus({
+    hasSession: session.hasSession,
+    hasUser: Boolean(query.data),
+    isError: query.isError,
+    isPaused: query.isPaused,
+    queryError: query.error,
+    sessionError: session.error,
+  });
+  const retryAuth = async () => {
+    if (session.error !== null) {
+      await session.retry();
+      return;
+    }
+    await query.refetch();
+  };
+
+  return { ...query, authStatus, retryAuth };
+};
 
 const useViewerMutation = <TVariables,>(mutationFn: (variables: TVariables) => Promise<unknown>) => {
   const queryClient = useQueryClient();

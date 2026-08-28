@@ -26,11 +26,11 @@ const StyleScreen = () => {
   const posts = postsQuery.data?.pages.flatMap((page) => page.nodes) ?? [];
 
   const requireSignIn = (returnTo: string) => {
-    if (!currentUser.data) {
+    if (currentUser.authStatus === "unauthenticated") {
       router.push({ pathname: "/auth", params: { returnTo } });
       return false;
     }
-    return true;
+    return currentUser.authStatus === "authenticated";
   };
 
   const handleCreatePress = () => {

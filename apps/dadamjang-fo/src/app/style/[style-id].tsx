@@ -29,10 +29,11 @@ const StylePostScreen = () => {
       onBack={() => router.back()}
       onProductPress={(productId) => router.push(`/product/${productId}`)}
       onToggleLike={(nextLiked) => {
-        if (!currentUser.data) {
+        if (currentUser.authStatus === "unauthenticated") {
           router.push({ pathname: "/auth/signin", params: { returnTo: `/style/${styleId}` } });
           return;
         }
+        if (currentUser.authStatus !== "authenticated") return;
         likeMutation.mutate({ stylePostId: styleId, nextLiked });
       }}
       post={postQuery.data}

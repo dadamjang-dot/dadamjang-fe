@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { act, renderHook } from "@testing-library/react-native";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
 import * as SecureStore from "expo-secure-store";
 import type { PropsWithChildren } from "react";
 
@@ -14,7 +14,13 @@ import { AppProviders } from "@/providers/app-providers";
 
 jest.mock("@react-native-community/netinfo", () => ({
   __esModule: true,
-  default: { addEventListener: jest.fn(() => jest.fn()) },
+  default: {
+    addEventListener: jest.fn(() => jest.fn()),
+    fetch: jest.fn(async () => ({
+      isConnected: true,
+      isInternetReachable: true,
+    })),
+  },
 }));
 
 jest.mock("expo-router", () => ({
@@ -37,6 +43,16 @@ const useProviderState = () => ({
   signOut: useSignOut(),
 });
 
+const renderProviderState = async () => {
+  const rendered = renderHook(useProviderState, {
+    wrapper: AppProvidersWrapper,
+  });
+  await waitFor(() => {
+    expect(rendered.result.current).not.toBeNull();
+  });
+  return rendered;
+};
+
 describe("expired auth session", () => {
   const storage = new Map<string, string>();
 
@@ -57,9 +73,7 @@ describe("expired auth session", () => {
   });
 
   it("clears provider state when refresh fails", async () => {
-    const { result, unmount } = renderHook(useProviderState, {
-      wrapper: AppProvidersWrapper,
-    });
+    const { result, unmount } = await renderProviderState();
     await act(async () => {
       await setAuthTokens({
         accessToken: "expired-access",
@@ -101,9 +115,7 @@ describe("expired auth session", () => {
   });
 
   it("clears query, mutation, Kakao, and pending identity state on manual reset", async () => {
-    const { result, unmount } = renderHook(useProviderState, {
-      wrapper: AppProvidersWrapper,
-    });
+    const { result, unmount } = await renderProviderState();
     await act(async () => {
       await setAuthTokens({
         accessToken: "access-1",
@@ -157,9 +169,7 @@ describe("expired auth session", () => {
   });
 
   it("clears provider state before replacing an account session", async () => {
-    const { result, unmount } = renderHook(useProviderState, {
-      wrapper: AppProvidersWrapper,
-    });
+    const { result, unmount } = await renderProviderState();
     await act(async () => {
       await setAuthTokens({
         accessToken: "access-a",
@@ -205,9 +215,7 @@ describe("expired auth session", () => {
   });
 
   it("cancels an in-flight account query before clearing A data for B", async () => {
-    const { result, unmount } = renderHook(useProviderState, {
-      wrapper: AppProvidersWrapper,
-    });
+    const { result, unmount } = await renderProviderState();
     await act(async () => {
       await setAuthTokens({
         accessToken: "access-a",

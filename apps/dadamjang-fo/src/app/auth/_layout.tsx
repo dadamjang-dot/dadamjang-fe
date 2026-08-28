@@ -9,10 +9,10 @@ import { useCurrentUser } from "@/features/auth";
 
 const AuthLayout = () => {
   const router = useRouter();
-  const { data: currentUser, isPending } = useCurrentUser();
+  const { authStatus, data: currentUser } = useCurrentUser();
 
-  if (isPending) return null;
-  if (currentUser) return <Redirect href="/" />;
+  if (authStatus === "authenticated" && currentUser) return <Redirect href="/" />;
+  if (authStatus !== "unauthenticated") return null;
 
   const close = () => {
     if (router.canDismiss()) router.dismiss();

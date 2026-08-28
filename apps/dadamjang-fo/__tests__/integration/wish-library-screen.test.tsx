@@ -2,7 +2,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
+import { GraphqlError } from "@dadamjang/graphql-client";
+
 import WishScreen from "@/app/(tabs)/wish";
+import { AuthSessionStateProvider } from "@/features/auth";
 import { getCurrentUser } from "@/features/auth/api";
 import {
   getFollowedBrands,
@@ -89,7 +92,13 @@ const createWrapper = () => {
     },
   });
   const TestWrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    <QueryClientProvider client={client}>
+      <AuthSessionStateProvider
+        value={{ error: null, hasSession: true, retry: async () => undefined }}
+      >
+        {children}
+      </AuthSessionStateProvider>
+    </QueryClientProvider>
   );
   TestWrapper.displayName = "WishLibraryScreenTestWrapper";
   return TestWrapper;
@@ -206,7 +215,7 @@ describe("WISH library screen", () => {
   });
 
   it("shows a sign-in CTA for signed-out users", async () => {
-    jest.mocked(getCurrentUser).mockRejectedValueOnce(new Error("not authenticated"));
+    jest.mocked(getCurrentUser).mockRejectedValueOnce(new GraphqlError("not authenticated", 401));
     render(<WishScreen />, { wrapper: createWrapper() });
 
     await fireEvent.press(await screen.findByTestId("e2e.wish.login"));

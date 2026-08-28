@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import type { ReactNode } from "react";
 
 import { getCurrentUser } from "@/features/auth/api";
+import { AuthSessionStateProvider } from "@/features/auth/auth-session-state";
 import { getCart, checkoutCart } from "@/features/cart/api";
 import CartScreen from "@/app/cart";
 import WishScreen from "@/app/(tabs)/wish";
@@ -78,7 +79,13 @@ const createWrapper = () => {
     },
   });
   const TestWrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    <QueryClientProvider client={client}>
+      <AuthSessionStateProvider
+        value={{ error: null, hasSession: true, retry: async () => undefined }}
+      >
+        {children}
+      </AuthSessionStateProvider>
+    </QueryClientProvider>
   );
   TestWrapper.displayName = "CommerceScreenTestWrapper";
   return TestWrapper;
