@@ -8,8 +8,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: mobile-e2e
-  cancel-in-progress: true
+  group: ${{ github.event.pull_request.head.repo.full_name == github.repository && 'mobile-e2e' || format('mobile-e2e-fork-{0}', github.run_id) }}
+  cancel-in-progress: false
+  queue: max
 
 jobs:
   prepare-e2e:
@@ -80,10 +81,16 @@ jobs:
           echo "$(dirname "$maestro_bin")" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
         working-directory: .
+      - name: Verify remote EAS API URL
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPECTED_E2E_API_URL: ${{ vars.E2E_API_URL }}
+        run: |
+          test -n "$EXPECTED_E2E_API_URL"
+          eas env:exec preview 'test "$EXPO_PUBLIC_API_URL" = "$EXPECTED_E2E_API_URL"' --non-interactive
       - run: eas build --platform ios --profile e2e --non-interactive --wait --json > eas-build.json
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPO_PUBLIC_API_URL: ${{ vars.E2E_API_URL }}
       - run: |
           mkdir -p .maestro-artifacts/debug .maestro-artifacts/screenshots "$RUNNER_TEMP/dadamjang-e2e-app"
           curl -fsSL "$(jq -r '.[0].artifacts.buildUrl' eas-build.json)" -o "$RUNNER_TEMP/dadamjang-e2e-app.tar.gz"
@@ -149,10 +156,16 @@ jobs:
           echo "$(dirname "$maestro_bin")" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
         working-directory: .
+      - name: Verify remote EAS API URL
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPECTED_E2E_API_URL: ${{ vars.E2E_API_URL }}
+        run: |
+          test -n "$EXPECTED_E2E_API_URL"
+          eas env:exec preview 'test "$EXPO_PUBLIC_API_URL" = "$EXPECTED_E2E_API_URL"' --non-interactive
       - run: eas build --platform android --profile e2e --non-interactive --wait --json > eas-build.json
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPO_PUBLIC_API_URL: ${{ vars.E2E_API_URL }}
       - run: curl -fsSL "$(jq -r '.[0].artifacts.buildUrl' eas-build.json)" -o "$RUNNER_TEMP/dadamjang-e2e-app.apk"
       - uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:

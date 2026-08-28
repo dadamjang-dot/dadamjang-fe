@@ -73,6 +73,12 @@ const mobileWorkflows = workflows.filter(([path]) => path.includes("mobile"));
 for (const [path, workflow] of mobileWorkflows) {
   const prepareJob = readJob(workflow, "prepare-e2e");
   const cleanupJob = readJob(workflow, "cleanup-e2e");
+  const buildJobNames = path.endsWith("mobile-e2e-smoke.yml")
+    ? ["ios-smoke", "android-smoke"]
+    : ["ios-full"];
+  const concurrency =
+    workflow.match(/\nconcurrency:\n(?<body>(?: {2}.+\n)+)/u)?.groups?.body ??
+    "";
 
   check(
     !workflow.includes("mobile-dev-inc/action-maestro"),
@@ -95,9 +101,43 @@ for (const [path, workflow] of mobileWorkflows) {
     `${path}: Maestro checksum is not verified`,
   );
   check(
-    /^\s*group:\s*mobile-e2e\s*$/mu.test(workflow),
-    `${path}: mobile E2E runs must share one concurrency group`,
+    concurrency.includes("cancel-in-progress: false"),
+    `${path}: active E2E API lifecycle runs must not be cancelled`,
   );
+  check(
+    concurrency.includes("queue: max"),
+    `${path}: trusted E2E runs must retain the full concurrency queue`,
+  );
+  if (path.endsWith("mobile-e2e-smoke.yml")) {
+    check(
+      concurrency.includes(
+        "github.event.pull_request.head.repo.full_name == github.repository",
+      ) &&
+        concurrency.includes("'mobile-e2e'") &&
+        concurrency.includes("format('mobile-e2e-fork-{0}', github.run_id)"),
+      `${path}: fork pull requests must use a run-scoped concurrency group`,
+    );
+  } else {
+    check(
+      /^  group: mobile-e2e$/mu.test(concurrency),
+      `${path}: trusted full E2E runs must share the mobile-e2e group`,
+    );
+  }
+  for (const jobName of buildJobNames) {
+    const buildJob = readJob(workflow, jobName);
+    const preflight =
+      'eas env:exec preview \'test "$EXPO_PUBLIC_API_URL" = "$EXPECTED_E2E_API_URL"\' --non-interactive';
+    check(
+      buildJob.includes("EXPECTED_E2E_API_URL: ${{ vars.E2E_API_URL }}") &&
+        buildJob.indexOf(preflight) >= 0 &&
+        buildJob.indexOf(preflight) < buildJob.indexOf("eas build"),
+      `${path}: ${jobName} must verify the remote EAS API URL before building`,
+    );
+    check(
+      !buildJob.includes("EXPO_PUBLIC_API_URL: ${{ vars.E2E_API_URL }}"),
+      `${path}: ${jobName} must not imply runner env reaches EAS Build`,
+    );
+  }
   for (const [name, job] of [
     ["prepare", prepareJob],
     ["cleanup", cleanupJob],
@@ -137,6 +177,10 @@ const eas = JSON.parse(await read("apps/dadamjang-fo/eas.json"));
 check(
   eas.cli?.version === "23.0.0",
   "eas.json: EAS CLI must be exactly 23.0.0",
+);
+check(
+  eas.build?.e2e?.environment === "preview",
+  "eas.json: e2e builds must explicitly use the preview EAS environment",
 );
 
 const workspace = await read("pnpm-workspace.yaml");
