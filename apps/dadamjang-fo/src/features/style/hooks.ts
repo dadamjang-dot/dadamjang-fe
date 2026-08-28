@@ -15,7 +15,28 @@ import {
   likeStylePost,
   unlikeStylePost,
 } from "./api";
-import type { StylePost, StylePostCategory, StylePostConnection, StylePostSort } from "./types";
+import type {
+  StylePost,
+  StylePostCategory,
+  StylePostConnection,
+  StylePostSort,
+} from "./types";
+
+const getNextStylePostCursor = (
+  lastPage: StylePostConnection,
+  allPages: StylePostConnection[],
+) => {
+  if (!lastPage.hasNextPage || lastPage.nextCursor === null) return undefined;
+  const { nextCursor } = lastPage;
+  if (
+    allPages.some(
+      (page, index) =>
+        index < allPages.length - 1 && page.nextCursor === nextCursor,
+    )
+  )
+    return undefined;
+  return nextCursor;
+};
 
 export const styleQueryKeys = {
   postsRoot: () => ["style-posts"] as const,
@@ -26,12 +47,20 @@ export const styleQueryKeys = {
   purchasedProducts: () => ["purchased-style-products"] as const,
 };
 
-export const useStylePosts = (category?: StylePostCategory, sort: StylePostSort = "RECOMMENDED") =>
+export const useStylePosts = (
+  category?: StylePostCategory,
+  sort: StylePostSort = "RECOMMENDED",
+) =>
   useInfiniteQuery({
     queryKey: styleQueryKeys.posts(category, sort),
-    queryFn: ({ pageParam }) => getStylePosts({ filter: { category, sort }, after: pageParam, first: 20 }),
+    queryFn: ({ pageParam }) =>
+      getStylePosts({
+        filter: { category, sort },
+        after: pageParam,
+        first: 20,
+      }),
     initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.nextCursor ?? undefined : undefined),
+    getNextPageParam: getNextStylePostCursor,
   });
 
 export const useLikedStylePosts = (enabled = true) =>
@@ -40,8 +69,7 @@ export const useLikedStylePosts = (enabled = true) =>
     queryFn: ({ pageParam }) =>
       getLikedStylePosts({ after: pageParam, first: 20 }),
     initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasNextPage ? lastPage.nextCursor ?? undefined : undefined,
+    getNextPageParam: getNextStylePostCursor,
     enabled,
   });
 
@@ -63,13 +91,22 @@ export const useCreateStylePost = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createStylePost,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: styleQueryKeys.postsRoot() }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: styleQueryKeys.postsRoot() }),
   });
 };
 
-const updateStylePostLike = (post: StylePost, stylePostId: string, nextLiked: boolean) =>
+const updateStylePostLike = (
+  post: StylePost,
+  stylePostId: string,
+  nextLiked: boolean,
+) =>
   post.stylePostId === stylePostId
-    ? { ...post, isLiked: nextLiked, likeCount: Math.max(0, post.likeCount + (nextLiked ? 1 : -1)) }
+    ? {
+        ...post,
+        isLiked: nextLiked,
+        likeCount: Math.max(0, post.likeCount + (nextLiked ? 1 : -1)),
+      }
     : post;
 
 const updateFeedData = (
@@ -82,7 +119,9 @@ const updateFeedData = (
         ...data,
         pages: data.pages.map((page) => ({
           ...page,
-          nodes: page.nodes.map((post) => updateStylePostLike(post, stylePostId, nextLiked)),
+          nodes: page.nodes.map((post) =>
+            updateStylePostLike(post, stylePostId, nextLiked),
+          ),
         })),
       }
     : data;
@@ -90,27 +129,45 @@ const updateFeedData = (
 export const useToggleStylePostLike = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ stylePostId, nextLiked }: { stylePostId: string; nextLiked: boolean }) =>
+    mutationFn: ({
+      stylePostId,
+      nextLiked,
+    }: {
+      stylePostId: string;
+      nextLiked: boolean;
+    }) =>
       nextLiked ? likeStylePost(stylePostId) : unlikeStylePost(stylePostId),
     onMutate: async ({ stylePostId, nextLiked }) => {
       await queryClient.cancelQueries({ queryKey: styleQueryKeys.postsRoot() });
       await queryClient.cancelQueries({ queryKey: ["style-post"] });
-      const previousFeeds = queryClient.getQueriesData<InfiniteData<StylePostConnection>>({
+      const previousFeeds = queryClient.getQueriesData<
+        InfiniteData<StylePostConnection>
+      >({
         queryKey: styleQueryKeys.postsRoot(),
       });
-      const previousPost = queryClient.getQueryData<StylePost>(styleQueryKeys.post(stylePostId));
+      const previousPost = queryClient.getQueryData<StylePost>(
+        styleQueryKeys.post(stylePostId),
+      );
       queryClient.setQueriesData<InfiniteData<StylePostConnection>>(
         { queryKey: styleQueryKeys.postsRoot() },
         (data) => updateFeedData(data, stylePostId, nextLiked),
       );
-      queryClient.setQueryData<StylePost>(styleQueryKeys.post(stylePostId), (post) =>
-        post ? updateStylePostLike(post, stylePostId, nextLiked) : post,
+      queryClient.setQueryData<StylePost>(
+        styleQueryKeys.post(stylePostId),
+        (post) =>
+          post ? updateStylePostLike(post, stylePostId, nextLiked) : post,
       );
       return { previousFeeds, previousPost };
     },
     onError: (_error, variables, context) => {
-      context?.previousFeeds.forEach(([queryKey, data]) => queryClient.setQueryData(queryKey, data));
-      if (context?.previousPost) queryClient.setQueryData(styleQueryKeys.post(variables.stylePostId), context.previousPost);
+      context?.previousFeeds.forEach(([queryKey, data]) =>
+        queryClient.setQueryData(queryKey, data),
+      );
+      if (context?.previousPost)
+        queryClient.setQueryData(
+          styleQueryKeys.post(variables.stylePostId),
+          context.previousPost,
+        );
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: styleQueryKeys.postsRoot() });

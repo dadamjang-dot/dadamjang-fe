@@ -1,5 +1,6 @@
+import { hashKey } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { IconAction } from "@dadamjang/mobile";
 
@@ -12,6 +13,7 @@ import {
 } from "@/features/style/components";
 import {
   getStyleFeedFilter,
+  styleQueryKeys,
   useStylePosts,
   useToggleStylePostLike,
 } from "@/features/style";
@@ -28,8 +30,12 @@ const StyleScreen = () => {
     useState<StylePostSort>("RECOMMENDED");
   const isRanking = selectedCategory === "RANKING";
   const feedFilter = getStyleFeedFilter(selectedCategory, selectedSort);
+  const styleQueryIdentity = hashKey(
+    styleQueryKeys.posts(feedFilter.category, feedFilter.sort),
+  );
   const postsQuery = useStylePosts(feedFilter.category, feedFilter.sort);
-  const isLoadingMore = useRef(false);
+  const currentStyleQueryIdentity = useRef(styleQueryIdentity);
+  const loadingStyleQueryIdentity = useRef<string | undefined>(undefined);
   const likeMutation = useToggleStylePostLike();
   const posts = useMemo(
     () =>
@@ -39,6 +45,10 @@ const StyleScreen = () => {
       ),
     [postsQuery.data?.pages],
   );
+
+  useLayoutEffect(() => {
+    currentStyleQueryIdentity.current = styleQueryIdentity;
+  }, [styleQueryIdentity]);
 
   const requireSignIn = (returnTo: string) => {
     if (!currentUser.data) {
@@ -54,22 +64,25 @@ const StyleScreen = () => {
 
   const handleLoadMore = async () => {
     if (
-      isLoadingMore.current ||
+      loadingStyleQueryIdentity.current === styleQueryIdentity ||
       postsQuery.isFetchingNextPage ||
       !postsQuery.hasNextPage
     )
       return;
 
-    isLoadingMore.current = true;
+    loadingStyleQueryIdentity.current = styleQueryIdentity;
     try {
       await fetchUntilRowsGrow(
         postsQuery.data,
         postsQuery.fetchNextPage,
         (post) => post.stylePostId,
         2,
+        () => currentStyleQueryIdentity.current === styleQueryIdentity,
       );
     } finally {
-      isLoadingMore.current = false;
+      if (loadingStyleQueryIdentity.current === styleQueryIdentity) {
+        loadingStyleQueryIdentity.current = undefined;
+      }
     }
   };
 

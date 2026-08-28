@@ -1,17 +1,15 @@
 import { uniqueBy } from "./unique-by";
 
-type CursorPage<Item> = {
+type Page<Item> = {
   nodes: readonly Item[];
-  nextCursor: string | null;
-  hasNextPage: boolean;
 };
 
-type CursorPages<Item> = {
-  pages: readonly CursorPage<Item>[];
+type Pages<Item> = {
+  pages: readonly Page<Item>[];
 };
 
 const getRowCount = <Item, Key extends PropertyKey>(
-  data: CursorPages<Item> | undefined,
+  data: Pages<Item> | undefined,
   getKey: (item: Item) => Key,
   columns: number,
 ) =>
@@ -21,30 +19,33 @@ const getRowCount = <Item, Key extends PropertyKey>(
   );
 
 export const fetchUntilRowsGrow = async <Item, Key extends PropertyKey>(
-  initialData: CursorPages<Item> | undefined,
-  fetchNextPage: () => Promise<{ data?: CursorPages<Item> }>,
+  initialData: Pages<Item> | undefined,
+  fetchNextPage: () => Promise<{
+    data?: Pages<Item>;
+    hasNextPage: boolean;
+  }>,
   getKey: (item: Item) => Key,
   columns: number,
+  isCurrentQuery: () => boolean,
 ) => {
   const initialRowCount = getRowCount(initialData, getKey, columns);
-  const seenCursors = new Set<string>();
   let data = initialData;
+  let pageCount = data?.pages.length ?? 0;
 
   while (true) {
-    const page = data?.pages.at(-1);
-    const cursor = page?.nextCursor;
+    if (!isCurrentQuery()) return;
+    const result = await fetchNextPage();
+    if (!isCurrentQuery()) return;
+    data = result.data;
 
     if (
-      !page?.hasNextPage ||
-      cursor === null ||
-      cursor === undefined ||
-      seenCursors.has(cursor)
+      !data ||
+      data.pages.length <= pageCount ||
+      !result.hasNextPage ||
+      getRowCount(data, getKey, columns) > initialRowCount
     )
       return;
 
-    seenCursors.add(cursor);
-    data = (await fetchNextPage()).data;
-
-    if (!data || getRowCount(data, getKey, columns) > initialRowCount) return;
+    pageCount = data.pages.length;
   }
 };

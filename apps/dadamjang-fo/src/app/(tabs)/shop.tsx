@@ -1,5 +1,6 @@
+import { hashKey } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -9,7 +10,10 @@ import {
   useCategories,
   useShopFilters,
 } from "@/features/catalog";
-import { useProductPriceSummaries } from "@/features/price-evidence";
+import {
+  priceEvidenceQueryKeys,
+  useProductPriceSummaries,
+} from "@/features/price-evidence";
 import {
   ShopCategoryBar,
   ShopFilterBar,
@@ -32,8 +36,12 @@ const ShopScreen = () => {
     () => new Set(),
   );
   const productFilter = useMemo(() => toProductFilter(filters), [filters]);
+  const productQueryIdentity = hashKey(
+    priceEvidenceQueryKeys.productPriceSummary(productFilter),
+  );
   const productsQuery = useProductPriceSummaries(productFilter);
-  const isLoadingMore = useRef(false);
+  const currentProductQueryIdentity = useRef(productQueryIdentity);
+  const loadingProductQueryIdentity = useRef<string | undefined>(undefined);
   const products = useMemo(
     () =>
       uniqueBy(
@@ -43,6 +51,10 @@ const ShopScreen = () => {
     [productsQuery.data?.pages],
   );
   const totalCount = productsQuery.data?.pages[0]?.totalCount ?? 0;
+
+  useLayoutEffect(() => {
+    currentProductQueryIdentity.current = productQueryIdentity;
+  }, [productQueryIdentity]);
 
   useEffect(() => {
     if (currentUser) {
@@ -98,22 +110,25 @@ const ShopScreen = () => {
 
   const handleLoadMore = async () => {
     if (
-      isLoadingMore.current ||
+      loadingProductQueryIdentity.current === productQueryIdentity ||
       productsQuery.isFetchingNextPage ||
       !productsQuery.hasNextPage
     )
       return;
 
-    isLoadingMore.current = true;
+    loadingProductQueryIdentity.current = productQueryIdentity;
     try {
       await fetchUntilRowsGrow(
         productsQuery.data,
         productsQuery.fetchNextPage,
         (product) => product.productId,
         2,
+        () => currentProductQueryIdentity.current === productQueryIdentity,
       );
     } finally {
-      isLoadingMore.current = false;
+      if (loadingProductQueryIdentity.current === productQueryIdentity) {
+        loadingProductQueryIdentity.current = undefined;
+      }
     }
   };
 
