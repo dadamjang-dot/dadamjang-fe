@@ -240,9 +240,7 @@ const performRefresh = async (
       deviceId,
       requestSignal,
     );
-    if (
-      refresh.kind === "failure" && refresh.reason === "network"
-    )
+    if (refresh.kind === "failure" && refresh.reason === "network")
       return transientRefresh();
     if (refresh.kind === "failure")
       return {
@@ -456,12 +454,7 @@ export const handleGraphQlPost = async (request: Request) => {
   const createdDeviceId = matchedDeviceId ? undefined : deviceId;
   const { key, group } = acquireRefreshGroup(cookieHeader, deviceId);
   try {
-    const initial = await forward(
-      body,
-      cookieHeader,
-      deviceId,
-      request.signal,
-    );
+    const initial = await forward(body, cookieHeader, deviceId, request.signal);
     if (initial.kind === "failure")
       return responseWithCookies(
         initial.body,
@@ -472,10 +465,7 @@ export const handleGraphQlPost = async (request: Request) => {
       );
     const initialBody = initial.body;
     const initialCookies = setCookies(initial.response.headers);
-    if (
-      !isUnauthenticated(initial.payload) ||
-      isPublicOperation(input)
-    )
+    if (!isUnauthenticated(initial.payload) || isPublicOperation(input))
       return responseWithCookies(
         initialBody,
         initial.response.status,

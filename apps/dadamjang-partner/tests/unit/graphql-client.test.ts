@@ -34,7 +34,9 @@ describe("partner GraphQL client session invalidation", () => {
         {
           status: 200,
           headers: new Headers(),
-          body: JSON.stringify({ errors: [{ message: "Authentication required" }] }),
+          body: JSON.stringify({
+            errors: [{ message: "Authentication required" }],
+          }),
           errors: [
             new GraphQLError("Authentication required", {
               extensions: { code: "UNAUTHENTICATED" },

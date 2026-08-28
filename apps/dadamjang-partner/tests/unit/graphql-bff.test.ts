@@ -517,14 +517,15 @@ describe("partner GraphQL BFF refresh", () => {
       .mockReturnValue(deadline.signal);
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
-      .mockImplementation((_input, options) =>
-        new Promise((_resolve, reject) =>
-          options?.signal?.addEventListener(
-            "abort",
-            () => reject(options.signal?.reason),
-            { once: true },
+      .mockImplementation(
+        (_input, options) =>
+          new Promise((_resolve, reject) =>
+            options?.signal?.addEventListener(
+              "abort",
+              () => reject(options.signal?.reason),
+              { once: true },
+            ),
           ),
-        ),
       );
 
     const pending = handleGraphQlPost(request());
@@ -540,14 +541,15 @@ describe("partner GraphQL BFF refresh", () => {
     const controller = new AbortController();
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
-      .mockImplementation((_input, options) =>
-        new Promise((_resolve, reject) =>
-          options?.signal?.addEventListener(
-            "abort",
-            () => reject(options.signal?.reason),
-            { once: true },
+      .mockImplementation(
+        (_input, options) =>
+          new Promise((_resolve, reject) =>
+            options?.signal?.addEventListener(
+              "abort",
+              () => reject(options.signal?.reason),
+              { once: true },
+            ),
           ),
-        ),
       );
 
     const pending = handleGraphQlPost(request(undefined, controller.signal));
@@ -569,15 +571,13 @@ describe("partner GraphQL BFF refresh", () => {
       })
       .mockResolvedValueOnce({ done: false, value: new Uint8Array(1) });
     const text = vi.fn().mockResolvedValue("x".repeat(1024 * 1024 + 1));
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      {
-        body: { getReader: () => ({ read, cancel }) },
-        headers: new Headers({ "content-type": "application/json" }),
-        ok: true,
-        status: 200,
-        text,
-      } as unknown as Response,
-    );
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      body: { getReader: () => ({ read, cancel }) },
+      headers: new Headers({ "content-type": "application/json" }),
+      ok: true,
+      status: 200,
+      text,
+    } as unknown as Response);
 
     const result = await handleGraphQlPost(request());
 

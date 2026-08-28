@@ -1,2 +1,2 @@
-export * from './device-id';
-export * from './graphql-client';
+export * from "./device-id";
+export * from "./graphql-client";

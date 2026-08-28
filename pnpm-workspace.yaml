@@ -7,6 +7,8 @@ allowBuilds:
   esbuild: true
   unrs-resolver: true
 
+minimumReleaseAge: 1440
+
 minimumReleaseAgeExclude:
   - '@expo/cli@57.0.20'
   - '@expo/env@2.4.3'

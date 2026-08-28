@@ -75,8 +75,7 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (session.data && session.data.role !== "ADMIN") invalidateSession();
-    else if (session.isError)
-      router.replace("/login");
+    else if (session.isError) router.replace("/login");
   }, [router, session.data, session.isError]);
 
   if (session.isPending)

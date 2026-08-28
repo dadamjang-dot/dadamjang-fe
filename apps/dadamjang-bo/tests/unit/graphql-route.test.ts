@@ -481,14 +481,15 @@ describe("GraphQL BFF", () => {
     const timeout = vi
       .spyOn(AbortSignal, "timeout")
       .mockReturnValue(deadline.signal);
-    const fetchMock = vi.fn((_input, options: RequestInit | undefined) =>
-      new Promise((_resolve, reject) =>
-        options?.signal?.addEventListener(
-          "abort",
-          () => reject(options.signal?.reason),
-          { once: true },
+    const fetchMock = vi.fn(
+      (_input, options: RequestInit | undefined) =>
+        new Promise((_resolve, reject) =>
+          options?.signal?.addEventListener(
+            "abort",
+            () => reject(options.signal?.reason),
+            { once: true },
+          ),
         ),
-      ),
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -503,14 +504,15 @@ describe("GraphQL BFF", () => {
 
   it("returns 504 when the incoming request aborts", async () => {
     const controller = new AbortController();
-    const fetchMock = vi.fn((_input, options: RequestInit | undefined) =>
-      new Promise((_resolve, reject) =>
-        options?.signal?.addEventListener(
-          "abort",
-          () => reject(options.signal?.reason),
-          { once: true },
+    const fetchMock = vi.fn(
+      (_input, options: RequestInit | undefined) =>
+        new Promise((_resolve, reject) =>
+          options?.signal?.addEventListener(
+            "abort",
+            () => reject(options.signal?.reason),
+            { once: true },
+          ),
         ),
-      ),
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -537,15 +539,13 @@ describe("GraphQL BFF", () => {
     const text = vi.fn().mockResolvedValue("x".repeat(1024 * 1024 + 1));
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        {
-          body: { getReader: () => ({ read, cancel }) },
-          headers: new Headers({ "content-type": "application/json" }),
-          ok: true,
-          status: 200,
-          text,
-        } as unknown as Response,
-      ),
+      vi.fn().mockResolvedValue({
+        body: { getReader: () => ({ read, cancel }) },
+        headers: new Headers({ "content-type": "application/json" }),
+        ok: true,
+        status: 200,
+        text,
+      } as unknown as Response),
     );
 
     const response = await handleGraphQlPost(

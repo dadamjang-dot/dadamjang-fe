@@ -8,16 +8,14 @@ import type { ImageSourcePropType } from "react-native";
 
 import type { ActionMaterialSymbol } from "./action-button.types";
 
-const materialSymbolSources: Record<
-  ActionMaterialSymbol,
-  ImageSourcePropType
-> = {
-  add,
-  close,
-  menu,
-  notifications,
-  settings,
-  shopping_cart: shoppingCart,
-};
+const materialSymbolSources: Record<ActionMaterialSymbol, ImageSourcePropType> =
+  {
+    add,
+    close,
+    menu,
+    notifications,
+    settings,
+    shopping_cart: shoppingCart,
+  };
 
 export { materialSymbolSources };

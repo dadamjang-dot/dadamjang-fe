@@ -1,4 +1,7 @@
-import { LiquidGlassContainerView, LiquidGlassView } from "@callstack/liquid-glass";
+import {
+  LiquidGlassContainerView,
+  LiquidGlassView,
+} from "@callstack/liquid-glass";
 import { StyleSheet, View } from "react-native";
 import Animated from "react-native-reanimated";
 

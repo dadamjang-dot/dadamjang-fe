@@ -1,4 +1,9 @@
-import { Host, Row, FilledTonalIconButton, Shape } from "@expo/ui/jetpack-compose";
+import {
+  Host,
+  Row,
+  FilledTonalIconButton,
+  Shape,
+} from "@expo/ui/jetpack-compose";
 import { size } from "@expo/ui/jetpack-compose/modifiers";
 
 import { colors } from "@dadamjang/design-tokens";
@@ -9,8 +14,7 @@ const ActionButtonGroup = ({
   variant = "capsule",
   actions,
 }: ActionButtonGroupProps) => {
-  const shape =
-    variant === "circularPair" ? Shape.Circle({}) : Shape.Pill({});
+  const shape = variant === "circularPair" ? Shape.Circle({}) : Shape.Pill({});
 
   return (
     <Host matchContents>

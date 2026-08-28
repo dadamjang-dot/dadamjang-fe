@@ -48,10 +48,7 @@ export const PartnerShell = ({ children }: { children: ReactNode }) => {
         <div role="alert" className="gate">
           승인된 파트너와 연결 브랜드가 있어야 상품을 관리할 수 있습니다.
         </div>
-        <ActionButton
-          variant="neutralOutline"
-          onClick={logout}
-        >
+        <ActionButton variant="neutralOutline" onClick={logout}>
           로그아웃
         </ActionButton>
       </main>
@@ -77,10 +74,7 @@ export const PartnerShell = ({ children }: { children: ReactNode }) => {
             상품 관리
           </Link>
         </nav>
-        <ActionButton
-          variant="neutralOutline"
-          onClick={logout}
-        >
+        <ActionButton variant="neutralOutline" onClick={logout}>
           로그아웃
         </ActionButton>
       </aside>

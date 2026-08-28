@@ -34,7 +34,9 @@ describe("admin GraphQL client session invalidation", () => {
         {
           status: 200,
           headers: new Headers(),
-          body: JSON.stringify({ errors: [{ message: "Authentication required" }] }),
+          body: JSON.stringify({
+            errors: [{ message: "Authentication required" }],
+          }),
           errors: [
             new GraphQLError("Authentication required", {
               extensions: { code: "UNAUTHENTICATED" },
@@ -45,9 +47,9 @@ describe("admin GraphQL client session invalidation", () => {
       ),
     );
 
-    await expect(requestGraphQl("query AdminMe { me { role } }")).rejects.toMatchObject(
-      { code: "UNAUTHENTICATED" },
-    );
+    await expect(
+      requestGraphQl("query AdminMe { me { role } }"),
+    ).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
 
     expect(listener).toHaveBeenCalledOnce();
     expect(storage).toHaveBeenCalledWith(
