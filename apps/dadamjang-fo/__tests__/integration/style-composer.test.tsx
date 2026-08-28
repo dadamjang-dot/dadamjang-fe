@@ -6,7 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react-native";
 import type { ReactNode } from "react";
-import type { PressableProps } from "react-native";
+import { Modal, type PressableProps } from "react-native";
 
 import StyleComposer from "@/features/style/components/style-composer";
 import type { StylePostImageAsset } from "@/features/style/types";
@@ -18,6 +18,7 @@ const mockClose = jest.fn();
 const mockLaunchImageLibrary = jest.fn();
 const mockRequestMediaLibraryPermissions = jest.fn();
 let mockSubmitPress: (() => void) | undefined;
+let mockCreatePending = false;
 
 jest.mock("expo-image", () => ({ Image: "ExpoImage" }));
 
@@ -37,7 +38,7 @@ jest.mock("@/features/style/api", () => ({
 
 jest.mock("@/features/style/hooks", () => ({
   useCreateStylePost: () => ({
-    isPending: false,
+    isPending: mockCreatePending,
     mutateAsync: mockCreateStylePost,
   }),
   usePurchasedStyleProducts: () => ({
@@ -163,6 +164,7 @@ const prepareValidDraft = async (assets: StylePostImageAsset[]) => {
 describe("style composer upload flow", () => {
   beforeEach(() => {
     jest.useFakeTimers();
+    mockCreatePending = false;
     mockRequestMediaLibraryPermissions.mockResolvedValue({
       canAskAgain: true,
       expires: "never",
@@ -221,5 +223,53 @@ describe("style composer upload flow", () => {
       expect(mockCreateStylePost).toHaveBeenCalledTimes(1);
     });
     expect(mockClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("locks every dismiss and draft mutation while submission is pending", async () => {
+    const upload = createDeferred<string>();
+    mockUploadStylePostImage.mockReturnValue(upload.promise);
+    const user = await prepareValidDraft([imageAsset(1)]);
+    await user.type(screen.getByPlaceholderText("#태그 입력"), "daily");
+    await user.press(screen.getByRole("button", { name: "추가" }));
+    await user.press(screen.getByRole("button", { name: "상품 고르기" }));
+    await screen.findByLabelText("구매한 상품 목록");
+    const submitPress = mockSubmitPress;
+
+    act(() => {
+      submitPress?.();
+    });
+
+    expect(screen.getByRole("button", { name: "닫기" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "의류" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "상품 고르기" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "사진 추가" })).toBeDisabled();
+    expect(screen.getByLabelText("사진 삭제")).toBeDisabled();
+    expect(screen.getByLabelText("스타일 소개")).toHaveProp("editable", false);
+    expect(screen.getByPlaceholderText("#태그 입력")).toHaveProp(
+      "editable",
+      false,
+    );
+    expect(screen.getByRole("button", { name: "추가" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "#daily  ×" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "완료" })).toBeDisabled();
+    layoutLegendList("구매한 상품 목록");
+    expect(
+      screen.getByRole("button", { name: /테스트 상품/ }),
+    ).toBeDisabled();
+
+    act(() => {
+      screen.UNSAFE_getByType(Modal).props.onRequestClose();
+    });
+    await user.press(screen.getByRole("button", { name: "닫기" }));
+
+    expect(screen.getByRole("button", { name: "완료" })).toBeOnTheScreen();
+    expect(mockClose).not.toHaveBeenCalled();
+
+    upload.resolve("image-key-1");
+    await waitFor(() => {
+      expect(mockCreateStylePost).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -84,10 +84,9 @@ const ProductCard = ({
       testID={`e2e.wish.${isLiked ? "remove" : "add"}.${productId}`}
       variant="bare"
     >
-      <Image
-        source={isLiked ? "sf:heart.fill" : "sf:heart"}
-        style={[s.likeIcon, isLiked && s.likedIcon]}
-      />
+      <Text style={[s.likeIcon, isLiked && s.likedIcon]}>
+        {isLiked ? "♥" : "♡"}
+      </Text>
     </Button>
   </View>
 );
@@ -149,12 +148,12 @@ const s = StyleSheet.create({
     opacity: 0.64,
   },
   likeIcon: {
-    width: 20,
-    height: 20,
-    tintColor: colors.ink,
+    color: colors.ink,
+    fontSize: 22,
+    lineHeight: 24,
   },
   likedIcon: {
-    tintColor: colors.accent,
+    color: colors.accent,
   },
   title: {
     color: colors.ink,

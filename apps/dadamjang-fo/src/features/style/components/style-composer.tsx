@@ -48,6 +48,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
   const [message, setMessage] = useState<string>();
   const [idempotencyKey] = useState(() => Crypto.randomUUID());
   const submitLock = useRef(false);
+  const isLocked = isSubmitting || createMutation.isPending;
 
   const mentionProducts = useMemo(() => {
     const query = getStyleMentionQuery(body);
@@ -58,6 +59,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
   }, [body, selectedProducts]);
 
   const addHashtag = () => {
+    if (isLocked) return;
     const tag = normalizeStyleHashtag(tagDraft);
     if (!tag) return;
     if (!/^[가-힣A-Za-z0-9_]{1,20}$/.test(tag)) {
@@ -78,6 +80,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
   };
 
   const toggleProduct = (product: PurchasedStyleProduct) => {
+    if (isLocked) return;
     const isSelected = selectedProducts.some(
       (selected) => selected.productId === product.productId,
     );
@@ -97,6 +100,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
   };
 
   const insertBrandMention = (product: PurchasedStyleProduct) => {
+    if (isLocked) return;
     if (!product.brandName) return;
     setBody(insertStyleBrandMention(body, product.brandName));
     const brandId = product.brandId;
@@ -107,7 +111,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
   };
 
   const pickImages = async () => {
-    if (images.length >= 5) return;
+    if (isLocked || images.length >= 5) return;
     try {
       const ImagePicker = await loadStyleImagePicker();
       const permission =
@@ -192,6 +196,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
     <View style={s.container}>
       <TitleHeader title="스타일 올리기">
         <Button
+          disabled={isLocked}
           label="닫기"
           onPress={onClose}
           style={s.closeButton}
@@ -207,6 +212,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
         <View style={s.chipRow}>
           {categories.map(({ key, label }) => (
             <Button
+              disabled={isLocked}
               key={key}
               label={label}
               onPress={() => setCategory(key)}
@@ -220,6 +226,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
             구매한 상품 {selectedProducts.length}/5
           </Text>
           <Button
+            disabled={isLocked}
             label="상품 고르기"
             onPress={() => setIsProductPickerOpen(true)}
             style={s.textButton}
@@ -244,7 +251,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
           <Text style={s.sectionTitle}>이미지 {images.length}/5</Text>
           <Button
             label="사진 추가"
-            disabled={images.length >= 5}
+            disabled={isLocked || images.length >= 5}
             onPress={pickImages}
             style={s.textButton}
             variant="bare"
@@ -256,6 +263,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
               <Image contentFit="cover" source={image.uri} style={s.preview} />
               <Button
                 accessibilityLabel="사진 삭제"
+                disabled={isLocked}
                 onPress={() =>
                   setImages((current) =>
                     current.filter((_, imageIndex) => imageIndex !== index),
@@ -272,6 +280,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
         <Text style={s.sectionTitle}>스타일 소개</Text>
         <TextInput
           accessibilityLabel="스타일 소개"
+          editable={!isLocked}
           multiline
           onChangeText={setBody}
           placeholder="어떤 스타일인지 알려주세요. @를 입력하면 구매한 상품의 브랜드를 태그할 수 있어요."
@@ -283,6 +292,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
           <View style={s.mentionBox}>
             {mentionProducts.map((product) => (
               <Button
+                disabled={isLocked}
                 key={product.productId}
                 label={`@${product.brandName}`}
                 onPress={() => insertBrandMention(product)}
@@ -311,6 +321,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
         <View style={s.tagInputRow}>
           <TextInput
             autoCapitalize="none"
+            editable={!isLocked}
             onChangeText={setTagDraft}
             onSubmitEditing={addHashtag}
             placeholder="#태그 입력"
@@ -318,6 +329,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
             value={tagDraft}
           />
           <Button
+            disabled={isLocked}
             label="추가"
             onPress={addHashtag}
             style={s.addTagButton}
@@ -327,6 +339,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
         <View style={s.chipRow}>
           {hashtags.map((tag) => (
             <Button
+              disabled={isLocked}
               key={tag}
               label={`#${tag}  ×`}
               onPress={() =>
@@ -339,7 +352,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
         </View>
         {message ? <Text style={s.error}>{message}</Text> : null}
         <Button
-          disabled={isSubmitting || createMutation.isPending}
+          disabled={isLocked}
           label={isSubmitting ? "등록 중" : "스타일 올리기"}
           onPress={handleSubmit}
           style={s.submitButton}
@@ -347,13 +360,16 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
       </ScrollView>
       <Modal
         animationType="slide"
-        onRequestClose={() => setIsProductPickerOpen(false)}
+        onRequestClose={() => {
+          if (!isLocked) setIsProductPickerOpen(false);
+        }}
         presentationStyle="formSheet"
         visible={isProductPickerOpen}
       >
         <View style={s.modalContainer}>
           <TitleHeader title="구매한 상품 고르기">
             <Button
+              disabled={isLocked}
               label="완료"
               onPress={() => setIsProductPickerOpen(false)}
               style={s.closeButton}
@@ -380,6 +396,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
               return (
                 <Button
                   accessibilityState={{ selected }}
+                  disabled={isLocked}
                   onPress={() => toggleProduct(product)}
                   style={s.productPickerRow}
                   variant="bare"
@@ -401,10 +418,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
                       <Text style={s.helper}>{product.brandName}</Text>
                     ) : null}
                   </View>
-                  <Image
-                    source={selected ? "sf:checkmark.circle.fill" : "sf:circle"}
-                    style={s.checkIcon}
-                  />
+                  <Text style={s.checkIcon}>{selected ? "●" : "○"}</Text>
                 </Button>
               );
             }}
@@ -523,7 +537,7 @@ const s = StyleSheet.create({
   },
   productCopy: { flex: 1, gap: 4 },
   productTitle: { color: colors.ink, fontSize: 14, fontWeight: "600" },
-  checkIcon: { width: 20, height: 20, tintColor: colors.ink },
+  checkIcon: { color: colors.ink, fontSize: 20, lineHeight: 22 },
 });
 
 export default StyleComposer;

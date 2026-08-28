@@ -1,4 +1,3 @@
-import { Image } from "expo-image";
 import { ScrollView, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -56,7 +55,7 @@ const FilterChip = ({
       {label}
     </Text>
     {showDisclosure ? (
-      <Image source="sf:chevron.down" style={s.disclosureIcon} />
+      <Text style={s.disclosureIcon}>⌄</Text>
     ) : null}
   </Button>
 );
@@ -193,9 +192,9 @@ const s = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   disclosureIcon: {
-    width: 10,
-    height: 10,
-    tintColor: colors.muted,
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 16,
   },
   activeChip: {
     borderColor: colors.primary,

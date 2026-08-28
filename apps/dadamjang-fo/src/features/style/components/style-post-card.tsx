@@ -58,7 +58,7 @@ const StylePostCard = ({
           style={s.likeButton}
           variant="bare"
         >
-          <Image source={isLiked ? "sf:heart.fill" : "sf:heart"} style={s.likeIcon} />
+          <Text style={s.likeIcon}>{isLiked ? "♥" : "♡"}</Text>
           <Text style={s.likeCount}>{likeCount}</Text>
         </Button>
       </View>
@@ -76,7 +76,7 @@ const s = StyleSheet.create({
   rank: { position: "absolute", top: 8, left: 8, minWidth: 26, paddingHorizontal: 6, paddingVertical: 4, color: colors.surface, backgroundColor: colors.ink, fontSize: 13, fontWeight: "700", textAlign: "center" },
   body: { paddingTop: spacing.sm },
   likeButton: { flexDirection: "row", alignItems: "center", gap: 3, paddingVertical: 2 },
-  likeIcon: { width: 15, height: 15, tintColor: colors.ink },
+  likeIcon: { color: colors.ink, fontSize: 16, lineHeight: 18 },
   likeCount: { color: colors.ink, fontSize: 12, fontVariant: ["tabular-nums"] },
   metaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.xs },
   tagsLink: { flex: 1, minWidth: 0 },

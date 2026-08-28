@@ -85,6 +85,7 @@ const RootLayout = () => (
               name="style-compose"
               options={{
                 presentation: "fullScreenModal",
+                gestureEnabled: false,
                 headerShown: false,
               }}
             />

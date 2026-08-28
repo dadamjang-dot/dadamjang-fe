@@ -27,7 +27,7 @@ const StylePostDetail = ({
   <View style={s.container}>
     <TitleHeader title="STYLE">
       <Button accessibilityLabel="뒤로 가기" onPress={onBack} style={s.backButton} variant="bare">
-        <Image source="sf:chevron.left" style={s.backIcon} />
+        <Text style={s.backIcon}>‹</Text>
       </Button>
     </TitleHeader>
     <FlatList
@@ -63,7 +63,7 @@ const StylePostDetail = ({
                 style={s.likeButton}
                 variant="secondary"
               >
-                <Image source={post.isLiked ? "sf:heart.fill" : "sf:heart"} style={s.likeIcon} />
+                <Text style={s.likeIcon}>{post.isLiked ? "♥" : "♡"}</Text>
                 <Text style={s.likeLabel}>{post.likeCount}</Text>
               </Button>
             </View>
@@ -91,7 +91,7 @@ const StylePostDetail = ({
             <Text numberOfLines={1} style={s.productTitle}>{item.title}</Text>
             {item.brandName ? <Text style={s.productBrand}>{item.brandName}</Text> : null}
           </View>
-          <Image source="sf:chevron.right" style={s.chevron} />
+          <Text style={s.chevron}>›</Text>
         </Button>
       )}
       contentContainerStyle={s.listContent}
@@ -103,7 +103,7 @@ const StylePostDetail = ({
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   backButton: { padding: 8 },
-  backIcon: { width: 20, height: 20, tintColor: colors.ink },
+  backIcon: { color: colors.ink, fontSize: 30, lineHeight: 30 },
   pager: { height: deviceWidth * 1.22 },
   page: { width: deviceWidth, height: deviceWidth * 1.22, backgroundColor: colors.primarySoft },
   image: { width: "100%", height: "100%" },
@@ -115,7 +115,7 @@ const s = StyleSheet.create({
   author: { color: colors.ink, fontSize: 16, fontWeight: "700" },
   category: { color: colors.muted, fontSize: 12, fontWeight: "600" },
   likeButton: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 40, paddingHorizontal: 12, borderRadius: 20 },
-  likeIcon: { width: 17, height: 17, tintColor: colors.ink },
+  likeIcon: { color: colors.ink, fontSize: 18, lineHeight: 20 },
   likeLabel: { color: colors.ink, fontSize: 13, fontWeight: "700" },
   body: { color: colors.ink, fontSize: 16, lineHeight: 24 },
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
@@ -129,7 +129,7 @@ const s = StyleSheet.create({
   productCopy: { flex: 1, gap: 4 },
   productTitle: { color: colors.ink, fontSize: 14, fontWeight: "600" },
   productBrand: { color: colors.muted, fontSize: 12 },
-  chevron: { width: 16, height: 16, tintColor: colors.muted },
+  chevron: { color: colors.muted, fontSize: 24, lineHeight: 26 },
 });
 
 export default StylePostDetail;

@@ -75,7 +75,7 @@ const WishProductCard = ({ product, onPress, onRemove }: WishProductCardProps) =
           testID={`e2e.wish.remove.${product.productId}`}
           variant="bare"
         >
-          <Image source="sf:heart.fill" style={s.removeIcon} />
+          <Text style={s.removeIcon}>♥</Text>
           <Text style={s.removeLabel}>위시 해제</Text>
         </Button>
       ) : null}
@@ -139,7 +139,7 @@ const s = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: colors.surface,
   },
-  removeIcon: { width: 15, height: 15, tintColor: colors.accent },
+  removeIcon: { color: colors.accent, fontSize: 15, lineHeight: 17 },
   removeLabel: { color: colors.ink, fontSize: 12, fontWeight: "700" },
 });
 
