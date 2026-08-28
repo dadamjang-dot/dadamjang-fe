@@ -90,7 +90,7 @@ jobs:
           trap 'rm -f "$remote_api_url_file"' EXIT
           printf -v remote_api_url_command 'printf "%%s" "$EXPO_PUBLIC_API_URL" > %q' "$remote_api_url_file"
           eas env:exec preview "$remote_api_url_command" --non-interactive
-          test "$(cat "$remote_api_url_file")" = "$EXPECTED_E2E_API_URL"
+          cmp -s "$remote_api_url_file" <(printf "%s" "$EXPECTED_E2E_API_URL")
       - run: eas build --platform ios --profile e2e --non-interactive --wait --json > eas-build.json
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

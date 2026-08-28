@@ -181,7 +181,7 @@ for (const [path, workflow] of mobileWorkflows) {
     const envExec =
       'eas env:exec preview "$remote_api_url_command" --non-interactive';
     const parentComparison =
-      'test "$(cat "$remote_api_url_file")" = "$EXPECTED_E2E_API_URL"';
+      'cmp -s "$remote_api_url_file" <(printf "%s" "$EXPECTED_E2E_API_URL")';
     const childCommandIndex = preflightScript.indexOf(
       "printf -v remote_api_url_command",
     );
@@ -230,6 +230,15 @@ for (const [path, workflow] of mobileWorkflows) {
     check(
       mismatchedRemote.status === 1,
       `${path}: ${jobName} accepts a remote EAS URL collision`,
+    );
+    const newlineRemote = runEasPreflight(
+      preflightScript,
+      "https://trusted.example/graphql\n",
+      "https://collision.example/graphql",
+    );
+    check(
+      newlineRemote.status === 1,
+      `${path}: ${jobName} ignores trailing bytes in the remote EAS URL`,
     );
   }
   for (const [name, job] of [
