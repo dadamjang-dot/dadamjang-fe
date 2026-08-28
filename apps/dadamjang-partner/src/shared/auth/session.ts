@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { requestGraphQl } from "@/shared/api";
+import { invalidateSession } from "./session-invalidation";
 export type Session = {
   userId: string;
   userid: string;
@@ -17,13 +18,18 @@ export const sessionQuery = () =>
       ).me,
     retry: false,
     staleTime: 60_000,
+    refetchOnWindowFocus: "always",
   });
 export const signin = (userid: string, password: string) =>
   requestGraphQl<{ signin: { role: string } }>(
     `mutation Signin($input: SigninAuthInput!) { signin(input: $input) { role } }`,
     { input: { userid, password, portal: "PARTNER" } },
   );
-export const logout = () => requestGraphQl(`mutation Logout { logout }`);
+export const logout = async () => {
+  const result = await requestGraphQl(`mutation Logout { logout }`);
+  invalidateSession();
+  return result;
+};
 export const myPartner = () =>
   requestGraphQl<{
     myPartner: {

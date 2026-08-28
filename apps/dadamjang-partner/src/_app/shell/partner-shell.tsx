@@ -1,20 +1,27 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { ReactNode, useEffect } from "react";
 import { ActionButton } from "@seed-design/react";
-import { logout, myPartner, sessionQuery } from "@/shared/auth";
+import {
+  invalidateSession,
+  logout,
+  myPartner,
+  sessionQuery,
+} from "@/shared/auth";
 export const PartnerShell = ({ children }: { children: ReactNode }) => {
   const path = usePathname();
   const router = useRouter();
-  const client = useQueryClient();
   const session = useQuery(sessionQuery());
   const partner = useQuery({
     queryKey: ["my-partner"],
     queryFn: myPartner,
     retry: false,
   });
+  useEffect(() => {
+    if (session.data && session.data.role !== "PARTNER") invalidateSession();
+  }, [session.data]);
   if (session.isPending)
     return <main className="center">세션을 확인하고 있습니다.</main>;
   if (session.isError || session.data.role !== "PARTNER")
@@ -43,11 +50,7 @@ export const PartnerShell = ({ children }: { children: ReactNode }) => {
         </div>
         <ActionButton
           variant="neutralOutline"
-          onClick={async () => {
-            await logout();
-            client.clear();
-            router.replace("/login");
-          }}
+          onClick={logout}
         >
           로그아웃
         </ActionButton>
@@ -76,11 +79,7 @@ export const PartnerShell = ({ children }: { children: ReactNode }) => {
         </nav>
         <ActionButton
           variant="neutralOutline"
-          onClick={async () => {
-            await logout();
-            client.clear();
-            router.replace("/login");
-          }}
+          onClick={logout}
         >
           로그아웃
         </ActionButton>

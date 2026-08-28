@@ -1,12 +1,16 @@
 "use client";
 
 import { ActionButton, Callout, SidePanel, Skeleton } from "@seed-design/react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { AdminApiError } from "@/shared/api";
-import { adminSessionQuery, logoutAdminSession } from "@/shared/auth";
+import {
+  adminSessionQuery,
+  invalidateSession,
+  logoutAdminSession,
+} from "@/shared/auth";
 import { useAdminSnackbar } from "@/shared/ui";
 import styles from "./admin-shell.module.css";
 
@@ -56,16 +60,11 @@ const Brand = () => (
 export const AdminShell = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const notify = useAdminSnackbar();
   const [navigationOpen, setNavigationOpen] = useState(false);
   const session = useQuery(adminSessionQuery());
   const logout = useMutation({
     mutationFn: logoutAdminSession,
-    onSuccess: async () => {
-      queryClient.clear();
-      router.replace("/login");
-    },
     onError: (error) =>
       notify(
         error instanceof AdminApiError
@@ -75,7 +74,8 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   });
 
   useEffect(() => {
-    if (session.isError || (session.data && session.data.role !== "ADMIN"))
+    if (session.data && session.data.role !== "ADMIN") invalidateSession();
+    else if (session.isError)
       router.replace("/login");
   }, [router, session.data, session.isError]);
 

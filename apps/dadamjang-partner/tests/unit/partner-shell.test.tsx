@@ -3,15 +3,18 @@ import { render, waitFor } from "@testing-library/react";
 import type { ButtonHTMLAttributes } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PartnerShell } from "@/_app/shell/partner-shell";
+import { subscribeToSessionInvalidation } from "@/shared/auth";
 
 const auth = vi.hoisted(() => ({
   session: vi.fn(),
   partner: vi.fn(),
 }));
 
+const navigation = vi.hoisted(() => ({ router: { replace: vi.fn() } }));
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => navigation.router,
 }));
 
 vi.mock("@seed-design/react", () => ({
@@ -20,15 +23,19 @@ vi.mock("@seed-design/react", () => ({
   ),
 }));
 
-vi.mock("@/shared/auth", () => ({
-  logout: vi.fn(),
-  myPartner: auth.partner,
-  sessionQuery: () => ({
-    queryKey: ["partner-session"],
-    queryFn: auth.session,
-    retry: false,
-  }),
-}));
+vi.mock("@/shared/auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/shared/auth")>();
+  return {
+    ...actual,
+    logout: vi.fn(),
+    myPartner: auth.partner,
+    sessionQuery: () => ({
+      queryKey: ["partner-session"],
+      queryFn: auth.session,
+      retry: false,
+    }),
+  };
+});
 
 describe("PartnerShell", () => {
   afterEach(() => vi.clearAllMocks());
@@ -55,6 +62,41 @@ describe("PartnerShell", () => {
     try {
       await waitFor(() => expect(auth.partner).toHaveBeenCalledOnce());
     } finally {
+      view.unmount();
+      client.clear();
+    }
+  });
+
+  it("invalidates every tab when the session role is not partner", async () => {
+    auth.session.mockResolvedValue({
+      userId: "user-1",
+      userid: "admin",
+      email: "admin@example.com",
+      role: "ADMIN",
+    });
+    auth.partner.mockResolvedValue({ myPartner: null });
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const clear = vi.spyOn(client, "clear");
+    const storage = vi.spyOn(Storage.prototype, "setItem");
+    const unsubscribe = subscribeToSessionInvalidation(() => {
+      client.clear();
+      navigation.router.replace("/login");
+    });
+    const view = render(
+      <QueryClientProvider client={client}>
+        <PartnerShell>대시보드</PartnerShell>
+      </QueryClientProvider>,
+    );
+
+    try {
+      await waitFor(() => expect(storage).toHaveBeenCalledOnce());
+      expect(clear).toHaveBeenCalledOnce();
+      expect(navigation.router.replace).toHaveBeenCalledOnce();
+      expect(navigation.router.replace).toHaveBeenCalledWith("/login");
+    } finally {
+      unsubscribe();
       view.unmount();
       client.clear();
     }

@@ -8,6 +8,7 @@ import {
 import { Snackbar, useSnackbarAdapter } from "@seed-design/react";
 import { useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
+import { subscribeToSessionInvalidation } from "@/shared/auth";
 
 const SnackbarViewport = () => {
   const snackbar = useSnackbarAdapter();
@@ -40,9 +41,7 @@ export const AppProviders = ({ children }: { children: ReactNode }) => {
       queryClient.clear();
       router.replace("/login");
     };
-    window.addEventListener("dadamjang:session-expired", expireSession);
-    return () =>
-      window.removeEventListener("dadamjang:session-expired", expireSession);
+    return subscribeToSessionInvalidation(expireSession);
   }, [queryClient, router]);
   return (
     <QueryClientProvider client={queryClient}>
