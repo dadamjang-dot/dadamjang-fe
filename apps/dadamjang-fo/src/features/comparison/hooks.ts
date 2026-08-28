@@ -7,7 +7,10 @@ import { addComparisonItem, getComparison, removeComparisonItem } from "./api";
 import { comparisonQueryKeys } from "./query-keys";
 
 export const useComparison = () =>
-  useQuery({ queryKey: comparisonQueryKeys.list(), queryFn: getComparison });
+  useQuery({
+    queryKey: comparisonQueryKeys.list(),
+    queryFn: ({ signal }) => getComparison(signal),
+  });
 
 export const useComparisonActions = () => {
   const queryClient = useQueryClient();

@@ -21,21 +21,21 @@ export const useWishlist = (enabled = true) =>
   useQuery({
     enabled,
     queryKey: wishQueryKeys.wishlist(),
-    queryFn: getWishlist,
+    queryFn: ({ signal }) => getWishlist(signal),
   });
 
 export const useFollowedBrands = (enabled = true) =>
   useQuery({
     enabled,
     queryKey: wishQueryKeys.followedBrands(),
-    queryFn: getFollowedBrands,
+    queryFn: ({ signal }) => getFollowedBrands(signal),
   });
 
 export const useRecentlyViewedProducts = (enabled = true) =>
   useQuery({
     enabled,
     queryKey: wishQueryKeys.recentlyViewedProducts(),
-    queryFn: getRecentlyViewedProducts,
+    queryFn: ({ signal }) => getRecentlyViewedProducts(signal),
   });
 
 export const useWishActions = () => {

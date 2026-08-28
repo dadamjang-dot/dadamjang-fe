@@ -1,4 +1,8 @@
-import { useQueryClient } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 import * as SecureStore from "expo-secure-store";
 import type { PropsWithChildren } from "react";
@@ -10,6 +14,7 @@ import {
   useAuthFlow,
   useSignOut,
 } from "@/features/auth";
+import { useOrders } from "@/features/order";
 import { AppProviders } from "@/providers/app-providers";
 
 jest.mock("@react-native-community/netinfo", () => ({
@@ -287,5 +292,42 @@ describe("expired auth session", () => {
     clearSpy.mockRestore();
     result.current.queryClient.clear();
     unmount();
+  });
+
+  it("propagates production order-query cancellation to fetch", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { gcTime: Infinity, retry: false },
+      },
+    });
+    let requestSignal: AbortSignal | undefined;
+    global.fetch = jest.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+      requestSignal = init?.signal ?? undefined;
+      return new Promise<Response>((_resolve, reject) => {
+        requestSignal?.addEventListener(
+          "abort",
+          () => {
+            const error = new Error("The operation was aborted");
+            error.name = "AbortError";
+            reject(error);
+          },
+          { once: true },
+        );
+      });
+    });
+    const OrdersWrapper = ({ children }: PropsWithChildren) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+    const orders = renderHook(useOrders, { wrapper: OrdersWrapper });
+
+    await waitFor(() => expect(requestSignal).toBeDefined());
+    await act(async () => {
+      await queryClient.cancelQueries();
+    });
+
+    expect(requestSignal?.aborted).toBe(true);
+
+    orders.unmount();
+    queryClient.clear();
   });
 });

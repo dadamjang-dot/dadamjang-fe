@@ -4,11 +4,14 @@ import { getOrder, getOrders } from "./api";
 import { orderQueryKeys } from "./query-keys";
 
 export const useOrders = () =>
-  useQuery({ queryKey: orderQueryKeys.list(), queryFn: getOrders });
+  useQuery({
+    queryKey: orderQueryKeys.list(),
+    queryFn: ({ signal }) => getOrders(signal),
+  });
 
 export const useOrder = (orderId: string) =>
   useQuery({
     queryKey: orderQueryKeys.detail(orderId),
-    queryFn: () => getOrder(orderId),
+    queryFn: ({ signal }) => getOrder(orderId, signal),
     enabled: Boolean(orderId),
   });

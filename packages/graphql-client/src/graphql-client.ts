@@ -37,6 +37,12 @@ type RefreshPayload = {
 
 type SessionResetHandler = () => void | Promise<void>;
 
+export type GraphqlRequestOptions = {
+  requestHeaders?: Record<string, string>;
+  retryOnUnauthorized?: boolean;
+  signal?: AbortSignal;
+};
+
 export type TokenStorage = {
   getItemAsync: (key: string) => Promise<string | null>;
   setItemAsync: (key: string, value: string) => Promise<void>;
@@ -66,8 +72,7 @@ export type AuthenticatedGraphqlClient = {
   graphqlRequest: <T>(
     query: string,
     variables?: Record<string, unknown>,
-    requestHeaders?: Record<string, string>,
-    retryOnUnauthorized?: boolean,
+    options?: GraphqlRequestOptions,
   ) => Promise<T>;
   resetAuthSession: () => Promise<void>;
   setAuthTokens: (tokens: AuthTokens) => Promise<void>;
@@ -469,13 +474,18 @@ const createAuthenticatedGraphqlClientInternal = (
     query: string,
     variables?: Record<string, unknown>,
     requestHeaders?: Record<string, string>,
+    signal?: AbortSignal,
     accessToken = snapshot.accessToken,
   ) => {
     const client = createRequestClient({
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...requestHeaders,
     });
-    const data = await client.request<T>(query, variables);
+    const data = await client.request<T>({
+      document: query,
+      variables,
+      ...(signal ? { signal } : {}),
+    });
     if (generation !== snapshot.generation) throw createAuthError();
     return data;
   };
@@ -483,9 +493,13 @@ const createAuthenticatedGraphqlClientInternal = (
   const graphqlRequest = async <T>(
     query: string,
     variables?: Record<string, unknown>,
-    requestHeaders?: Record<string, string>,
-    retryOnUnauthorized = true,
+    options?: GraphqlRequestOptions,
   ): Promise<T> => {
+    const {
+      requestHeaders,
+      retryOnUnauthorized = true,
+      signal,
+    } = options ?? {};
     const snapshot = await captureSession();
 
     try {
@@ -494,6 +508,7 @@ const createAuthenticatedGraphqlClientInternal = (
         query,
         variables,
         requestHeaders,
+        signal,
       );
     } catch (error) {
       if (generation !== snapshot.generation) throw createAuthError();
@@ -520,6 +535,7 @@ const createAuthenticatedGraphqlClientInternal = (
           ...requestHeaders,
           Authorization: `Bearer ${credentialLease.accessToken}`,
         },
+        signal,
         credentialLease.accessToken,
       );
     } catch (error) {
@@ -597,12 +613,10 @@ export const setSessionExpiredHandler = setSessionResetHandler;
 export const graphqlRequest = <T>(
   query: string,
   variables?: Record<string, unknown>,
-  requestHeaders?: Record<string, string>,
-  retryOnUnauthorized = true,
+  options?: GraphqlRequestOptions,
 ) =>
   defaultAuthenticatedGraphqlClient.graphqlRequest<T>(
     query,
     variables,
-    requestHeaders,
-    retryOnUnauthorized,
+    options,
   );

@@ -57,7 +57,7 @@ export const useCurrentUser = () => {
   const query = useQuery({
     enabled: session.error === null && session.hasSession,
     queryKey: authQueryKeys.viewer,
-    queryFn: getCurrentUser,
+    queryFn: ({ signal }) => getCurrentUser(signal),
     retry: false,
   });
   const authStatus = getAuthStatus({
@@ -79,31 +79,37 @@ export const useCurrentUser = () => {
   return { ...query, authStatus, retryAuth };
 };
 
-const useViewerMutation = <TVariables,>(mutationFn: (variables: TVariables) => Promise<unknown>) => {
+const useViewerMutation = <TVariables>(
+  mutationFn: (variables: TVariables) => Promise<unknown>,
+) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: authQueryKeys.viewer }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: authQueryKeys.viewer }),
   });
 };
 
 export const useSignIn = () =>
-  useViewerMutation(({ email, password }: { email: string; password: string }) =>
-    signInFo(email, password),
+  useViewerMutation(
+    ({ email, password }: { email: string; password: string }) =>
+      signInFo(email, password),
   );
 
 export const useSignUpFo = () => useViewerMutation(signUpFo);
 
-export const useCompleteKakaoSignupFo = () => useViewerMutation(completeKakaoSignupFo);
+export const useCompleteKakaoSignupFo = () =>
+  useViewerMutation(completeKakaoSignupFo);
 
 export const useSignupConsentDocuments = () =>
   useQuery({
     queryKey: authQueryKeys.signupConsents,
-    queryFn: getActiveSignupConsentDocuments,
+    queryFn: ({ signal }) => getActiveSignupConsentDocuments(signal),
     staleTime: 5 * 60_000,
   });
 
-export const useRequestSignupEmailCode = () => useMutation({ mutationFn: requestSignupEmailCode });
+export const useRequestSignupEmailCode = () =>
+  useMutation({ mutationFn: requestSignupEmailCode });
 
 export const useVerifySignupEmailCode = () =>
   useMutation({

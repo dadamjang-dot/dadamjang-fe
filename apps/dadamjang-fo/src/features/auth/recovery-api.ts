@@ -9,13 +9,15 @@ export const findFoEmail = async (identityVerificationToken: string) => {
       findFoEmail(identityVerificationToken: $identityVerificationToken) { found maskedEmail }
     }`,
     { identityVerificationToken },
-    { "x-device-id": deviceId },
+    { requestHeaders: { "x-device-id": deviceId } },
   );
   return data.findFoEmail;
 };
 
 export const requestPasswordResetCode = async (email: string) => {
-  const data = await graphqlRequest<{ requestPasswordResetCode: { ok: boolean } }>(
+  const data = await graphqlRequest<{
+    requestPasswordResetCode: { ok: boolean };
+  }>(
     `mutation RequestPasswordResetCode($input: RequestEmailCodeInput!) {
       requestPasswordResetCode(input: $input) { ok }
     }`,

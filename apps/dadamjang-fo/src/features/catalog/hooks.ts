@@ -14,8 +14,8 @@ import type { ProductFilter, ProductSort } from "./types";
 export const usePersonalizedFeed = () =>
   useInfiniteQuery({
     queryKey: catalogQueryKeys.feed(),
-    queryFn: ({ pageParam }) =>
-      getPersonalizedFeed({ after: pageParam, first: 20 }),
+    queryFn: ({ pageParam, signal }) =>
+      getPersonalizedFeed({ after: pageParam, first: 20 }, signal),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) =>
       lastPage.hasNextPage ? lastPage.nextCursor : undefined,
@@ -35,8 +35,8 @@ export const useProductSearch = (
 export const useCatalogProducts = (filter: ProductFilter, enabled = true) =>
   useInfiniteQuery({
     queryKey: catalogQueryKeys.products(filter),
-    queryFn: ({ pageParam }) =>
-      getProducts({ ...filter, after: pageParam, first: 20 }),
+    queryFn: ({ pageParam, signal }) =>
+      getProducts({ ...filter, after: pageParam, first: 20 }, signal),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) =>
       lastPage.hasNextPage ? (lastPage.nextCursor ?? undefined) : undefined,
@@ -46,15 +46,18 @@ export const useCatalogProducts = (filter: ProductFilter, enabled = true) =>
 export const useProduct = (productId: string) =>
   useQuery({
     queryKey: catalogQueryKeys.product(productId),
-    queryFn: () => getProduct(productId),
+    queryFn: ({ signal }) => getProduct(productId, signal),
     enabled: Boolean(productId),
   });
 
 export const useCategories = () =>
-  useQuery({ queryKey: catalogQueryKeys.categories(), queryFn: getCategories });
+  useQuery({
+    queryKey: catalogQueryKeys.categories(),
+    queryFn: ({ signal }) => getCategories(signal),
+  });
 
 export const useCatalogFilterOptions = () =>
   useQuery({
     queryKey: catalogQueryKeys.filterOptions(),
-    queryFn: getCatalogFilterOptions,
+    queryFn: ({ signal }) => getCatalogFilterOptions(signal),
   });
