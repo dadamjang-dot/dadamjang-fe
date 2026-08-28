@@ -13,29 +13,29 @@ export const useHeaderAnimation = (
 ) => {
   const btnWrapperWidth = useDerivedValue(() => {
     return interpolate(
-      progress.value,
+      progress.get(),
       [actionTransitionPhaseEnd, 1],
-      [childrenWidth.value, cancelWidth.value],
+      [childrenWidth.get(), cancelWidth.get()],
       Extrapolation.CLAMP,
     );
   });
 
   const btnWrapperStyle = useAnimatedStyle(() => {
-    if (childrenWidth.value === 0 || cancelWidth.value === 0) {
+    if (childrenWidth.get() === 0 || cancelWidth.get() === 0) {
       return { opacity: 1 };
     }
 
     return {
       opacity: 1,
-      width: btnWrapperWidth.value,
+      width: btnWrapperWidth.get(),
     };
   });
 
   const searchInputStyle = useAnimatedStyle(() => {
     if (
-      containerWidth.value === 0 ||
-      childrenWidth.value === 0 ||
-      cancelWidth.value === 0
+      containerWidth.get() === 0 ||
+      childrenWidth.get() === 0 ||
+      cancelWidth.get() === 0
     ) {
       return { flex: 1 };
     }
@@ -44,10 +44,10 @@ export const useHeaderAnimation = (
       flex: 0,
       width: Math.max(
         0,
-        containerWidth.value -
+        containerWidth.get() -
           horizontalPadding * 2 -
           headerGap -
-          btnWrapperWidth.value,
+          btnWrapperWidth.get(),
       ),
     };
   });

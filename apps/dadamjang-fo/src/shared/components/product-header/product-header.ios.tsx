@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import {
-  StyleSheet,
   View,
   type LayoutChangeEvent,
   type TextInput,
 } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import Animated, {
   useSharedValue,
   Easing,
@@ -54,6 +54,11 @@ const ProductHeader = ({
     }
   }, [isSearching]);
 
+  const handleCancel = useCallback(() => {
+    inputRef.current?.blur();
+    onSearchCancel?.();
+  }, [onSearchCancel]);
+
   const handleContainerLayout = useCallback(
     (e: LayoutChangeEvent) => {
       containerWidth.set(e.nativeEvent.layout.width);
@@ -80,10 +85,12 @@ const ProductHeader = ({
   );
 
   useEffect(() => {
-    progress.value = withTiming(isSearching ? 1 : 0, {
-      duration: searchTransitionDuration,
-      easing: Easing.linear,
-    });
+    progress.set(
+      withTiming(isSearching ? 1 : 0, {
+        duration: searchTransitionDuration,
+        easing: Easing.linear,
+      }),
+    );
   }, [isSearching, progress]);
 
   const { btnWrapperStyle, searchInputStyle } = useHeaderAnimation(
@@ -110,7 +117,7 @@ const ProductHeader = ({
           {children}
         </View>
         <View style={s.measureLayer} onLayout={handleCancelLayout}>
-          <ActionButton actions={[{ label: "취소", onPress: () => {} }]} />
+          <ActionButton actions={[{ label: "취소", onPress: handleCancel }]} />
         </View>
         {children}
       </Animated.View>

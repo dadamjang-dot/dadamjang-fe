@@ -5,6 +5,7 @@ import {
   useQueryClient,
   type InfiniteData,
 } from "@tanstack/react-query";
+import { useRef } from "react";
 
 import {
   createStylePost,
@@ -126,16 +127,40 @@ const updateFeedData = (
 
 export const useToggleStylePostLike = () => {
   const queryClient = useQueryClient();
+  const pendingByPost = useRef(new Map<string, Promise<void>>());
+  const revisionByPost = useRef(new Map<string, number>());
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       stylePostId,
       nextLiked,
     }: {
       stylePostId: string;
       nextLiked: boolean;
-    }) =>
-      nextLiked ? likeStylePost(stylePostId) : unlikeStylePost(stylePostId),
+    }) => {
+      const previous = pendingByPost.current.get(stylePostId);
+      const request = (previous ?? Promise.resolve())
+        .catch(() => undefined)
+        .then(() =>
+          nextLiked
+            ? likeStylePost(stylePostId)
+            : unlikeStylePost(stylePostId),
+        );
+      const settled = request.then(
+        () => undefined,
+        () => undefined,
+      );
+      pendingByPost.current.set(stylePostId, settled);
+
+      try {
+        return await request;
+      } finally {
+        if (pendingByPost.current.get(stylePostId) === settled)
+          pendingByPost.current.delete(stylePostId);
+      }
+    },
     onMutate: async ({ stylePostId, nextLiked }) => {
+      const revision = (revisionByPost.current.get(stylePostId) ?? 0) + 1;
+      revisionByPost.current.set(stylePostId, revision);
       await queryClient.cancelQueries({ queryKey: styleQueryKeys.postsRoot() });
       await queryClient.cancelQueries({ queryKey: ["style-post"] });
       const previousFeeds = queryClient.getQueriesData<
@@ -155,9 +180,13 @@ export const useToggleStylePostLike = () => {
         (post) =>
           post ? updateStylePostLike(post, stylePostId, nextLiked) : post,
       );
-      return { previousFeeds, previousPost };
+      return { previousFeeds, previousPost, revision };
     },
     onError: (_error, variables, context) => {
+      if (
+        context?.revision !== revisionByPost.current.get(variables.stylePostId)
+      )
+        return;
       context?.previousFeeds.forEach(([queryKey, data]) =>
         queryClient.setQueryData(queryKey, data),
       );
@@ -167,7 +196,11 @@ export const useToggleStylePostLike = () => {
           context.previousPost,
         );
     },
-    onSettled: () => {
+    onSettled: (_data, _error, variables, context) => {
+      if (
+        context?.revision === revisionByPost.current.get(variables.stylePostId)
+      )
+        revisionByPost.current.delete(variables.stylePostId);
       queryClient.invalidateQueries({ queryKey: styleQueryKeys.postsRoot() });
       queryClient.invalidateQueries({ queryKey: ["style-post"] });
     },

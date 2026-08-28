@@ -46,7 +46,7 @@ jest.mock("@/features/style/hooks", () => ({
       {
         productId: "product-1",
         title: "테스트 상품",
-        imageUrls: [],
+        imageUrls: ["https://example.com/product-1.jpg"],
         brandId: "brand-1",
         brandName: "테스트 브랜드",
         categoryId: "category-1",
@@ -149,6 +149,9 @@ const prepareValidDraft = async (assets: StylePostImageAsset[]) => {
   await user.press(screen.getByRole("button", { name: "상품 고르기" }));
   await screen.findByLabelText("구매한 상품 목록");
   layoutLegendList("구매한 상품 목록");
+  expect(
+    screen.UNSAFE_getByProps({ source: "https://example.com/product-1.jpg" }),
+  ).toHaveProp("recyclingKey", "product-1");
   await user.press(await screen.findByRole("button", { name: /테스트 상품/ }));
   await user.press(screen.getByRole("button", { name: "완료" }));
   await user.press(screen.getByRole("button", { name: "사진 추가" }));

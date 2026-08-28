@@ -404,6 +404,7 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
                   {product.imageUrls[0] ? (
                     <Image
                       contentFit="cover"
+                      recyclingKey={product.productId}
                       source={product.imageUrls[0]}
                       style={s.pickerImage}
                     />

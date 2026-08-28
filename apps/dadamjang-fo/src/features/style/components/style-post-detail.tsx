@@ -86,7 +86,7 @@ const StylePostDetail = ({
       keyExtractor={(product) => product.productId}
       renderItem={({ item }) => (
         <Button onPress={() => onProductPress(item.productId)} style={s.productButton} variant="bare">
-          {item.imageUrls[0] ? <Image contentFit="cover" source={item.imageUrls[0]} style={s.productImage} /> : <View style={s.productPlaceholder} />}
+          {item.imageUrls[0] ? <Image contentFit="cover" recyclingKey={item.productId} source={item.imageUrls[0]} style={s.productImage} /> : <View style={s.productPlaceholder} />}
           <View style={s.productCopy}>
             <Text numberOfLines={1} style={s.productTitle}>{item.title}</Text>
             {item.brandName ? <Text style={s.productBrand}>{item.brandName}</Text> : null}

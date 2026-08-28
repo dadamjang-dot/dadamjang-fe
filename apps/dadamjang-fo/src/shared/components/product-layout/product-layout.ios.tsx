@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
+import { View, type LayoutChangeEvent } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import Animated, {
   useSharedValue,
   Easing,
@@ -55,10 +56,12 @@ const ProductLayout = (props: ProductLayoutProps) => {
   );
 
   useEffect(() => {
-    progress.value = withTiming(isSearching ? 1 : 0, {
-      duration: searchTransitionDuration,
-      easing: Easing.linear,
-    });
+    progress.set(
+      withTiming(isSearching ? 1 : 0, {
+        duration: searchTransitionDuration,
+        easing: Easing.linear,
+      }),
+    );
   }, [isSearching, progress]);
 
   const circularPairAnim = useCircularPairAnimation(
@@ -125,7 +128,9 @@ const ProductLayout = (props: ProductLayoutProps) => {
           {renderActionButtonGroup()}
         </View>
         <View onLayout={handleCancelLayout} style={s.measureOuter}>
-          <ActionButtonContent action={{ label: "취소", onPress: () => {} }} />
+          <ActionButtonContent
+            action={{ label: "취소", onPress: handleCancelSearch }}
+          />
         </View>
         {buttonGroup}
       </ProductHeader>
