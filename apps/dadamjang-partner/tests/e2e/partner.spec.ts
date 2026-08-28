@@ -1099,6 +1099,30 @@ test("unsaved edits block internal navigation until confirmed", async ({
   await expect(page).toHaveURL(/products\/new$/);
 });
 
+test("confirmed internal navigation consumes the dirty history guard", async ({
+  page,
+}) => {
+  await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProducts: () => list([]),
+    }),
+  );
+  await page.goto("/products");
+  await page.getByRole("link", { name: "상품 등록" }).click();
+  await page.getByRole("button", { name: "SKU 추가" }).click();
+  page.once("dialog", (dialog) => dialog.accept());
+
+  await page.getByRole("link", { name: "상품 관리" }).click();
+  await expect(page).toHaveURL(/\/products$/);
+
+  await page.goBack();
+  await expect(page).toHaveURL(/products\/new$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/products$/);
+});
+
 test("unsaved edits block browser Back and recover after cancellation", async ({
   page,
 }) => {

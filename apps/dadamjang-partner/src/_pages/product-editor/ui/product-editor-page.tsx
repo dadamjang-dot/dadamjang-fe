@@ -161,14 +161,36 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     const guard = (event: MouseEvent) => {
       const anchor =
         event.target instanceof Element ? event.target.closest("a") : null;
-      if (!dirty.current || !anchor?.href) return;
-      if (window.confirm(UNSAVED_CHANGES_MESSAGE)) return;
+      if (
+        !dirty.current ||
+        !anchor?.href ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey ||
+        anchor.target === "_blank" ||
+        anchor.hasAttribute("download")
+      )
+        return;
+      if (!window.confirm(UNSAVED_CHANGES_MESSAGE)) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      dirty.current = false;
+      if (!historyGuardArmed.current) return;
       event.preventDefault();
       event.stopPropagation();
+      historyGuardArmed.current = false;
+      const target = new URL(anchor.href);
+      if (target.origin === location.origin)
+        router.replace(`${target.pathname}${target.search}${target.hash}`);
+      else location.replace(target.href);
     };
     document.addEventListener("click", guard, true);
     return () => document.removeEventListener("click", guard, true);
-  }, []);
+  }, [router]);
   useEffect(() => {
     const guard = () => {
       if (!historyGuardArmed.current) return;
@@ -457,9 +479,12 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       return draft;
     },
     onSuccess: async (draft) => {
+      const replaceHistoryGuard = historyGuardArmed.current;
       dirty.current = false;
+      historyGuardArmed.current = false;
       await invalidateProductCaches(draft.productId);
-      router.push("/products");
+      if (replaceHistoryGuard) router.replace("/products");
+      else router.push("/products");
     },
     onError: (e) => setError(e.message),
   });
@@ -485,7 +510,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       .finally(() => setPublishPending(false));
   };
   if (productId && existing.isPending) return <p>상품을 불러오고 있습니다.</p>;
-  if (productId && existing.isError)
+  if (productId && existing.isError && !existing.data)
     return (
       <section>
         <p role="alert">상품을 불러오지 못했습니다.</p>
