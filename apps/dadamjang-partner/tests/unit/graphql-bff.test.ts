@@ -7,12 +7,14 @@ const response = (body: unknown, cookies: string[] = []) => {
   return new Response(JSON.stringify(body), { headers });
 };
 
-const request = () =>
+const request = (
+  cookie = "refresh_token=refresh; partner_device_id=device-1",
+) =>
   new Request("http://partner.test/api/graphql", {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      cookie: "refresh_token=refresh; partner_device_id=device-1",
+      cookie,
       origin: "http://partner.test",
     },
     body: JSON.stringify({ query: "query PartnerMe { me { role } }" }),
@@ -54,6 +56,63 @@ describe("partner GraphQL BFF refresh", () => {
     await expect(result.json()).resolves.toEqual({
       data: { me: { role: "PARTNER" } },
     });
+  });
+
+  it("ignores null error entries while detecting an unauthenticated response", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        response({
+          errors: [null, { extensions: { code: "UNAUTHENTICATED" } }],
+        }),
+      )
+      .mockResolvedValueOnce(
+        response({ data: { refresh: { role: "PARTNER" } } }),
+      )
+      .mockResolvedValueOnce(response({ data: { me: null } }));
+
+    await handleGraphQlPost(request());
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("drops malformed cookie pairs before refresh and retry", async () => {
+    const unauthenticated = {
+      errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+    };
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        response(unauthenticated, [
+          "broken",
+          "access_token=expired; Path=/; HttpOnly",
+        ]),
+      )
+      .mockResolvedValueOnce(
+        response({ data: { refresh: { role: "PARTNER" } } }, [
+          "also-broken",
+          "access_token=fresh; Path=/; HttpOnly",
+        ]),
+      )
+      .mockResolvedValueOnce(response({ data: { me: null } }));
+
+    await handleGraphQlPost(
+      request(
+        "malformed; refresh_token=refresh; =missing-name; partner_device_id=device-1",
+      ),
+    );
+
+    const refreshOptions = fetchMock.mock.calls.at(1)?.[1];
+    const retryOptions = fetchMock.mock.calls.at(2)?.[1];
+    if (!refreshOptions || !retryOptions)
+      throw new Error("Expected refresh and retry requests");
+    const forwarded = [
+      new Headers(refreshOptions.headers).get("cookie"),
+      new Headers(retryOptions.headers).get("cookie"),
+    ].join("; ");
+    expect(forwarded).toContain("refresh_token=refresh");
+    expect(forwarded).toContain("access_token=fresh");
+    expect(forwarded).not.toMatch(/malformed|missing-name|broken/);
   });
 
   it("clears auth cookies when refresh fails", async () => {

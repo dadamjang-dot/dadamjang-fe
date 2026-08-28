@@ -45,10 +45,10 @@ export const ActionButtonContent = ({
 };
 
 const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
-  if (!actions.length) return null;
+  const [action] = actions;
+  if (!action) return null;
 
   if (actions.length === 1) {
-    const action = actions[0];
     const isIconOnly = Boolean(iconOnly && action.icon && !action.label);
 
     return (

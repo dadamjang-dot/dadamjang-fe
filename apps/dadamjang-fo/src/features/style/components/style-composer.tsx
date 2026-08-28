@@ -80,7 +80,11 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
   const insertBrandMention = (product: PurchasedStyleProduct) => {
     if (!product.brandName) return;
     setBody(insertStyleBrandMention(body, product.brandName));
-    if (product.brandId) setBrandTagIds((current) => current.includes(product.brandId!) ? current : [...current, product.brandId!]);
+    const brandId = product.brandId;
+    if (brandId)
+      setBrandTagIds((current) =>
+        current.includes(brandId) ? current : [...current, brandId],
+      );
   };
 
   const pickImages = async () => {

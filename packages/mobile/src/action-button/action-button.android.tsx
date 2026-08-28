@@ -39,10 +39,11 @@ export const ActionButtonContent = ({ action }: ActionButtonContentProps) => {
 };
 
 const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
-  if (!actions || actions.length === 0) return null;
+  const [action] = actions;
+  if (!action) return null;
 
   if (actions.length === 1) {
-    const { icon, label, onPress } = actions[0];
+    const { icon, label, onPress } = action;
     const isCircle = iconOnly && !!icon && !label;
 
     if (label && !icon) {
@@ -74,7 +75,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
           }}
           modifiers={[size(40, 40)]}
         >
-          {icon ? <ActionButtonContent action={actions[0]} /> : null}
+          {icon ? <ActionButtonContent action={action} /> : null}
         </FilledTonalIconButton>
       </Host>
     );

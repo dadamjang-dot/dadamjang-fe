@@ -86,7 +86,7 @@ const StyleScreen = () => {
     }
   };
 
-  const headerActions: IconAction[] = [
+  const headerActions: [IconAction, IconAction] = [
     {
       accessibilityLabel: "스타일 작성",
       icon: { md: "add", sf: "plus" },

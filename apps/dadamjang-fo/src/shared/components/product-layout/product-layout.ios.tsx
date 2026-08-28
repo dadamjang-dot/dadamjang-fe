@@ -8,7 +8,11 @@ import Animated, {
 import { LiquidGlassView } from "@callstack/liquid-glass";
 
 import { ProductHeader, SearchContent } from "@/shared/components";
-import { ActionButtonGroup, ActionButtonContent } from "@dadamjang/mobile";
+import {
+  ActionButtonGroup,
+  ActionButtonContent,
+  type ActionButtonGroupAnimation,
+} from "@dadamjang/mobile";
 import { colors } from "@dadamjang/design-tokens";
 import type { ProductLayoutProps } from "./product-layout.types";
 import {
@@ -19,11 +23,7 @@ import {
 const actionTransitionPhaseEnd = 0.25;
 const searchTransitionDuration = 280;
 
-const ProductLayout = ({
-  headerActions,
-  variant,
-  children,
-}: ProductLayoutProps) => {
+const ProductLayout = (props: ProductLayoutProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
@@ -73,15 +73,31 @@ const ProductLayout = ({
   );
 
   const { groupAnim, cancelAnim } =
-    variant === "circularPair" ? circularPairAnim : capsuleAnim;
+    props.variant === "circularPair" ? circularPairAnim : capsuleAnim;
+
+  const renderActionButtonGroup = (
+    animations?: readonly [
+      ActionButtonGroupAnimation,
+      ActionButtonGroupAnimation?,
+    ],
+  ) =>
+    props.variant === "circularPair" ? (
+      <ActionButtonGroup
+        actions={props.headerActions}
+        animations={animations}
+        variant="circularPair"
+      />
+    ) : (
+      <ActionButtonGroup
+        actions={props.headerActions}
+        animations={animations}
+        variant="capsule"
+      />
+    );
 
   const buttonGroup = (
     <View style={s.buttonRow}>
-      <ActionButtonGroup
-        actions={headerActions}
-        variant={variant}
-        animations={groupAnim}
-      />
+      {renderActionButtonGroup(groupAnim)}
       <Animated.View style={cancelAnim}>
         <LiquidGlassView
           effect="clear"
@@ -110,7 +126,7 @@ const ProductLayout = ({
         searchValue={searchValue}
       >
         <View onLayout={handleChildrenLayout} style={s.measureOuter}>
-          <ActionButtonGroup actions={headerActions} variant={variant} />
+          {renderActionButtonGroup()}
         </View>
         <View onLayout={handleCancelLayout} style={s.measureOuter}>
           <ActionButtonContent action={{ label: "취소", onPress: () => {} }} />
@@ -118,7 +134,7 @@ const ProductLayout = ({
         {buttonGroup}
       </ProductHeader>
 
-      {isSearching ? <SearchContent keyword={searchValue} /> : children}
+      {isSearching ? <SearchContent keyword={searchValue} /> : props.children}
     </View>
   );
 };

@@ -1,12 +1,6 @@
 import { NextResponse } from "next/server";
 
-type GraphQlPayload = {
-  query?: string;
-  variables?: Record<string, unknown>;
-  operationName?: string;
-  errors?: Array<{ extensions?: { code?: string } }>;
-  data?: Record<string, unknown>;
-};
+type GraphQlPayload = Record<string, unknown>;
 
 const MAX_BODY_BYTES = 1024 * 1024;
 const PUBLIC_OPERATION =
@@ -24,17 +18,29 @@ const setCookies = (headers: Headers) => {
   return value ? [value] : [];
 };
 
+const COOKIE_NAME_PATTERN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
+
+const parseCookiePair = (value: string): [string, string] | null => {
+  const cookie = value.split(";", 1).at(0)?.trim();
+  if (!cookie) return null;
+  const separator = cookie.indexOf("=");
+  const name = cookie.slice(0, separator);
+  if (separator <= 0 || !COOKIE_NAME_PATTERN.test(name)) return null;
+  return [name, cookie];
+};
+
 const mergeCookies = (cookieHeader: string, cookies: string[]) => {
   const values = new Map<string, string>();
+  const addCookie = (value: string) => {
+    const pair = parseCookiePair(value);
+    if (pair) values.set(pair[0], pair[1]);
+  };
   cookieHeader
     .split(";")
     .map((value) => value.trim())
     .filter(Boolean)
-    .forEach((value) => values.set(value.slice(0, value.indexOf("=")), value));
-  cookies.forEach((value) => {
-    const cookie = value.split(";", 1)[0];
-    values.set(cookie.slice(0, cookie.indexOf("=")), cookie);
-  });
+    .forEach(addCookie);
+  cookies.forEach(addCookie);
   return [...values.values()].join("; ");
 };
 
@@ -50,18 +56,35 @@ const forward = (body: string, cookie: string, deviceId: string) =>
     cache: "no-store",
   });
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
 const readPayload = (body: string): GraphQlPayload | null => {
   try {
-    return JSON.parse(body) as GraphQlPayload;
+    const payload: unknown = JSON.parse(body);
+    return isRecord(payload) ? payload : null;
   } catch {
     return null;
   }
 };
 
-const isUnauthenticated = (payload: GraphQlPayload | null) =>
-  payload?.errors?.some(
-    (error) => error.extensions?.code === "UNAUTHENTICATED",
-  ) ?? false;
+const isUnauthenticated = (payload: GraphQlPayload | null) => {
+  const errors = payload?.errors;
+  return (
+    Array.isArray(errors) &&
+    errors.some(
+      (error) =>
+        isRecord(error) &&
+        isRecord(error.extensions) &&
+        error.extensions.code === "UNAUTHENTICATED",
+    )
+  );
+};
+
+const hasRefreshData = (payload: GraphQlPayload | null) => {
+  const data = payload?.data;
+  return isRecord(data) && Boolean(data.refresh);
+};
 
 const responseWithCookies = (
   body: string,
@@ -93,13 +116,13 @@ export const handleGraphQlPost = async (request: Request) => {
       { error: "Cross-origin request rejected" },
       { status: 403 },
     );
-  if (
-    request.headers
-      .get("content-type")
-      ?.split(";", 1)[0]
-      .trim()
-      .toLowerCase() !== "application/json"
-  )
+  const contentType = request.headers
+    .get("content-type")
+    ?.split(";", 1)
+    .at(0)
+    ?.trim()
+    .toLowerCase();
+  if (contentType !== "application/json")
     return NextResponse.json(
       { error: "Content-Type must be application/json" },
       { status: 415 },
@@ -117,7 +140,7 @@ export const handleGraphQlPost = async (request: Request) => {
       { status: 413 },
     );
   const input = readPayload(body);
-  if (!input?.query)
+  if (!input || typeof input.query !== "string" || !input.query)
     return NextResponse.json(
       { error: "GraphQL query is required" },
       { status: 400 },
@@ -125,8 +148,14 @@ export const handleGraphQlPost = async (request: Request) => {
 
   const cookieHeader = request.headers.get("cookie") ?? "";
   const cookieMatch = cookieHeader.match(/(?:^|;\s*)bo_device_id=([^;]+)/);
-  const createdDeviceId = cookieMatch ? undefined : crypto.randomUUID();
-  const deviceId = decodeURIComponent(cookieMatch?.[1] ?? createdDeviceId!);
+  const matchedDeviceId = cookieMatch?.[1];
+  let createdDeviceId: string | undefined;
+  let deviceId: string;
+  if (matchedDeviceId) deviceId = decodeURIComponent(matchedDeviceId);
+  else {
+    createdDeviceId = crypto.randomUUID();
+    deviceId = createdDeviceId;
+  }
   const initial = await forward(body, cookieHeader, deviceId);
   const initialBody = await initial.text();
   const initialCookies = setCookies(initial.headers);
@@ -156,7 +185,7 @@ export const handleGraphQlPost = async (request: Request) => {
   if (
     !refresh.ok ||
     isUnauthenticated(refreshPayload) ||
-    !refreshPayload?.data?.refresh
+    !hasRefreshData(refreshPayload)
   ) {
     const response = responseWithCookies(
       initialBody,

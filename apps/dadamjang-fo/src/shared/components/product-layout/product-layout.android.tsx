@@ -7,11 +7,7 @@ import { colors } from "@dadamjang/design-tokens";
 import { ActionButtonGroup } from "@dadamjang/mobile";
 import type { ProductLayoutProps } from "./product-layout.types";
 
-const ProductLayout = ({
-  headerActions,
-  variant,
-  children,
-}: ProductLayoutProps) => {
+const ProductLayout = (props: ProductLayoutProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
@@ -19,6 +15,13 @@ const ProductLayout = ({
     setIsSearching(false);
     setSearchValue("");
   }, []);
+
+  const actionButtonGroup =
+    props.variant === "circularPair" ? (
+      <ActionButtonGroup actions={props.headerActions} variant="circularPair" />
+    ) : (
+      <ActionButtonGroup actions={props.headerActions} variant="capsule" />
+    );
 
   return (
     <View style={s.container}>
@@ -29,10 +32,10 @@ const ProductLayout = ({
         searchValue={searchValue}
         onSearchValueChange={setSearchValue}
       >
-        <ActionButtonGroup actions={headerActions} variant={variant} />
+        {actionButtonGroup}
       </ProductHeader>
 
-      {isSearching ? <SearchContent keyword={searchValue} /> : children}
+      {isSearching ? <SearchContent keyword={searchValue} /> : props.children}
     </View>
   );
 };

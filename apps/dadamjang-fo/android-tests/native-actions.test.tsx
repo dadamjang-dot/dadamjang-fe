@@ -49,6 +49,9 @@ describe("Android native actions", () => {
     const buttons = await screen.findAllByRole("button");
 
     expect(buttons).toHaveLength(2);
+    const [notificationButton, cartButton] = buttons;
+    if (!notificationButton || !cartButton)
+      throw new Error("Expected notification and cart buttons");
 
     const notificationImage = screen.getByRole("img", { name: "알림" });
     const cartImage = screen.getByRole("img", { name: "장바구니" });
@@ -57,8 +60,8 @@ describe("Android native actions", () => {
     expect(cartImage).toHaveProp("source", materialIconSource);
     expect(cartImage).toHaveStyle({ height: 20, width: 20 });
 
-    await user.press(buttons[0]);
-    await user.press(buttons[1]);
+    await user.press(notificationButton);
+    await user.press(cartButton);
 
     expect(onNotificationPress).toHaveBeenCalledTimes(1);
     expect(onCartPress).toHaveBeenCalledTimes(1);
@@ -85,8 +88,9 @@ describe("Android native actions", () => {
 
     expect(buttons).toHaveLength(2);
 
-    const notificationButton = buttons[0];
-    const cartButton = buttons[1];
+    const [notificationButton, cartButton] = buttons;
+    if (!notificationButton || !cartButton)
+      throw new Error("Expected notification and cart buttons");
 
     expect(notificationButton).toHaveStyle({ borderRadius: 20 });
     expect(cartButton).toHaveStyle({ borderRadius: 20 });

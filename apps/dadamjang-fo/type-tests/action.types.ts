@@ -92,6 +92,30 @@ export type ActionButtonGroupRejectsTextActions = Reject<
   IsAssignable<{ actions: TextActionInput[] }, ActionButtonGroupProps>
 >;
 
+export type CircularPairAcceptsExactlyTwoActions = Assert<
+  IsAssignable<
+    {
+      actions: [IconActionInput, IconActionInput];
+      variant: "circularPair";
+    },
+    ActionButtonGroupProps
+  >
+>;
+
+export type CircularPairRejectsOneAction = Reject<
+  IsAssignable<
+    { actions: [IconActionInput]; variant: "circularPair" },
+    ActionButtonGroupProps
+  >
+>;
+
+export type CircularPairRejectsUnboundedActions = Reject<
+  IsAssignable<
+    { actions: IconActionInput[]; variant: "circularPair" },
+    ActionButtonGroupProps
+  >
+>;
+
 export type ProductLayoutAcceptsIconHeaderActions = Assert<
   IsAssignable<
     {
@@ -109,6 +133,17 @@ export type ProductLayoutRejectsTextHeaderActions = Reject<
       children: null;
       headerActions: TextActionInput[];
       variant: "capsule";
+    },
+    ProductLayoutProps
+  >
+>;
+
+export type CircularProductLayoutRejectsOneAction = Reject<
+  IsAssignable<
+    {
+      children: null;
+      headerActions: [IconActionInput];
+      variant: "circularPair";
     },
     ProductLayoutProps
   >

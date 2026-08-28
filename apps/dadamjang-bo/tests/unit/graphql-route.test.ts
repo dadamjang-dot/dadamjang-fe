@@ -62,7 +62,7 @@ describe("GraphQL BFF", () => {
 
   it("refreshes once, forwards refreshed cookies, and retries the original operation", async () => {
     const fetchMock = vi
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(
         graphqlResponse(
           {
@@ -99,18 +99,83 @@ describe("GraphQL BFF", () => {
     expect(await response.json()).toEqual({
       data: { adminDashboard: { pendingPartnerCount: 1 } },
     });
-    const refreshCall = fetchMock.mock.calls[1] as [string, RequestInit];
-    const retryCall = fetchMock.mock.calls[2] as [string, RequestInit];
-    expect(refreshCall[1].body).toContain("mutation Refresh");
-    expect(new Headers(retryCall[1].headers).get("cookie")).toContain(
+    const refreshOptions = fetchMock.mock.calls.at(1)?.[1];
+    const retryOptions = fetchMock.mock.calls.at(2)?.[1];
+    if (!refreshOptions || !retryOptions)
+      throw new Error("Expected refresh and retry requests");
+    expect(refreshOptions.body).toContain("mutation Refresh");
+    expect(new Headers(retryOptions.headers).get("cookie")).toContain(
       "access_token=fresh",
     );
-    expect(new Headers(retryCall[1].headers).get("x-device-id")).toBe(
+    expect(new Headers(retryOptions.headers).get("x-device-id")).toBe(
       "device-1",
     );
     expect(response.headers.get("set-cookie")).toContain(
       "refresh_token=rotated",
     );
+  });
+
+  it("ignores null error entries while detecting an unauthenticated response", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        graphqlResponse({
+          errors: [
+            null,
+            { message: "expired", extensions: { code: "UNAUTHENTICATED" } },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        graphqlResponse({ data: { refresh: { role: "ADMIN" } } }),
+      )
+      .mockResolvedValueOnce(graphqlResponse({ data: { me: null } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await handleGraphQlPost(request("query Me { me { role } }"));
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("drops malformed cookie pairs before refresh and retry", async () => {
+    const unauthenticated = {
+      errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        graphqlResponse(unauthenticated, [
+          "broken",
+          "access_token=expired; Path=/; HttpOnly",
+        ]),
+      )
+      .mockResolvedValueOnce(
+        graphqlResponse({ data: { refresh: { role: "ADMIN" } } }, [
+          "also-broken",
+          "access_token=fresh; Path=/; HttpOnly",
+        ]),
+      )
+      .mockResolvedValueOnce(graphqlResponse({ data: { me: null } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await handleGraphQlPost(
+      request("query Me { me { role } }", {
+        cookie:
+          "malformed; refresh_token=original; =missing-name; bo_device_id=device-1",
+      }),
+    );
+
+    const refreshOptions = fetchMock.mock.calls.at(1)?.[1];
+    const retryOptions = fetchMock.mock.calls.at(2)?.[1];
+    if (!refreshOptions || !retryOptions)
+      throw new Error("Expected refresh and retry requests");
+    const forwarded = [
+      new Headers(refreshOptions.headers).get("cookie"),
+      new Headers(retryOptions.headers).get("cookie"),
+    ].join("; ");
+    expect(forwarded).toContain("refresh_token=original");
+    expect(forwarded).toContain("access_token=fresh");
+    expect(forwarded).not.toMatch(/malformed|missing-name|broken/);
   });
 
   it("clears session cookies when refresh fails", async () => {

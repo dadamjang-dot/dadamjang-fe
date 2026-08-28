@@ -30,6 +30,6 @@ export interface TextAction extends ActionBase {
 export type Action = IconAction | TextAction;
 
 export interface ActionButtonProps {
-  actions: Action[];
+  actions: readonly Action[];
   iconOnly?: boolean;
 }

@@ -14,7 +14,7 @@ export const normalizeStyleHashtag = (value: string) => value.trim().replace(/^#
 
 export const getStyleMentionQuery = (body: string) => {
   const match = body.match(/@([^\s@]*)$/);
-  return match ? match[1] : null;
+  return match?.[1] ?? null;
 };
 
 export const insertStyleBrandMention = (body: string, brandName: string) => {

@@ -97,6 +97,15 @@ const session = {
     role: "PARTNER",
   },
 };
+const sku = {
+  skuId: "sku-1",
+  code: "A",
+  colorId: "black",
+  sizeId: "m",
+  optionName: "검정 M",
+  price: 1000,
+  stock: 2,
+};
 const product = (approvalStatus = "DRAFT", status = "DRAFT") => ({
   productId: "product-1",
   partnerId: "partner-1",
@@ -113,17 +122,7 @@ const product = (approvalStatus = "DRAFT", status = "DRAFT") => ({
     approvalStatus === "REJECTED" ? "이미지를 확인해 주세요" : null,
   isOnSale: true,
   isExpressDelivery: false,
-  skus: [
-    {
-      skuId: "sku-1",
-      code: "A",
-      colorId: "black",
-      sizeId: "m",
-      optionName: "검정 M",
-      price: 1000,
-      stock: 2,
-    },
-  ],
+  skus: [sku],
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
 });
@@ -618,9 +617,9 @@ test("SKU reorder is preserved in the update payload", async ({ page }) => {
   const reordered = {
     ...product(),
     skus: [
-      product().skus[0],
+      sku,
       {
-        ...product().skus[0],
+        ...sku,
         skuId: "sku-2",
         code: "B",
         optionName: "흰색 L",
@@ -649,6 +648,62 @@ test("SKU reorder is preserved in the update payload", async ({ page }) => {
       )?.skus?.map(({ code }) => code);
     })
     .toEqual(["B", "A"]);
+});
+
+test("stale SKU reorder after removal leaves the remaining row intact", async ({
+  page,
+}) => {
+  const twoSkus = {
+    ...product(),
+    skus: [sku, { ...sku, skuId: "sku-2", code: "B", optionName: "흰색 L" }],
+  };
+  await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => ({ myPartnerProduct: twoSkus }),
+    }),
+  );
+  await page.goto("/products/product-1/edit");
+  await page
+    .locator(".sku")
+    .nth(1)
+    .evaluate((row) => {
+      const buttons = Array.from(row.querySelectorAll("button"));
+      const up = buttons.find(
+        (button) => button.textContent?.trim() === "위로",
+      );
+      const remove = buttons.find(
+        (button) => button.textContent?.trim() === "행 삭제",
+      );
+      if (!up || !remove) throw new Error("Expected SKU row controls");
+      remove.click();
+      up.click();
+    });
+
+  await expect(page.locator(".sku")).toHaveCount(1);
+  await expect(page.getByLabel("SKU 1 코드")).toHaveValue("A");
+});
+
+test("repeated image removal does not read a stale index", async ({ page }) => {
+  await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => ({ myPartnerProduct: product() }),
+    }),
+  );
+  await page.goto("/products/product-1/edit");
+  await page
+    .getByRole("button", { name: "삭제", exact: true })
+    .evaluate((button) => {
+      if (!(button instanceof HTMLButtonElement))
+        throw new Error("Expected an image removal button");
+      button.click();
+      button.click();
+    });
+
+  await expect(page.getByAltText("상품 이미지 1")).toHaveCount(0);
 });
 
 test("unsaved edits block internal navigation until confirmed", async ({

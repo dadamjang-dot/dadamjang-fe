@@ -41,13 +41,21 @@ const emptySku = (): Sku => ({
   price: 0,
   stock: 0,
 });
+const moveItem = <T,>(items: T[], from: number, to: number) => {
+  const item = items[from];
+  if (item === undefined || to < 0 || to >= items.length) return items;
+  const next = [...items];
+  next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+};
 export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const qc = useQueryClient();
   const existing = useQuery({
     queryKey: ["product", productId],
-    queryFn: () => getProduct(productId!),
+    queryFn: productId ? () => getProduct(productId) : undefined,
     enabled: !!productId,
   });
   const options = useQuery({
@@ -247,18 +255,25 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const remove = (i: number) =>
     setImages((v) => {
       const item = v[i];
+      if (!item) return v;
       uploadControllers.current.get(item.key)?.abort();
       if (item.local) URL.revokeObjectURL(item.preview);
       setDirty(true);
       return v.filter((_, n) => n !== i);
     });
-  const move = (i: number, d: number) =>
+  const move = (i: number, d: -1 | 1) =>
     setImages((v) => {
-      const n = [...v];
-      const [x] = n.splice(i, 1);
-      n.splice(i + d, 0, x);
+      const n = moveItem(v, i, i + d);
+      if (n === v) return v;
       setDirty(true);
       return n;
+    });
+  const moveSku = (i: number, d: -1 | 1) =>
+    setSkus((value) => {
+      const next = moveItem(value, i, i + d);
+      if (next === value) return value;
+      setDirty(true);
+      return next;
     });
   const mutation = useMutation({
     mutationFn: async ({ submit }: { submit: boolean }) => {
@@ -334,12 +349,23 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   });
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const submitter =
+      e.nativeEvent instanceof SubmitEvent ? e.nativeEvent.submitter : null;
     mutation.mutate({
-      submit:
-        (e.nativeEvent as SubmitEvent).submitter?.getAttribute(
-          "data-action",
-        ) === "submit",
+      submit: submitter?.getAttribute("data-action") === "submit",
     });
+  };
+  const handlePublish = () => {
+    if (!productId) return;
+    setPublishPending(true);
+    setError("");
+    publishProduct(productId)
+      .then(() => {
+        setConfirm(false);
+        return existing.refetch();
+      })
+      .catch((publishError: Error) => setError(publishError.message))
+      .finally(() => setPublishPending(false));
   };
   if (productId && existing.isPending) return <p>상품을 불러오고 있습니다.</p>;
   const p = existing.data?.myPartnerProduct;
@@ -560,14 +586,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   aria-label={`SKU ${i + 1} 위로 이동`}
                   type="button"
                   disabled={i === 0}
-                  onClick={() =>
-                    setSkus((value) => {
-                      const next = [...value];
-                      [next[i - 1], next[i]] = [next[i], next[i - 1]];
-                      setDirty(true);
-                      return next;
-                    })
-                  }
+                  onClick={() => moveSku(i, -1)}
                 >
                   위로
                 </ActionButton>
@@ -575,14 +594,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   aria-label={`SKU ${i + 1} 아래로 이동`}
                   type="button"
                   disabled={i === skus.length - 1}
-                  onClick={() =>
-                    setSkus((value) => {
-                      const next = [...value];
-                      [next[i], next[i + 1]] = [next[i + 1], next[i]];
-                      setDirty(true);
-                      return next;
-                    })
-                  }
+                  onClick={() => moveSku(i, 1)}
                 >
                   아래로
                 </ActionButton>
@@ -655,7 +667,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
               </ActionButton>
             </div>
           )}
-          {effectiveState === "APPROVED" && (
+          {effectiveState === "APPROVED" && productId && (
             <ActionButton type="button" onClick={() => setConfirm(true)}>
               판매 게시
             </ActionButton>
@@ -679,22 +691,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
             >
               취소
             </ActionButton>
-            <ActionButton
-              loading={publishPending}
-              onClick={() => {
-                setPublishPending(true);
-                setError("");
-                publishProduct(productId!)
-                  .then(() => {
-                    setConfirm(false);
-                    return existing.refetch();
-                  })
-                  .catch((publishError: Error) =>
-                    setError(publishError.message),
-                  )
-                  .finally(() => setPublishPending(false));
-              }}
-            >
+            <ActionButton loading={publishPending} onClick={handlePublish}>
               게시
             </ActionButton>
           </div>
