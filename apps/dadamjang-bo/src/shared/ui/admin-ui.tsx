@@ -384,38 +384,22 @@ export const ApiCallout = ({ message }: { message: string }) => (
 export const AdminTextField = ({
   label,
   error,
-  textarea = false,
   ...props
 }: React.InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   error?: string;
-  textarea?: boolean;
 }) => {
   const id = props.id ?? props.name;
   return (
     <label className={styles.filterControlWide} htmlFor={id}>
       <span className={styles.controlLabel}>{label}</span>
       <TextField.Root>
-        {textarea ? (
-          <TextField.Textarea
-            id={id}
-            name={props.name}
-            value={String(props.value ?? "")}
-            onChange={
-              props.onChange as unknown as React.ChangeEventHandler<HTMLTextAreaElement>
-            }
-            required={props.required}
-            aria-label={label}
-            aria-invalid={!!error}
-          />
-        ) : (
-          <TextField.Input
-            {...props}
-            id={id}
-            aria-label={label}
-            aria-invalid={!!error}
-          />
-        )}
+        <TextField.Input
+          {...props}
+          id={id}
+          aria-label={label}
+          aria-invalid={!!error}
+        />
       </TextField.Root>
       {error ? <span role="alert">{error}</span> : null}
     </label>
