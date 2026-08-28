@@ -1,22 +1,36 @@
+import { LegendList } from "@legendapp/list/react-native";
 import { useRouter } from "expo-router";
-import { ActivityIndicator, ScrollView, View } from "react-native";
+import { useMemo } from "react";
+import { ActivityIndicator, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 
-import {
-  useLikedStylePosts,
-  useToggleStylePostLike,
-} from "@/features/style";
+import { useLikedStylePosts, useToggleStylePostLike } from "@/features/style";
 import { StylePostCard } from "@/features/style/components";
 import { Button } from "@/shared/components";
+import { uniqueBy } from "@/shared/lib";
 import WishState from "./wish-state";
 
 const WishStylesTab = () => {
   const router = useRouter();
   const likedPosts = useLikedStylePosts();
   const likeMutation = useToggleStylePostLike();
-  const posts = likedPosts.data?.pages.flatMap((page) => page.nodes) ?? [];
+  const posts = useMemo(
+    () =>
+      uniqueBy(
+        likedPosts.data?.pages.flatMap((page) => page.nodes) ?? [],
+        (post) => post.stylePostId,
+      ),
+    [likedPosts.data?.pages],
+  );
+  const rows = useMemo(
+    () =>
+      Array.from({ length: Math.ceil(posts.length / 2) }, (_, index) =>
+        posts.slice(index * 2, index * 2 + 2),
+      ),
+    [posts],
+  );
 
   if (likedPosts.isLoading) {
     return <WishState isLoading title="위시한 스타일을 불러오는 중이에요." />;
@@ -42,49 +56,64 @@ const WishStylesTab = () => {
   }
 
   return (
-    <ScrollView
+    <LegendList
+      accessibilityLabel="위시한 스타일 목록"
       contentContainerStyle={s.content}
       contentInsetAdjustmentBehavior="automatic"
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={s.grid}>
-        {posts.map((post) => (
-          <View key={post.stylePostId} style={s.card}>
-            <StylePostCard
-              author={post.author.userid}
-              content={post.content}
-              hashtags={post.hashtags}
-              imageUrl={post.thumbnailUrl}
-              isLiked={post.isLiked}
-              likeCount={post.likeCount}
-              onPress={(stylePostId) => router.push(`/style/${stylePostId}`)}
-              onToggleLike={(stylePostId, nextLiked) =>
-                likeMutation.mutate({ stylePostId, nextLiked })
-              }
-              stylePostId={post.stylePostId}
-            />
+      data={rows}
+      keyExtractor={(row) => row.map((post) => post.stylePostId).join("-")}
+      ListFooterComponent={
+        likedPosts.hasNextPage || likedPosts.isFetchingNextPage ? (
+          <View style={s.footer}>
+            {likedPosts.hasNextPage ? (
+              <Button
+                label="더 보기"
+                onPress={() => likedPosts.fetchNextPage()}
+                style={s.moreButton}
+                variant="secondary"
+              />
+            ) : null}
+            {likedPosts.isFetchingNextPage ? (
+              <ActivityIndicator color={colors.ink} style={s.loading} />
+            ) : null}
           </View>
-        ))}
-      </View>
-      {likedPosts.hasNextPage ? (
-        <Button
-          label="더 보기"
-          onPress={() => likedPosts.fetchNextPage()}
-          style={s.moreButton}
-          variant="secondary"
-        />
-      ) : null}
-      {likedPosts.isFetchingNextPage ? (
-        <ActivityIndicator color={colors.ink} style={s.loading} />
-      ) : null}
-    </ScrollView>
+        ) : null
+      }
+      recycleItems
+      renderItem={({ item: row, index: rowIndex }) => (
+        <View style={[s.row, rowIndex < rows.length - 1 && s.rowGap]}>
+          {row.map((post) => (
+            <View key={post.stylePostId} style={s.card}>
+              <StylePostCard
+                author={post.author.userid}
+                content={post.content}
+                hashtags={post.hashtags}
+                imageUrl={post.thumbnailUrl}
+                isLiked={post.isLiked}
+                likeCount={post.likeCount}
+                onPress={(stylePostId) => router.push(`/style/${stylePostId}`)}
+                onToggleLike={(stylePostId, nextLiked) =>
+                  likeMutation.mutate({ stylePostId, nextLiked })
+                }
+                stylePostId={post.stylePostId}
+              />
+            </View>
+          ))}
+        </View>
+      )}
+      showsVerticalScrollIndicator={false}
+      style={s.list}
+    />
   );
 };
 
 const s = StyleSheet.create({
-  content: { gap: 20, padding: 16, paddingBottom: 32 },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
+  list: { flex: 1 },
+  content: { padding: 16, paddingBottom: 32 },
+  row: { flexDirection: "row", gap: 16 },
+  rowGap: { marginBottom: 16 },
   card: { width: "47.5%", minWidth: 0 },
+  footer: { gap: 20, paddingTop: 20 },
   moreButton: { minHeight: 44, borderRadius: 22 },
   loading: { paddingVertical: 8 },
 });

@@ -18,6 +18,7 @@ import {
 } from "@/features/shop";
 import { useWishActions, useWishlist } from "@/features/wish";
 import { ProductLayout } from "@/shared/components";
+import { uniqueBy } from "@/shared/lib";
 import type { IconAction } from "@dadamjang/mobile";
 
 const ShopScreen = () => {
@@ -32,7 +33,14 @@ const ShopScreen = () => {
   );
   const productFilter = useMemo(() => toProductFilter(filters), [filters]);
   const productsQuery = useProductPriceSummaries(productFilter);
-  const products = productsQuery.data?.pages.flatMap((page) => page.nodes) ?? [];
+  const products = useMemo(
+    () =>
+      uniqueBy(
+        productsQuery.data?.pages.flatMap((page) => page.nodes) ?? [],
+        (product) => product.productId,
+      ),
+    [productsQuery.data?.pages],
+  );
   const totalCount = productsQuery.data?.pages[0]?.totalCount ?? 0;
 
   useEffect(() => {

@@ -1,5 +1,9 @@
 import { cleanup } from "@testing-library/react-native";
 
+jest.mock("@legendapp/list/react-native", () => ({
+  LegendList: jest.requireActual("react-native").FlatList,
+}));
+
 class TestNetworkError extends Error {
   constructor() {
     super("Unexpected GraphQL network request in test");

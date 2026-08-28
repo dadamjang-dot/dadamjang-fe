@@ -1,4 +1,5 @@
-import { ScrollView, Text, View } from "react-native";
+import { LegendList } from "@legendapp/list/react-native";
+import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors, spacing } from "@dadamjang/design-tokens";
@@ -35,13 +36,15 @@ const WishBrandsTab = () => {
   }
 
   return (
-    <ScrollView
+    <LegendList
+      accessibilityLabel="팔로우 브랜드 목록"
       contentContainerStyle={s.content}
       contentInsetAdjustmentBehavior="automatic"
-      showsVerticalScrollIndicator={false}
-    >
-      {followedBrands.data.map((brand) => (
-        <View key={brand.brandId} style={s.item}>
+      data={followedBrands.data}
+      keyExtractor={(brand) => brand.brandId}
+      recycleItems
+      renderItem={({ item: brand }) => (
+        <View style={s.item}>
           <View style={s.copy}>
             <Text style={s.name}>{brand.name}</Text>
             <Text style={s.slug}>{brand.slug}</Text>
@@ -54,12 +57,15 @@ const WishBrandsTab = () => {
             variant="secondary"
           />
         </View>
-      ))}
-    </ScrollView>
+      )}
+      showsVerticalScrollIndicator={false}
+      style={s.list}
+    />
   );
 };
 
 const s = StyleSheet.create({
+  list: { flex: 1 },
   content: { gap: spacing.sm, padding: 16, paddingBottom: 32 },
   item: {
     minHeight: 72,
@@ -75,7 +81,11 @@ const s = StyleSheet.create({
   copy: { flex: 1, gap: spacing.xs },
   name: { color: colors.ink, fontSize: 15, fontWeight: "700" },
   slug: { color: colors.muted, fontSize: 12 },
-  unfollowButton: { minHeight: 36, paddingHorizontal: spacing.md, borderRadius: 18 },
+  unfollowButton: {
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
+    borderRadius: 18,
+  },
 });
 
 export default WishBrandsTab;

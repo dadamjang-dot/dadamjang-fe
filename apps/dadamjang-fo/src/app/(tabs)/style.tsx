@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { IconAction } from "@dadamjang/mobile";
 
@@ -10,20 +10,34 @@ import {
   StyleSortBar,
   type StyleCategoryKey,
 } from "@/features/style/components";
-import { getStyleFeedFilter, useStylePosts, useToggleStylePostLike } from "@/features/style";
+import {
+  getStyleFeedFilter,
+  useStylePosts,
+  useToggleStylePostLike,
+} from "@/features/style";
 import type { StylePostSort } from "@/features/style";
 import { ProductLayout } from "@/shared/components";
+import { uniqueBy } from "@/shared/lib";
 
 const StyleScreen = () => {
   const router = useRouter();
   const currentUser = useCurrentUser();
-  const [selectedCategory, setSelectedCategory] = useState<StyleCategoryKey>("ALL");
-  const [selectedSort, setSelectedSort] = useState<StylePostSort>("RECOMMENDED");
+  const [selectedCategory, setSelectedCategory] =
+    useState<StyleCategoryKey>("ALL");
+  const [selectedSort, setSelectedSort] =
+    useState<StylePostSort>("RECOMMENDED");
   const isRanking = selectedCategory === "RANKING";
   const feedFilter = getStyleFeedFilter(selectedCategory, selectedSort);
   const postsQuery = useStylePosts(feedFilter.category, feedFilter.sort);
   const likeMutation = useToggleStylePostLike();
-  const posts = postsQuery.data?.pages.flatMap((page) => page.nodes) ?? [];
+  const posts = useMemo(
+    () =>
+      uniqueBy(
+        postsQuery.data?.pages.flatMap((page) => page.nodes) ?? [],
+        (post) => post.stylePostId,
+      ),
+    [postsQuery.data?.pages],
+  );
 
   const requireSignIn = (returnTo: string) => {
     if (!currentUser.data) {
@@ -53,7 +67,12 @@ const StyleScreen = () => {
   return (
     <ProductLayout headerActions={headerActions} variant="circularPair">
       <StylePostGrid
-        categoryBar={<StyleCategoryBar onSelect={setSelectedCategory} selectedCategory={selectedCategory} />}
+        categoryBar={
+          <StyleCategoryBar
+            onSelect={setSelectedCategory}
+            selectedCategory={selectedCategory}
+          />
+        }
         hasNextPage={Boolean(postsQuery.hasNextPage)}
         isError={postsQuery.isError}
         isFetchingNextPage={postsQuery.isFetchingNextPage}
@@ -62,11 +81,16 @@ const StyleScreen = () => {
         onPostPress={(stylePostId) => router.push(`/style/${stylePostId}`)}
         onRetry={() => postsQuery.refetch()}
         onToggleLike={(stylePostId, nextLiked) => {
-          if (requireSignIn(`/style/${stylePostId}`)) likeMutation.mutate({ stylePostId, nextLiked });
+          if (requireSignIn(`/style/${stylePostId}`))
+            likeMutation.mutate({ stylePostId, nextLiked });
         }}
         posts={posts}
         showRank={isRanking}
-        sortBar={isRanking ? undefined : <StyleSortBar onSelect={setSelectedSort} sort={selectedSort} />}
+        sortBar={
+          isRanking ? undefined : (
+            <StyleSortBar onSelect={setSelectedSort} sort={selectedSort} />
+          )
+        }
       />
     </ProductLayout>
   );

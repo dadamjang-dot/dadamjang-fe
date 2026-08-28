@@ -25,9 +25,9 @@ type ShopProductGridProps = {
 };
 
 type ShopProductGridRow =
-  | { type: "category" }
-  | { type: "filter" }
-  | { type: "sort" }
+  | { type: "category"; content: ReactElement }
+  | { type: "filter"; content: ReactElement }
+  | { type: "sort"; content: ReactElement }
   | { type: "state" }
   | { type: "products"; products: ProductPriceSummary[] };
 
@@ -45,11 +45,7 @@ const GridState = ({
         : "필터를 바꾸면 다른 상품을 확인할 수 있어요."}
     </Text>
     {isError ? (
-      <Button
-        label="다시 시도"
-        onPress={onRetry}
-        style={s.retryButton}
-      />
+      <Button label="다시 시도" onPress={onRetry} style={s.retryButton} />
     ) : null}
   </View>
 );
@@ -78,9 +74,9 @@ const ShopProductGrid = ({
 }: ShopProductGridProps) => {
   const rows = useMemo<ShopProductGridRow[]>(() => {
     const controls: ShopProductGridRow[] = [
-      { type: "category" },
-      { type: "filter" },
-      { type: "sort" },
+      { type: "category", content: categoryBar },
+      { type: "filter", content: filterBar },
+      { type: "sort", content: sortBar },
     ];
 
     if (isLoading || isError || products.length === 0) {
@@ -97,7 +93,7 @@ const ShopProductGrid = ({
         }),
       ),
     ];
-  }, [isError, isLoading, products]);
+  }, [categoryBar, filterBar, isError, isLoading, products, sortBar]);
 
   return (
     <LegendList
@@ -105,7 +101,7 @@ const ShopProductGrid = ({
       contentContainerStyle={s.listContent}
       contentInsetAdjustmentBehavior="automatic"
       data={rows}
-      extraData={[categoryBar, filterBar, likedProductIds, sortBar]}
+      extraData={likedProductIds}
       getItemType={(item) => item.type}
       keyExtractor={(item, index) =>
         item.type === "products"
@@ -117,11 +113,11 @@ const ShopProductGrid = ({
       renderItem={({ item }) => {
         switch (item.type) {
           case "category":
-            return categoryBar;
+            return item.content;
           case "filter":
-            return filterBar;
+            return item.content;
           case "sort":
-            return sortBar;
+            return item.content;
           case "state":
             return isLoading ? (
               <LoadingState />
