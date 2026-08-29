@@ -275,4 +275,39 @@ describe("style composer upload flow", () => {
       expect(mockCreateStylePost).toHaveBeenCalledTimes(1);
     });
   });
+
+  it.each([
+    [{ fileName: "camera.heic", mimeType: "image/jpeg" }],
+    [{ fileName: "camera.jpg", mimeType: "image/heif" }],
+  ])("rejects HEIC and HEIF immediately after selection", async (metadata) => {
+    mockLaunchImageLibrary.mockResolvedValue({
+      assets: [
+        {
+          ...imageAsset(1),
+          ...metadata,
+          assetId: null,
+          base64: null,
+          duration: null,
+          exif: null,
+          height: 100,
+          pairedVideoAsset: null,
+          type: "image",
+          width: 100,
+        },
+      ],
+      canceled: false,
+    });
+    const user = userEvent.setup();
+    render(<StyleComposer onClose={mockClose} />);
+
+    await user.press(screen.getByRole("button", { name: "사진 추가" }));
+
+    expect(
+      await screen.findByText(
+        "HEIC/HEIF 사진은 지원하지 않아요. JPEG, PNG 또는 WebP 사진을 선택해 주세요.",
+      ),
+    ).toBeOnTheScreen();
+    expect(screen.queryByLabelText("사진 삭제")).not.toBeOnTheScreen();
+    expect(mockUploadStylePostImage).not.toHaveBeenCalled();
+  });
 });

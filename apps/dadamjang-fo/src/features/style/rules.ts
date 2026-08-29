@@ -1,4 +1,23 @@
-import type { StylePostCategory, StylePostSort } from "./types";
+import type {
+  StylePostCategory,
+  StylePostImageAsset,
+  StylePostSort,
+} from "./types";
+
+export const unsupportedHeicStyleImageMessage =
+  "HEIC/HEIF 사진은 지원하지 않아요. JPEG, PNG 또는 WebP 사진을 선택해 주세요.";
+
+const heicStyleImageMimeTypes = new Set(["image/heic", "image/heif"]);
+const heicStyleImageExtensions = new Set(["heic", "heif"]);
+
+export const isHeicStyleImageAsset = (asset: StylePostImageAsset) => {
+  const mimeType = asset.mimeType?.trim().toLowerCase();
+  const extension = asset.fileName?.split(".").pop()?.trim().toLowerCase();
+  return (
+    (mimeType !== undefined && heicStyleImageMimeTypes.has(mimeType)) ||
+    (extension !== undefined && heicStyleImageExtensions.has(extension))
+  );
+};
 
 export type StyleCategoryKey = "ALL" | "RANKING" | StylePostCategory;
 

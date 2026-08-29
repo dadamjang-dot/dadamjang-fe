@@ -417,6 +417,29 @@ describe("GraphQL BFF", () => {
     expect(response.headers.getSetCookie()).toEqual([]);
   });
 
+  it("treats a shared-backend refresh race as transient without clearing cookies", async () => {
+    const unauthenticated = {
+      errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(graphqlResponse(unauthenticated))
+      .mockResolvedValueOnce(
+        graphqlResponse({ errors: [{ extensions: { code: "CONFLICT" } }] }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handleGraphQlPost(
+      request("query Me { me { role } }", {
+        cookie: `refresh_token=original; bo_device_id=${DEVICE_ID}`,
+      }),
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(response.status).toBe(503);
+    expect(response.headers.getSetCookie()).toEqual([]);
+  });
+
   it("preserves cookies when refresh transport fails", async () => {
     const unauthenticated = {
       errors: [{ extensions: { code: "UNAUTHENTICATED" } }],

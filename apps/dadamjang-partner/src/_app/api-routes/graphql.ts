@@ -42,7 +42,6 @@ const PUBLIC_FIELDS = new Set(["signin", "refresh"]);
 const PUBLIC_ROOT_FIELD = 1;
 const PROTECTED_ROOT_FIELD = 2;
 const MAX_FRAGMENT_DEPTH = 64;
-// ponytail: Process-local singleflight cannot coordinate refreshes across app replicas.
 const refreshGroups = new Map<string, RefreshGroup>();
 
 const upstreamUrl = () => {
@@ -181,7 +180,7 @@ const forward = async (
   }
 };
 
-const isUnauthenticated = (payload: GraphQlPayload | null) => {
+const hasErrorCode = (payload: GraphQlPayload | null, code: string) => {
   const errors = payload?.errors;
   return (
     Array.isArray(errors) &&
@@ -189,10 +188,13 @@ const isUnauthenticated = (payload: GraphQlPayload | null) => {
       (error) =>
         isRecord(error) &&
         isRecord(error.extensions) &&
-        error.extensions.code === "UNAUTHENTICATED",
+        error.extensions.code === code,
     )
   );
 };
+
+const isUnauthenticated = (payload: GraphQlPayload | null) =>
+  hasErrorCode(payload, "UNAUTHENTICATED");
 
 const hasRefreshData = (payload: GraphQlPayload | null) => {
   const data = payload?.data;
@@ -256,6 +258,7 @@ const performRefresh = async (
       isUnauthenticated(payload)
     )
       return { kind: "authoritative" };
+    if (hasErrorCode(payload, "CONFLICT")) return transientRefresh();
     if (!response.ok || !hasRefreshData(payload))
       return {
         kind: "transient",

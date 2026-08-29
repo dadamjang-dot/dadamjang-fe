@@ -9,6 +9,7 @@ import type {
   StylePostImageAsset,
   StylePost,
 } from "./types";
+import { isHeicStyleImageAsset } from "./rules";
 
 const stylePostFields = `
   stylePostId authorId title content category imageUrls thumbnailUrl hashtags isPartner likeCount isLiked createdAt updatedAt
@@ -106,8 +107,6 @@ const maxStylePostImageSize = 10 * 1024 * 1024;
 const oversizedStylePostImageMessage = "이미지는 10 MiB 이하로 선택해 주세요.";
 const unsupportedStylePostImageMessage = "지원하지 않는 이미지 형식이에요.";
 const stylePostImageExtensions = {
-  "image/heic": "heic",
-  "image/heif": "heif",
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
@@ -118,8 +117,6 @@ const stylePostImageContentTypes = new Set<StylePostImageContentType>(
 );
 const stylePostImageTypeByExtension: Record<string, StylePostImageContentType> =
   {
-    heic: "image/heic",
-    heif: "image/heif",
     jpeg: "image/jpeg",
     jpg: "image/jpeg",
     png: "image/png",
@@ -130,7 +127,9 @@ const imageContentType = (
   asset: StylePostImageAsset,
   file: File,
 ): StylePostImageContentType => {
-  const declaredType = (asset.mimeType || file.type).trim().toLowerCase();
+  if (isHeicStyleImageAsset(asset))
+    throw new Error(unsupportedStylePostImageMessage);
+  const declaredType = (asset.mimeType || file.type || "").trim().toLowerCase();
   const normalizedType =
     declaredType === "image/jpg" ? "image/jpeg" : declaredType;
   if (normalizedType) {
@@ -154,9 +153,11 @@ const imageFilename = (
   asset: StylePostImageAsset,
   index: number,
   contentType: StylePostImageContentType,
-) =>
-  asset.fileName ??
-  `style-post-${index}.${stylePostImageExtensions[contentType]}`;
+) => {
+  const sourceName = asset.fileName?.split(/[\\/]/).pop()?.trim();
+  const stem = sourceName?.replace(/\.[^.]*$/, "").trim();
+  return `${stem || `style-post-${index}`}.${stylePostImageExtensions[contentType]}`;
+};
 
 export const uploadStylePostImage = async (
   asset: StylePostImageAsset,

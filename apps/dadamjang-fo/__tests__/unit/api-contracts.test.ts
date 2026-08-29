@@ -348,4 +348,72 @@ describe("feature API contracts", () => {
     expect(mockFileUpload).not.toHaveBeenCalled();
     expect(mockRequests).toHaveLength(0);
   });
+
+  it.each([
+    ["image/heic", "style.jpg"],
+    ["image/heif", "style.jpg"],
+    ["image/jpeg", "style.heic"],
+    ["image/png", "style.heif"],
+  ])(
+    "rejects unsupported HEIC/HEIF metadata before presigning (%s, %s)",
+    async (mimeType, fileName) => {
+      mockFileSizes.set("file:///style-image", 1024);
+
+      await expect(
+        uploadStylePostImage(
+          {
+            uri: "file:///style-image",
+            fileName,
+            fileSize: 1024,
+            mimeType,
+          },
+          0,
+        ),
+      ).rejects.toThrow("지원하지 않는 이미지 형식");
+
+      expect(mockFileUpload).not.toHaveBeenCalled();
+      expect(mockRequests).toHaveLength(0);
+    },
+  );
+
+  it.each([
+    ["image/jpeg", "camera-output.jpeg", "camera-output.jpg"],
+    ["image/png", "camera-output.bin", "camera-output.png"],
+    ["image/webp", null, "style-post-2.webp"],
+  ])(
+    "aligns a %s upload filename, request MIME, and streamed MIME",
+    async (mimeType, fileName, expectedFilename) => {
+      const uri = `file:///style-${mimeType}`;
+      mockFileSizes.set(uri, 2048);
+      mockResponses.push({
+        createStylePostImageUpload: {
+          imageUrl: "https://cdn.example.com/style",
+          key: "style-posts/user-1/style",
+          uploadUrl: "https://upload.example.com/style",
+        },
+      });
+
+      await uploadStylePostImage(
+        { uri, fileName, fileSize: 2048, mimeType },
+        2,
+      );
+
+      expect(mockRequests[0]?.variables).toEqual({
+        input: {
+          contentType: mimeType,
+          fileSize: 2048,
+          filename: expectedFilename,
+        },
+      });
+      expect(mockFileUpload).toHaveBeenCalledWith(
+        uri,
+        "https://upload.example.com/style",
+        {
+          headers: { "Content-Type": mimeType },
+          httpMethod: "PUT",
+          mimeType,
+        },
+      );
+    },
+  );
 });

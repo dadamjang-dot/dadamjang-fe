@@ -33,7 +33,6 @@ type UpstreamResult = UpstreamFailure | UpstreamSuccess;
 
 const MAX_BODY_BYTES = 1024 * 1024;
 const UPSTREAM_TIMEOUT_MS = 10_000;
-// ponytail: Process-local singleflight cannot coordinate refreshes across app replicas.
 const refreshGroups = new Map<string, RefreshGroup>();
 
 const upstreamUrl = () => {
@@ -172,7 +171,7 @@ const forward = async (
   }
 };
 
-const isUnauthenticated = (payload: GraphQlPayload | null) => {
+const hasErrorCode = (payload: GraphQlPayload | null, code: string) => {
   const errors = payload?.errors;
   return (
     Array.isArray(errors) &&
@@ -180,10 +179,13 @@ const isUnauthenticated = (payload: GraphQlPayload | null) => {
       (error) =>
         isRecord(error) &&
         isRecord(error.extensions) &&
-        error.extensions.code === "UNAUTHENTICATED",
+        error.extensions.code === code,
     )
   );
 };
+
+const isUnauthenticated = (payload: GraphQlPayload | null) =>
+  hasErrorCode(payload, "UNAUTHENTICATED");
 
 const hasRefreshData = (payload: GraphQlPayload | null) => {
   const data = payload?.data;
@@ -247,6 +249,7 @@ const performRefresh = async (
       isUnauthenticated(payload)
     )
       return { kind: "authoritative" };
+    if (hasErrorCode(payload, "CONFLICT")) return transientRefresh();
     if (!response.ok || !hasRefreshData(payload))
       return {
         kind: "transient",

@@ -292,6 +292,24 @@ describe("partner GraphQL BFF refresh", () => {
     expect(result.headers.getSetCookie()).toEqual([]);
   });
 
+  it("treats a shared-backend refresh race as transient without clearing cookies", async () => {
+    const unauthenticated = {
+      errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+    };
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(response(unauthenticated))
+      .mockResolvedValueOnce(
+        response({ errors: [{ extensions: { code: "CONFLICT" } }] }),
+      );
+
+    const result = await handleGraphQlPost(request());
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.status).toBe(503);
+    expect(result.headers.getSetCookie()).toEqual([]);
+  });
+
   it("preserves cookies when refresh transport fails", async () => {
     const unauthenticated = {
       errors: [{ extensions: { code: "UNAUTHENTICATED" } }],

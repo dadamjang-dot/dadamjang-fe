@@ -12,7 +12,9 @@ import { uploadStylePostImage } from "../api";
 import {
   getStyleMentionQuery,
   insertStyleBrandMention,
+  isHeicStyleImageAsset,
   normalizeStyleHashtag,
+  unsupportedHeicStyleImageMessage,
   validateStylePostDraft,
 } from "../rules";
 import type {
@@ -127,17 +129,17 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
         quality: 0.85,
       });
       if (!result.canceled) {
-        setImages((current) =>
-          [
-            ...current,
-            ...result.assets.map((asset) => ({
-              uri: asset.uri,
-              fileName: asset.fileName,
-              fileSize: asset.fileSize,
-              mimeType: asset.mimeType,
-            })),
-          ].slice(0, 5),
-        );
+        const selectedImages = result.assets.map((asset) => ({
+          uri: asset.uri,
+          fileName: asset.fileName,
+          fileSize: asset.fileSize,
+          mimeType: asset.mimeType,
+        }));
+        if (selectedImages.some(isHeicStyleImageAsset)) {
+          setMessage(unsupportedHeicStyleImageMessage);
+          return;
+        }
+        setImages((current) => [...current, ...selectedImages].slice(0, 5));
         setMessage(undefined);
       }
     } catch (error) {
