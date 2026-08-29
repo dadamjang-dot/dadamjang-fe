@@ -324,7 +324,22 @@ export const DetailPanel = ({
             닫기
           </SidePanel.CloseButton>
         </SidePanel.Header>
-        <SidePanel.Body className={styles.panelBody}>{children}</SidePanel.Body>
+        <SidePanel.Body
+          className={styles.panelBody}
+          onPointerDown={(event) => {
+            const target = event.target;
+            if (
+              target instanceof Element &&
+              target.closest(
+                "a, button, input, select, textarea, [role='button']",
+              )
+            ) {
+              event.stopPropagation();
+            }
+          }}
+        >
+          {children}
+        </SidePanel.Body>
       </SidePanel.Content>
     </SidePanel.Positioner>
   </SidePanel.Root>
