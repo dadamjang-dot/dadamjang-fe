@@ -19,6 +19,9 @@ jest.mock("expo-router", () => ({
 jest.mock("@/features/auth", () => ({ useAuthActionGate: jest.fn() }));
 jest.mock("@/features/cart", () => ({ useCartActions: jest.fn() }));
 jest.mock("@/features/catalog", () => ({ useProduct: jest.fn() }));
+jest.mock("@/features/price-evidence", () => ({
+  ProductPriceEvidenceSection: () => null,
+}));
 jest.mock("@/features/wish", () => ({
   useBrandFollowActions: jest.fn(),
   useFollowedBrands: jest.fn(),

@@ -5,10 +5,10 @@
 ## 앱 구성
 
 - `apps/dadamjang-fo`: 구매자 FO Expo 네이티브 앱
-- `apps/dadamjang-partner`: 파트너 웹 앱 예정
-- `apps/dadamjang-bo`: 백오피스 웹 앱 예정
+- `apps/dadamjang-partner`: 구현된 파트너 웹 앱
+- `apps/dadamjang-bo`: 구현된 백오피스 웹 앱
 
-현재 구현된 앱은 `apps/dadamjang-fo`입니다.
+세 앱 모두 구현되어 있으며, FO는 Expo SDK 57 기반 네이티브 앱입니다.
 
 ## 패키지 구성
 
@@ -18,7 +18,7 @@
 
 ## FO 앱
 
-- Expo SDK 55 + Expo Router
+- Expo SDK 57 + Expo Router
 - iOS UI: `@expo/ui/swift-ui`
 - Android UI: `@expo/ui/jetpack-compose`
 - 상품 피드/검색/위시리스트: `@legendapp/list`
@@ -28,10 +28,10 @@
 
 ## 가격 근거 표시 계약
 
-- 상품 목록/검색/비교 첫 query는 `productPriceSummaries` 또는 `comparisonPriceSummaries`만 사용합니다.
-- 첫 query payload에는 `productId`, `name`, `thumbnail`, `basePrice`, `finalPrice`, `priceRevision`, `lowestPriceEvidenceSummary`만 포함합니다.
-- 가격 이력, 쿠폰 조건, 배송 정책, offer 출처는 `productPriceEvidence(productId, priceRevision)` lazy query로만 조회합니다.
-- 가격 근거 펼침 이벤트는 `PRICE_EVIDENCE_EXPANDED`로 기록합니다.
+- 상품 목록/검색/비교는 `productPriceSummaries` 또는 `comparisonPriceSummaries`, 상세는 `productPriceSummary(productId)` 경량 query를 사용합니다.
+- 경량 payload의 `basePrice`와 `finalPrice`는 모두 현재 활성 옵션 최저가입니다. 비교가나 옵션 최고가, 할인 차액으로 해석하지 않습니다.
+- 옵션 최고/최저 가격 구성과 원천·확인 시각은 `productPriceEvidence(productId, priceRevision)` lazy query로만 조회합니다. 현재 서버에는 기간별 가격 이력, 쿠폰, 배송 원천 데이터가 없으므로 UI도 빈 상태로 명시합니다.
+- 가격 근거를 처음 펼칠 때 상품별 1회 `PRICE_EVIDENCE_EXPANDED` Sentry breadcrumb를 남깁니다. 별도 분석 이벤트 저장소는 아직 연결하지 않았습니다.
 - React Query key는 `products`, `product-price-summary`, `product-price-evidence`, `offers`로 분리합니다.
 
 ## Checkout 정합성 계약
@@ -68,3 +68,23 @@ pnpm --dir apps/dadamjang-fo exec expo export --platform android --output-dir di
 - `EXPO_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`: Sentry trace sample rate
 
 민감값은 `EXPO_PUBLIC_`에 넣지 않습니다.
+
+## 모바일 Maestro smoke
+
+원격 mobile E2E는 아직 실행 가능한 경로가 아닙니다. `dadamjang-infra`의 `terraform-apply.yml`은 staging plan만 수행하고 e2e root에는 apply workflow가 없으므로 e2e AWS 리소스와 Terraform output이 아직 없습니다. 따라서 `mobile-e2e` Environment의 `E2E_AWS_REGION`을 비롯한 output-derived 변수도 설정할 수 없으며, 원격 workflow는 AWS 인증 전에 이 사실을 명시적으로 실패시킵니다.
+
+로컬 backend와 개발 빌드된 `com.dadamjang.fo`에는 기존 smoke flow를 그대로 사용할 수 있습니다. 먼저 `dadamjang-be`와 `dadamjang-infra`의 로컬 의존성을 실행합니다. 최초 설치 또는 native 변경 뒤에는 `expo run`으로 앱을 설치하고, 이후에는 dev client를 시작한 뒤 다른 터미널에서 smoke를 실행합니다.
+
+```bash
+# iOS simulator
+EXPO_PUBLIC_API_URL=http://127.0.0.1:5500/graphql pnpm --dir apps/dadamjang-fo exec expo run:ios
+EXPO_PUBLIC_API_URL=http://127.0.0.1:5500/graphql pnpm --dir apps/dadamjang-fo exec expo start --dev-client --ios
+E2E_PRODUCT_ID=<local-seeded-product-id> pnpm fo:e2e:ios
+
+# Android emulator
+EXPO_PUBLIC_API_URL=http://10.0.2.2:5500/graphql pnpm --dir apps/dadamjang-fo exec expo run:android
+EXPO_PUBLIC_API_URL=http://10.0.2.2:5500/graphql pnpm --dir apps/dadamjang-fo exec expo start --dev-client --android
+E2E_PRODUCT_ID=<local-seeded-product-id> pnpm fo:e2e:android
+```
+
+두 명령은 `apps/dadamjang-fo/.maestro/ios-smoke.yaml`과 `android-smoke.yaml`을 실행한다. Maestro CLI 2.9.0이 PATH에 있어야 하며, `E2E_PRODUCT_ID`는 로컬 backend가 반환하는 상품 ID를 사용한다.

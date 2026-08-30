@@ -7,6 +7,7 @@ import {
 import {
   getComparisonPriceSummaries,
   getProductPriceEvidence,
+  getProductPriceSummary,
   getProductPriceSummaries,
 } from "./api";
 import { priceEvidenceQueryKeys } from "./query-keys";
@@ -54,6 +55,14 @@ export const useProductPriceEvidence = (
     queryFn: ({ signal }) =>
       getProductPriceEvidence(productId, priceRevision, signal),
     enabled,
+    staleTime: 60_000,
+  });
+
+export const useProductPriceSummary = (productId: string) =>
+  useQuery({
+    queryKey: priceEvidenceQueryKeys.productPriceSummaryById(productId),
+    queryFn: ({ signal }) => getProductPriceSummary(productId, signal),
+    enabled: Boolean(productId),
     staleTime: 60_000,
   });
 

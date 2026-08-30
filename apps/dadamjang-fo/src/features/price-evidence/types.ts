@@ -42,7 +42,7 @@ export type ProductPriceEvidence = {
   priceRevision: string;
   priceHistory: ProductPriceHistoryItem[];
   couponConditions: ProductCouponCondition[];
-  shippingPolicy: ProductShippingPolicy;
+  shippingPolicy: ProductShippingPolicy | null;
   offerSource: string;
   calculatedAt: string;
 };

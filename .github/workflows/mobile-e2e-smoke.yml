@@ -17,10 +17,33 @@ jobs:
     if: github.event.pull_request.head.repo.full_name == github.repository
     environment: mobile-e2e
     runs-on: ubuntu-latest
+    outputs:
+      handoff-valid: ${{ steps.handoff.outputs.handoff-valid }}
     permissions:
       contents: read
       id-token: write
     steps:
+      - name: Validate E2E infrastructure handoff
+        id: handoff
+        env:
+          MOBILE_ROLE_ARN: ${{ vars.E2E_AWS_ROLE_ARN }}
+          MOBILE_AWS_REGION: ${{ vars.E2E_AWS_REGION }}
+          MOBILE_API_URL: ${{ vars.E2E_API_URL }}
+          MOBILE_ECS_CLUSTER: ${{ vars.AWS_ECS_CLUSTER }}
+          MOBILE_ECS_SERVICE: ${{ vars.AWS_ECS_SERVICE }}
+          MOBILE_TASK_DEFINITION: ${{ vars.AWS_ECS_TASK_DEFINITION }}
+          MOBILE_PRIVATE_SUBNET_IDS: ${{ vars.AWS_PRIVATE_SUBNET_IDS }}
+          MOBILE_API_SECURITY_GROUP_ID: ${{ vars.AWS_API_SECURITY_GROUP_ID }}
+        run: |
+          for required in "E2E_AWS_ROLE_ARN:$MOBILE_ROLE_ARN" "E2E_AWS_REGION:$MOBILE_AWS_REGION" "E2E_API_URL:$MOBILE_API_URL" "AWS_ECS_CLUSTER:$MOBILE_ECS_CLUSTER" "AWS_ECS_SERVICE:$MOBILE_ECS_SERVICE" "AWS_ECS_TASK_DEFINITION:$MOBILE_TASK_DEFINITION" "AWS_PRIVATE_SUBNET_IDS:$MOBILE_PRIVATE_SUBNET_IDS" "AWS_API_SECURITY_GROUP_ID:$MOBILE_API_SECURITY_GROUP_ID"; do
+            name="${required%%:*}"
+            value="${required#*:}"
+            if [ -z "$value" ]; then
+              printf 'e2e Terraform outputs are unavailable: apply has not run or mobile-e2e variable %s is unset\n' "$name" >&2
+              exit 1
+            fi
+          done
+          echo "handoff-valid=true" >> "$GITHUB_OUTPUT"
       - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
         with:
           role-to-assume: ${{ vars.E2E_AWS_ROLE_ARN }}
@@ -203,7 +226,7 @@ jobs:
 
   cleanup-e2e:
     needs: [prepare-e2e, ios-smoke, android-smoke]
-    if: always() && github.event.pull_request.head.repo.full_name == github.repository
+    if: always() && github.event.pull_request.head.repo.full_name == github.repository && needs.prepare-e2e.outputs.handoff-valid == 'true'
     environment: mobile-e2e
     runs-on: ubuntu-latest
     permissions:

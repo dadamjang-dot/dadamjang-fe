@@ -22,7 +22,11 @@ import { getCategories, getProduct } from "@/features/catalog/api";
 import { ShopFiltersProvider } from "@/features/catalog/shop-filters";
 import { getComparison } from "@/features/comparison/api";
 import { getOrders } from "@/features/order/api";
-import { getComparisonPriceSummaries } from "@/features/price-evidence/api";
+import {
+  getComparisonPriceSummaries,
+  getProductPriceSummaries,
+  getProductPriceSummary,
+} from "@/features/price-evidence/api";
 import {
   getStylePost,
   getStylePosts,
@@ -77,6 +81,7 @@ jest.mock("@/features/price-evidence/api", () => ({
   getComparisonPriceSummaries: jest.fn(),
   getProductPriceEvidence: jest.fn(),
   getProductPriceSummaries: jest.fn(),
+  getProductPriceSummary: jest.fn(),
 }));
 
 jest.mock("@/features/style/api", () => ({
@@ -297,6 +302,23 @@ describe("protected FO routes and actions", () => {
     jest.mocked(getProduct).mockResolvedValue(product);
     jest.mocked(getComparison).mockResolvedValue([]);
     jest.mocked(getComparisonPriceSummaries).mockResolvedValue([]);
+    jest.mocked(getProductPriceSummaries).mockResolvedValue({
+      nodes: [],
+      totalCount: 0,
+      nextCursor: null,
+      hasNextPage: false,
+    });
+    jest.mocked(getProductPriceSummary).mockResolvedValue({
+      productId: product.productId,
+      name: product.title,
+      thumbnail: null,
+      isOnSale: product.isOnSale,
+      isExpressDelivery: product.isExpressDelivery,
+      basePrice: 10_000,
+      finalPrice: 10_000,
+      priceRevision: "revision-1",
+      lowestPriceEvidenceSummary: "현재 옵션 최저가 기준",
+    });
     jest.mocked(getStylePost).mockResolvedValue(stylePost);
     jest.mocked(getStylePosts).mockResolvedValue({
       hasNextPage: false,
