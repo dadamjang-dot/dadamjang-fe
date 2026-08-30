@@ -42,6 +42,37 @@ describe("GraphQL BFF", () => {
     vi.restoreAllMocks();
   });
 
+  it("isolates browser auth cookies from the partner portal", async () => {
+    let upstreamCookie = "";
+    const fetchMock = vi.fn<typeof fetch>(async (_input, options) => {
+      upstreamCookie = new Headers(options?.headers).get("cookie") ?? "";
+      return graphqlResponse({ data: { me: { role: "ADMIN" } } }, [
+        "access_token=new-admin; Path=/; HttpOnly",
+        "refresh_token=new-admin-refresh; Path=/; HttpOnly",
+      ]);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handleGraphQlPost(
+      request("query AdminMe { me { role } }", {
+        cookie:
+          "bo_access_token=admin; bo_refresh_token=bo-refresh; partner_access_token=partner; partner_refresh_token=partner-refresh",
+      }),
+    );
+
+    expect(upstreamCookie).toBe("access_token=admin; refresh_token=bo-refresh");
+    const responseCookies = response.headers.getSetCookie();
+    expect(responseCookies).toEqual(
+      expect.arrayContaining([
+        "bo_access_token=new-admin; Path=/; HttpOnly",
+        "bo_refresh_token=new-admin-refresh; Path=/; HttpOnly",
+      ]),
+    );
+    expect(
+      responseCookies.some((cookie) => cookie.startsWith("bo_device_id=")),
+    ).toBe(true);
+  });
+
   it("rejects cross-origin, non-JSON, and oversized requests before forwarding", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
@@ -135,7 +166,7 @@ describe("GraphQL BFF", () => {
       request(
         "query AdminDashboard { adminDashboard { pendingPartnerCount } }",
         {
-          cookie: `refresh_token=original; bo_device_id=${DEVICE_ID}`,
+          cookie: `bo_refresh_token=original; bo_device_id=${DEVICE_ID}`,
         },
       ),
     );
@@ -156,7 +187,7 @@ describe("GraphQL BFF", () => {
       DEVICE_ID,
     );
     expect(response.headers.get("set-cookie")).toContain(
-      "refresh_token=rotated",
+      "bo_refresh_token=rotated",
     );
   });
 
@@ -192,7 +223,7 @@ describe("GraphQL BFF", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     const headers = {
-      cookie: `refresh_token=original; bo_device_id=${DEVICE_ID}`,
+      cookie: `bo_refresh_token=original; bo_device_id=${DEVICE_ID}`,
     };
 
     const pending = [
@@ -210,8 +241,8 @@ describe("GraphQL BFF", () => {
         data: { me: { role: "ADMIN" } },
       });
       expect(response.headers.getSetCookie()).toEqual([
-        "access_token=fresh; Path=/; HttpOnly",
-        "refresh_token=rotated; Path=/; HttpOnly",
+        "bo_access_token=fresh; Path=/; HttpOnly",
+        "bo_refresh_token=rotated; Path=/; HttpOnly",
         "request_state=settled; Path=/",
       ]);
     }
@@ -254,7 +285,7 @@ describe("GraphQL BFF", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     const headers = {
-      cookie: `refresh_token=original; bo_device_id=${DEVICE_ID}`,
+      cookie: `bo_refresh_token=original; bo_device_id=${DEVICE_ID}`,
     };
 
     const disconnected = handleGraphQlPost(
@@ -351,7 +382,7 @@ describe("GraphQL BFF", () => {
 
     await handleGraphQlPost(
       request("query Me { me { role } }", {
-        cookie: `malformed; refresh_token=original; =missing-name; bo_device_id=${DEVICE_ID}`,
+        cookie: `malformed; bo_refresh_token=original; =missing-name; bo_device_id=${DEVICE_ID}`,
       }),
     );
 
@@ -380,14 +411,14 @@ describe("GraphQL BFF", () => {
 
     const response = await handleGraphQlPost(
       request("query Me { me { role } }", {
-        cookie: `refresh_token=invalid; bo_device_id=${DEVICE_ID}`,
+        cookie: `bo_refresh_token=invalid; bo_device_id=${DEVICE_ID}`,
       }),
     );
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(response.headers.getSetCookie()).toEqual([
-      "access_token=; Path=/; Max-Age=0; HttpOnly",
-      "refresh_token=; Path=/; Max-Age=0; HttpOnly",
+      "bo_access_token=; Path=/; Max-Age=0; HttpOnly",
+      "bo_refresh_token=; Path=/; Max-Age=0; HttpOnly",
     ]);
   });
 
@@ -409,7 +440,7 @@ describe("GraphQL BFF", () => {
 
     const response = await handleGraphQlPost(
       request("query Me { me { role } }", {
-        cookie: `refresh_token=original; bo_device_id=${DEVICE_ID}`,
+        cookie: `bo_refresh_token=original; bo_device_id=${DEVICE_ID}`,
       }),
     );
 
@@ -431,7 +462,7 @@ describe("GraphQL BFF", () => {
 
     const response = await handleGraphQlPost(
       request("query Me { me { role } }", {
-        cookie: `refresh_token=original; bo_device_id=${DEVICE_ID}`,
+        cookie: `bo_refresh_token=original; bo_device_id=${DEVICE_ID}`,
       }),
     );
 
@@ -452,7 +483,7 @@ describe("GraphQL BFF", () => {
 
     const response = await handleGraphQlPost(
       request("query Me { me { role } }", {
-        cookie: `refresh_token=original; bo_device_id=${DEVICE_ID}`,
+        cookie: `bo_refresh_token=original; bo_device_id=${DEVICE_ID}`,
       }),
     );
 

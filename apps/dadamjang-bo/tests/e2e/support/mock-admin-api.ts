@@ -134,7 +134,7 @@ const connection = <T>(nodes: T[]) => ({
 export const authenticateAdmin = (page: Page) =>
   page.context().addCookies([
     {
-      name: "access_token",
+      name: "bo_access_token",
       value: "e2e-access",
       url: "http://127.0.0.1:3001",
     },

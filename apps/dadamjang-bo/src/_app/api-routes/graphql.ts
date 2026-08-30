@@ -33,6 +33,16 @@ type UpstreamResult = UpstreamFailure | UpstreamSuccess;
 
 const MAX_BODY_BYTES = 1024 * 1024;
 const UPSTREAM_TIMEOUT_MS = 10_000;
+const BROWSER_ACCESS_TOKEN_COOKIE = "bo_access_token";
+const BROWSER_REFRESH_TOKEN_COOKIE = "bo_refresh_token";
+const AUTH_COOKIE_NAMES = new Set([
+  "access_token",
+  "refresh_token",
+  "bo_access_token",
+  "bo_refresh_token",
+  "partner_access_token",
+  "partner_refresh_token",
+]);
 const refreshGroups = new Map<string, RefreshGroup>();
 
 const upstreamUrl = () => {
@@ -58,6 +68,37 @@ const parseCookiePair = (value: string): [string, string] | null => {
   const name = cookie.slice(0, separator);
   if (separator <= 0 || !COOKIE_NAME_PATTERN.test(name)) return null;
   return [name, cookie];
+};
+
+const replaceCookieName = (cookie: string, name: string, replacement: string) =>
+  `${replacement}${cookie.slice(name.length)}`;
+
+const toUpstreamCookieHeader = (cookieHeader: string) =>
+  cookieHeader
+    .split(";")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .flatMap((value) => {
+      const pair = parseCookiePair(value);
+      if (!pair) return [];
+      const [name, cookie] = pair;
+      if (name === BROWSER_ACCESS_TOKEN_COOKIE)
+        return [replaceCookieName(cookie, name, "access_token")];
+      if (name === BROWSER_REFRESH_TOKEN_COOKIE)
+        return [replaceCookieName(cookie, name, "refresh_token")];
+      return AUTH_COOKIE_NAMES.has(name) ? [] : [cookie];
+    })
+    .join("; ");
+
+const toBrowserCookie = (value: string) => {
+  const pair = parseCookiePair(value);
+  if (!pair) return value;
+  const [name] = pair;
+  if (name === "access_token")
+    return replaceCookieName(value, name, BROWSER_ACCESS_TOKEN_COOKIE);
+  if (name === "refresh_token")
+    return replaceCookieName(value, name, BROWSER_REFRESH_TOKEN_COOKIE);
+  return value;
 };
 
 const mergeCookies = (cookieHeader: string, cookies: string[]) => {
@@ -302,7 +343,6 @@ const responseWithCookies = (
     status,
     headers: { "content-type": contentType ?? "application/json" },
   });
-  cookies.forEach((cookie) => response.headers.append("set-cookie", cookie));
   if (deviceId)
     response.cookies.set("bo_device_id", deviceId, {
       httpOnly: true,
@@ -311,6 +351,9 @@ const responseWithCookies = (
       path: "/",
       maxAge: 60 * 60 * 24 * 365,
     });
+  cookies.forEach((cookie) =>
+    response.headers.append("set-cookie", toBrowserCookie(cookie)),
+  );
   return response;
 };
 
@@ -351,8 +394,11 @@ export const handleGraphQlPost = async (request: Request) => {
       { status: 400 },
     );
 
-  const cookieHeader = request.headers.get("cookie") ?? "";
-  const cookieMatch = cookieHeader.match(/(?:^|;\s*)bo_device_id=([^;]+)/);
+  const browserCookieHeader = request.headers.get("cookie") ?? "";
+  const cookieHeader = toUpstreamCookieHeader(browserCookieHeader);
+  const cookieMatch = browserCookieHeader.match(
+    /(?:^|;\s*)bo_device_id=([^;]+)/,
+  );
   const matchedDeviceId = decodeDeviceId(cookieMatch?.[1]);
   const deviceId = matchedDeviceId ?? crypto.randomUUID();
   const createdDeviceId = matchedDeviceId ? undefined : deviceId;
@@ -400,12 +446,12 @@ export const handleGraphQlPost = async (request: Request) => {
         [],
         createdDeviceId,
       );
-      response.cookies.set("access_token", "", {
+      response.cookies.set(BROWSER_ACCESS_TOKEN_COOKIE, "", {
         httpOnly: true,
         path: "/",
         maxAge: 0,
       });
-      response.cookies.set("refresh_token", "", {
+      response.cookies.set(BROWSER_REFRESH_TOKEN_COOKIE, "", {
         httpOnly: true,
         path: "/",
         maxAge: 0,

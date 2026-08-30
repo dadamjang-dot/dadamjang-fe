@@ -4,7 +4,8 @@ const PUBLIC_PATHS = ["/login", "/invite/accept", "/forgot-password"];
 
 export const proxy = (request: NextRequest) => {
   const authenticated =
-    request.cookies.has("access_token") || request.cookies.has("refresh_token");
+    request.cookies.has("bo_access_token") ||
+    request.cookies.has("bo_refresh_token");
   const isPublic = PUBLIC_PATHS.some(
     (path) => request.nextUrl.pathname === path,
   );
