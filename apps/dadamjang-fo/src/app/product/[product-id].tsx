@@ -9,6 +9,7 @@ import { colors } from "@dadamjang/design-tokens";
 import { useAuthActionGate } from "@/features/auth";
 import { useCartActions } from "@/features/cart";
 import { useProduct } from "@/features/catalog";
+import { ProductPriceEvidenceSection } from "@/features/price-evidence";
 import {
   useBrandFollowActions,
   useFollowedBrands,
@@ -138,6 +139,7 @@ const ProductScreen = () => {
       }
       ListFooterComponent={
         <View style={s.footer}>
+          <ProductPriceEvidenceSection productId={product.data.productId} />
           <View style={s.quantityRow}>
             <Button
               accessibilityLabel="수량 줄이기"

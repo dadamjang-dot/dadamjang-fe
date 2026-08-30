@@ -19,6 +19,8 @@ export const priceEvidenceQueryKeys = {
     ["products", filterKey(filter)] as const,
   productPriceSummary: (filter: ProductPriceSummaryFilter) =>
     ["product-price-summary", filterKey(filter)] as const,
+  productPriceSummaryById: (productId: string) =>
+    ["product-price-summary", productId] as const,
   productPriceEvidence: (productId: string, priceRevision: string) =>
     ["product-price-evidence", productId, priceRevision] as const,
   offers: (productId: string) => ["offers", productId] as const,
