@@ -8,7 +8,7 @@ export const setupPartnerTests = () => {
   test.beforeEach(async ({ context, baseURL }) => {
     await context.addCookies([
       {
-        name: "access_token",
+        name: "partner_access_token",
         value: "partner-e2e-access-token",
         url: baseURL!,
       },

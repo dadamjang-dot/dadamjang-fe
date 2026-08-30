@@ -10,7 +10,7 @@ const response = (body: unknown, cookies: string[] = [], status = 200) => {
 };
 
 const request = (
-  cookie = `refresh_token=refresh; partner_device_id=${DEVICE_ID}`,
+  cookie = `partner_refresh_token=refresh; partner_device_id=${DEVICE_ID}`,
   signal?: AbortSignal,
 ) =>
   new Request("http://partner.test/api/graphql", {
@@ -32,6 +32,40 @@ describe("partner GraphQL BFF refresh", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
+  });
+
+  it("isolates browser auth cookies from the admin portal", async () => {
+    let upstreamCookie = "";
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (_input, options) => {
+        upstreamCookie = new Headers(options?.headers).get("cookie") ?? "";
+        return response({ data: { me: { role: "PARTNER" } } }, [
+          "access_token=new-partner; Path=/; HttpOnly",
+          "refresh_token=new-partner-refresh; Path=/; HttpOnly",
+        ]);
+      });
+
+    const result = await handleGraphQlPost(
+      request(
+        "partner_access_token=partner; partner_refresh_token=partner-refresh; bo_access_token=admin; bo_refresh_token=admin-refresh",
+      ),
+    );
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(upstreamCookie).toBe(
+      "access_token=partner; refresh_token=partner-refresh",
+    );
+    const responseCookies = result.headers.getSetCookie();
+    expect(responseCookies).toEqual(
+      expect.arrayContaining([
+        "partner_access_token=new-partner; Path=/; HttpOnly",
+        "partner_refresh_token=new-partner-refresh; Path=/; HttpOnly",
+      ]),
+    );
+    expect(
+      responseCookies.some((cookie) => cookie.startsWith("partner_device_id=")),
+    ).toBe(true);
   });
 
   it("refreshes once and retries the original operation with rotated cookies", async () => {
@@ -110,8 +144,8 @@ describe("partner GraphQL BFF refresh", () => {
         data: { me: { role: "PARTNER" } },
       });
       expect(result.headers.getSetCookie()).toEqual([
-        "access_token=fresh; Path=/; HttpOnly",
-        "refresh_token=rotated; Path=/; HttpOnly",
+        "partner_access_token=fresh; Path=/; HttpOnly",
+        "partner_refresh_token=rotated; Path=/; HttpOnly",
         "request_state=settled; Path=/",
       ]);
     }
@@ -239,7 +273,7 @@ describe("partner GraphQL BFF refresh", () => {
 
     await handleGraphQlPost(
       request(
-        `malformed; refresh_token=refresh; =missing-name; partner_device_id=${DEVICE_ID}`,
+        `malformed; partner_refresh_token=refresh; =missing-name; partner_device_id=${DEVICE_ID}`,
       ),
     );
 
@@ -267,8 +301,8 @@ describe("partner GraphQL BFF refresh", () => {
 
     const result = await handleGraphQlPost(request());
     expect(result.headers.getSetCookie()).toEqual([
-      "access_token=; Path=/; Max-Age=0; HttpOnly",
-      "refresh_token=; Path=/; Max-Age=0; HttpOnly",
+      "partner_access_token=; Path=/; Max-Age=0; HttpOnly",
+      "partner_refresh_token=; Path=/; Max-Age=0; HttpOnly",
     ]);
   });
 
