@@ -1,5 +1,6 @@
 .DS_Store
 *.log
+.watchman-cookie-*
 .workflow/
 .omo
 .env
