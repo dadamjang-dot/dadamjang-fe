@@ -1,4 +1,8 @@
-import { useDerivedValue, useAnimatedStyle, interpolate, Extrapolation } from "react-native-reanimated";
+import {
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from "react-native-reanimated";
 import type { SharedValue } from "react-native-reanimated";
 
 const horizontalPadding = 16;
@@ -11,46 +15,43 @@ export const useHeaderAnimation = (
   cancelWidth: SharedValue<number>,
   actionTransitionPhaseEnd: number,
 ) => {
-  const btnWrapperWidth = useDerivedValue(() => {
-    return interpolate(
-      progress.value,
-      [actionTransitionPhaseEnd, 1],
-      [childrenWidth.value, cancelWidth.value],
-      Extrapolation.CLAMP,
-    );
-  });
-
-  const btnWrapperStyle = useAnimatedStyle(() => {
-    if (childrenWidth.value === 0 || cancelWidth.value === 0) {
+  const searchInputStyle = useAnimatedStyle(() => {
+    if (
+      containerWidth.get() === 0 ||
+      childrenWidth.get() === 0 ||
+      cancelWidth.get() === 0
+    ) {
       return { opacity: 1 };
     }
 
+    const collapsedSearchWidth = Math.max(
+      0,
+      containerWidth.get() -
+        horizontalPadding * 2 -
+        headerGap -
+        childrenWidth.get(),
+    );
+    const expandedSearchWidth = Math.max(
+      0,
+      containerWidth.get() -
+        horizontalPadding * 2 -
+        headerGap -
+        cancelWidth.get(),
+    );
     return {
-      opacity: 1,
-      width: btnWrapperWidth.value,
+      transformOrigin: "left center",
+      transform: [
+        {
+          scaleX: interpolate(
+            progress.get(),
+            [actionTransitionPhaseEnd, 1],
+            [1, expandedSearchWidth / Math.max(1, collapsedSearchWidth)],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
     };
   });
 
-  const searchInputStyle = useAnimatedStyle(() => {
-    if (
-      containerWidth.value === 0 ||
-      childrenWidth.value === 0 ||
-      cancelWidth.value === 0
-    ) {
-      return { flex: 1 };
-    }
-
-    return {
-      flex: 0,
-      width: Math.max(
-        0,
-        containerWidth.value -
-          horizontalPadding * 2 -
-          headerGap -
-          btnWrapperWidth.value,
-      ),
-    };
-  });
-
-  return { btnWrapperStyle, searchInputStyle };
+  return { searchInputStyle };
 };

@@ -16,7 +16,11 @@ type WishProductCardProps = {
 
 const formatPrice = (price: number) => `${price.toLocaleString("ko-KR")}원`;
 
-const WishProductCard = ({ product, onPress, onRemove }: WishProductCardProps) => {
+const WishProductCard = ({
+  product,
+  onPress,
+  onRemove,
+}: WishProductCardProps) => {
   const lowestPrice = lowestActiveSkuPrice(product);
   const highestPrice = product.skus.length
     ? Math.max(...product.skus.map((sku) => sku.price))
@@ -35,7 +39,12 @@ const WishProductCard = ({ product, onPress, onRemove }: WishProductCardProps) =
       >
         <View style={s.imageWrap}>
           {imageUrl ? (
-            <Image contentFit="cover" source={{ uri: imageUrl }} style={s.image} />
+            <Image
+              contentFit="cover"
+              recyclingKey={product.productId}
+              source={{ uri: imageUrl }}
+              style={s.image}
+            />
           ) : (
             <View style={s.imagePlaceholder} />
           )}
@@ -51,15 +60,21 @@ const WishProductCard = ({ product, onPress, onRemove }: WishProductCardProps) =
           ) : null}
         </View>
         <View style={s.content}>
-          {product.brand ? <Text style={s.brand}>{product.brand.name}</Text> : null}
-          <Text numberOfLines={2} style={s.title}>{product.title}</Text>
+          {product.brand ? (
+            <Text style={s.brand}>{product.brand.name}</Text>
+          ) : null}
+          <Text numberOfLines={2} style={s.title}>
+            {product.title}
+          </Text>
           <View style={s.priceRow}>
             <Text style={s.price}>{formatPrice(lowestPrice)}</Text>
             {highestPrice > lowestPrice ? (
               <Text style={s.originalPrice}>{formatPrice(highestPrice)}</Text>
             ) : null}
           </View>
-          {product.isExpressDelivery ? <Text style={s.express}>바로배송</Text> : null}
+          {product.isExpressDelivery ? (
+            <Text style={s.express}>바로배송</Text>
+          ) : null}
         </View>
       </Button>
       {onRemove ? (
@@ -70,7 +85,7 @@ const WishProductCard = ({ product, onPress, onRemove }: WishProductCardProps) =
           testID={`e2e.wish.remove.${product.productId}`}
           variant="bare"
         >
-          <Image source="sf:heart.fill" style={s.removeIcon} />
+          <Text style={s.removeIcon}>♥</Text>
           <Text style={s.removeLabel}>위시 해제</Text>
         </Button>
       ) : null}
@@ -114,7 +129,12 @@ const s = StyleSheet.create({
   brand: { color: colors.muted, fontSize: 12, fontWeight: "600" },
   title: { color: colors.ink, fontSize: 14, lineHeight: 19 },
   priceRow: { flexDirection: "row", alignItems: "baseline", gap: spacing.xs },
-  price: { color: colors.ink, fontSize: 15, fontVariant: ["tabular-nums"], fontWeight: "700" },
+  price: {
+    color: colors.ink,
+    fontSize: 15,
+    fontVariant: ["tabular-nums"],
+    fontWeight: "700",
+  },
   originalPrice: {
     color: colors.muted,
     fontSize: 12,
@@ -134,7 +154,7 @@ const s = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: colors.surface,
   },
-  removeIcon: { width: 15, height: 15, tintColor: colors.accent },
+  removeIcon: { color: colors.accent, fontSize: 15, lineHeight: 17 },
   removeLabel: { color: colors.ink, fontSize: 12, fontWeight: "700" },
 });
 

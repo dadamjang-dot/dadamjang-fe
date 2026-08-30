@@ -1,3 +1,5 @@
+import type { OrderStatus, PaymentStatus } from "@dadamjang/domain";
+
 export type Cart = {
   cartId: string;
   totalAmount: number;
@@ -11,10 +13,16 @@ export type Cart = {
 
 export type CheckoutCartInput = {
   idempotencyKey: string;
-  forcePaymentFailure?: boolean;
+};
+
+export type CheckoutCartResult = {
+  orderId: string;
+  orderNumber: string;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  totalAmount: number;
 };
 
 export type CheckoutCartOptions = {
   idempotencyKey?: string;
-  forcePaymentFailure?: boolean;
 };

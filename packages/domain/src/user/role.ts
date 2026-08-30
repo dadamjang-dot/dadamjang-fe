@@ -1,5 +1,5 @@
-export type UserRole = 'USER' | 'PARTNER' | 'ADMIN';
+export type UserRole = "USER" | "PARTNER" | "ADMIN";
 
-export const canAccessBackoffice = (role: UserRole) => role === 'ADMIN';
+export const canAccessBackoffice = (role: UserRole) => role === "ADMIN";
 
-export const canAccessPartner = (role: UserRole) => role === 'PARTNER';
+export const canAccessPartner = (role: UserRole) => role === "PARTNER";

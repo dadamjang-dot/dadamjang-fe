@@ -5,8 +5,8 @@ name: iOS authenticated commerce journey
     clearState: true
 - openLink: dadamjang://auth/signin
 - tapOn:
-    id: e2e.auth.userid.input
-- inputText: ${E2E_USER_ID}
+    id: e2e.auth.email.input
+- inputText: ${E2E_USER_EMAIL}
 - tapOn:
     id: e2e.auth.password.input
 - inputText: ${E2E_USER_PASSWORD}
@@ -33,19 +33,7 @@ name: iOS authenticated commerce journey
 - tapOn:
     id: e2e.checkout.submit
 - assertVisible:
-    id: e2e.checkout.success
+    id: e2e.checkout.pending
 - openLink: dadamjang://orders
 - assertVisible:
     id: e2e.order.history
-- openLink: dadamjang://product/${E2E_PRODUCT_ID}
-- tapOn:
-    id: e2e.cart.add
-- openLink: dadamjang://cart?forcePaymentFailure=true
-- tapOn:
-    id: e2e.checkout.submit
-- assertVisible:
-    id: e2e.checkout.failure
-- assertVisible:
-    id: e2e.cart.screen
-- assertVisible:
-    id: e2e.cart.item.${E2E_SKU_ID}

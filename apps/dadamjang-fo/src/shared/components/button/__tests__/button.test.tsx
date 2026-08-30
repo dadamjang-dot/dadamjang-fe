@@ -1,71 +1,46 @@
-import { act, type ReactElement } from "react";
+import { render, screen, userEvent } from "@testing-library/react-native";
 import { Text } from "react-native";
-import { create, type ReactTestRenderer } from "react-test-renderer";
 
 import { colors } from "@dadamjang/design-tokens";
 
 import { Button } from "../button";
 
-jest.mock("react-native-unistyles", () => ({
-  StyleSheet: {
-    create: <T,>(styles: T) => styles,
-  },
-}));
-
-const render = (component: ReactElement) => {
-  let renderer: ReactTestRenderer;
-
-  act(() => {
-    renderer = create(component);
-  });
-
-  return renderer!;
-};
-
-const findButton = (renderer: ReactTestRenderer, testID: string) => {
-  const button = renderer.root
-    .findAllByProps({ testID })
-    .find((node) => node.props.accessibilityRole === "button");
-
-  if (!button) throw new Error(`Button ${testID} was not rendered`);
-
-  return button;
-};
-
 describe("Button", () => {
-  it("renders the label and invokes onPress", () => {
+  it("renders the label and invokes onPress", async () => {
     const onPress = jest.fn();
-    const renderer = render(
+    const user = userEvent.setup();
+    render(
       <Button label="상품 보기" onPress={onPress} testID="product-view" />,
     );
-    const button = findButton(renderer, "product-view");
 
-    expect(renderer.root.findByType(Text).props.children).toBe("상품 보기");
-
-    act(() => {
-      button.props.onPress();
-    });
+    const button = screen.getByRole("button", { name: "상품 보기" });
+    expect(button).toBeVisible();
+    await user.press(button);
 
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it("does not expose an onPress handler when disabled", () => {
-    const renderer = render(
+  it("does not invoke onPress when disabled", async () => {
+    const onPress = jest.fn();
+    const user = userEvent.setup();
+    render(
       <Button
         disabled
         label="상품 보기"
-        onPress={jest.fn()}
+        onPress={onPress}
         testID="disabled-button"
       />,
     );
-    const button = findButton(renderer, "disabled-button");
 
-    expect(button.props.disabled).toBe(true);
-    expect(button.props.onPress).toBeUndefined();
+    const button = screen.getByRole("button", { name: "상품 보기" });
+    expect(button).toBeDisabled();
+    await user.press(button);
+
+    expect(onPress).not.toHaveBeenCalled();
   });
 
   it("renders custom content with its accessibility state", () => {
-    const renderer = render(
+    render(
       <Button
         accessibilityRole="checkbox"
         accessibilityState={{ checked: true }}
@@ -77,23 +52,14 @@ describe("Button", () => {
         <Text>필터</Text>
       </Button>,
     );
-    const button = renderer.root
-      .findAllByProps({ testID: "filter-toggle" })
-      .find((node) => node.props.accessibilityRole === "checkbox");
 
-    if (!button) throw new Error("Filter toggle was not rendered");
-
-    expect(button.props.accessibilityState).toEqual({ checked: true });
-    expect(renderer.root.findByType(Text).props.children).toBe("필터");
+    expect(screen.getByRole("checkbox", { name: "필터" })).toBeChecked();
+    expect(screen.getByText("필터")).toBeVisible();
   });
 
   it("renders a visible dark label for a bare button", () => {
-    const renderer = render(
-      <Button label="가입하기" onPress={jest.fn()} variant="bare" />,
-    );
+    render(<Button label="가입하기" onPress={jest.fn()} variant="bare" />);
 
-    expect(renderer.root.findByType(Text).props.style).toContainEqual({
-      color: colors.ink,
-    });
+    expect(screen.getByText("가입하기")).toHaveStyle({ color: colors.ink });
   });
 });

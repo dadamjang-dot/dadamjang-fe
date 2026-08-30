@@ -3,7 +3,6 @@ import {
   Row,
   FilledTonalButton,
   FilledTonalIconButton,
-  IconButton,
   Icon,
   Text,
   Shape,
@@ -16,13 +15,35 @@ import {
 } from "@expo/ui/jetpack-compose/modifiers";
 import { colors } from "@dadamjang/design-tokens";
 
-import type { ActionButtonProps } from "./action-button.types";
+import type { Action, ActionButtonProps } from "./action-button.types";
+import { materialSymbolSources } from "./material-symbol-sources.android";
+
+interface ActionButtonContentProps {
+  action: Action;
+}
+
+export const ActionButtonContent = ({ action }: ActionButtonContentProps) => {
+  const iconSize = action.iconSize ?? 20;
+
+  if (action.icon) {
+    return (
+      <Icon
+        contentDescription={action.accessibilityLabel}
+        size={iconSize}
+        source={materialSymbolSources[action.icon.md]}
+      />
+    );
+  }
+
+  return action.label ? <Text>{action.label}</Text> : null;
+};
 
 const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
-  if (!actions || actions.length === 0) return null;
+  const [action] = actions;
+  if (!action) return null;
 
   if (actions.length === 1) {
-    const { icon, iconSize, label, onPress } = actions[0];
+    const { icon, label, onPress } = action;
     const isCircle = iconOnly && !!icon && !label;
 
     if (label && !icon) {
@@ -54,7 +75,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
           }}
           modifiers={[size(40, 40)]}
         >
-          {icon ? <Icon source={{ uri: icon }} size={iconSize ?? 20} /> : null}
+          {icon ? <ActionButtonContent action={action} /> : null}
         </FilledTonalIconButton>
       </Host>
     );
@@ -62,35 +83,30 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
 
   return (
     <Host matchContents>
-      <FilledTonalButton
-        shape={Shape.Pill({})}
-        colors={{
-          containerColor: colors.surface,
-          contentColor: colors.ink,
-        }}
-        modifiers={[height(40)]}
-      >
-        <Row modifiers={[paddingAll(0)]}>
-          {actions.map((action, idx) => {
-            const itemModifiers =
-              action.label && !action.icon ? [height(32)] : [size(32, 32)];
-            return (
-              <IconButton
-                key={action.label ?? idx}
-                onClick={action.onPress}
-                modifiers={itemModifiers}
-              >
-                <Row modifiers={[paddingAll(0)]}>
-                  {action.icon ? (
-                    <Icon source={{ uri: action.icon }} size={action.iconSize ?? 20} />
-                  ) : null}
-                  {action.label ? <Text>{action.label}</Text> : null}
-                </Row>
-              </IconButton>
-            );
-          })}
-        </Row>
-      </FilledTonalButton>
+      <Row modifiers={[paddingAll(0)]}>
+        {actions.map((action) => {
+          const itemModifiers = action.icon
+            ? [size(40, 40)]
+            : [width(72), height(40)];
+          return (
+            <FilledTonalIconButton
+              key={action.accessibilityLabel ?? action.label}
+              onClick={action.onPress}
+              shape={Shape.Pill({})}
+              colors={{
+                containerColor: colors.surface,
+                contentColor: colors.ink,
+              }}
+              modifiers={itemModifiers}
+            >
+              <Row modifiers={[paddingAll(0)]}>
+                {action.icon ? <ActionButtonContent action={action} /> : null}
+                {action.label ? <Text>{action.label}</Text> : null}
+              </Row>
+            </FilledTonalIconButton>
+          );
+        })}
+      </Row>
     </Host>
   );
 };

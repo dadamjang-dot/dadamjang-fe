@@ -93,7 +93,12 @@ const SigninScreen = () => {
 
 const s = StyleSheet.create({
   form: { gap: spacing.lg },
-  intro: { marginBottom: spacing.sm, color: colors.muted, fontSize: 14, lineHeight: 20 },
+  intro: {
+    marginBottom: spacing.sm,
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
   message: { color: colors.danger, fontSize: 13, lineHeight: 18 },
 });
 

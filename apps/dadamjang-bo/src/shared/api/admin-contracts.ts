@@ -1,3 +1,5 @@
+import type { ProductApprovalStatus } from "@dadamjang/domain";
+
 export type Connection<T> = {
   nodes: T[];
   nextCursor: string | null;
@@ -40,7 +42,7 @@ export type AdminProduct = {
   categoryName: string;
   title: string;
   status: string;
-  approvalStatus: string;
+  approvalStatus: ProductApprovalStatus;
   rejectionReason: string | null;
   thumbnailUrl: string | null;
   createdAt: string;

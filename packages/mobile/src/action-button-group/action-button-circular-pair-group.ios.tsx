@@ -1,6 +1,10 @@
-import { LiquidGlassContainerView, LiquidGlassView } from "@callstack/liquid-glass";
-import { StyleSheet, View } from "react-native";
+import {
+  LiquidGlassContainerView,
+  LiquidGlassView,
+} from "@callstack/liquid-glass";
+import { View } from "react-native";
 import Animated from "react-native-reanimated";
+import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 import { ActionButtonContent } from "../action-button/action-button.ios";

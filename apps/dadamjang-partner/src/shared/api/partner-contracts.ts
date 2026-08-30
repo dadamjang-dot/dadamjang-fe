@@ -1,5 +1,6 @@
+import type { ProductApprovalStatus } from "@dadamjang/domain";
 import { requestGraphQl } from "./graphql-client";
-export type ApprovalStatus = "DRAFT" | "PENDING" | "REJECTED" | "APPROVED";
+export type ApprovalStatus = ProductApprovalStatus;
 export type PublicationStatus = "DRAFT" | "PUBLISHED";
 export type EffectiveProductState = ApprovalStatus | "PUBLISHED";
 export type PartnerDashboard = {

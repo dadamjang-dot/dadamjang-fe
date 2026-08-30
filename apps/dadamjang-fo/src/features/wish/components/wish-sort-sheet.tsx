@@ -1,4 +1,4 @@
-import { Modal, Pressable, Text, View } from "react-native";
+import { Modal, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
@@ -32,16 +32,26 @@ const WishSortSheet = ({
     transparent
     visible={visible}
   >
-    <View style={s.backdrop}>
-      <Pressable onPress={onClose} style={s.dismiss} />
+    <View
+      accessibilityViewIsModal
+      importantForAccessibility="yes"
+      style={s.backdrop}
+    >
+      <Button
+        accessibilityLabel="정렬 닫기"
+        onPress={onClose}
+        style={s.dismiss}
+        variant="bare"
+      />
       <View style={s.sheet}>
         <View style={s.handle} />
         {sortOptions.map((option) => {
           const isSelected = option.id === selectedSort;
           return (
             <Button
+              accessibilityLabel={option.label}
               accessibilityRole="radio"
-              accessibilityState={{ selected: isSelected }}
+              accessibilityState={{ checked: isSelected }}
               key={option.id}
               onPress={() => onSelect(option.id)}
               style={s.option}
@@ -79,7 +89,14 @@ const s = StyleSheet.create({
     borderTopRightRadius: 20,
     backgroundColor: colors.surface,
   },
-  handle: { alignSelf: "center", width: 36, height: 4, marginBottom: 8, borderRadius: 2, backgroundColor: colors.line },
+  handle: {
+    alignSelf: "center",
+    width: 36,
+    height: 4,
+    marginBottom: 8,
+    borderRadius: 2,
+    backgroundColor: colors.line,
+  },
   option: {
     minHeight: 52,
     flexDirection: "row",
@@ -90,7 +107,15 @@ const s = StyleSheet.create({
     borderBottomColor: colors.primarySoft,
   },
   optionLabel: { color: colors.ink, fontSize: 15 },
-  check: { width: 24, height: 24, alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 1, borderColor: colors.line },
+  check: {
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
   selectedCheck: { borderColor: colors.ink, backgroundColor: colors.ink },
   checkLabel: { color: colors.surface, fontSize: 14, fontWeight: "700" },
 });

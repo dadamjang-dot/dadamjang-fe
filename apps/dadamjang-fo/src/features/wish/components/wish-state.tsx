@@ -30,7 +30,9 @@ const WishState = ({
     {isLoading ? <ActivityIndicator color={colors.ink} /> : null}
     <Text style={s.title}>{title}</Text>
     {description ? <Text style={s.description}>{description}</Text> : null}
-    {onRetry ? <Button label="다시 시도" onPress={onRetry} style={s.retry} /> : null}
+    {onRetry ? (
+      <Button label="다시 시도" onPress={onRetry} style={s.retry} />
+    ) : null}
     {action ? (
       <Button
         label={action.label}
@@ -51,9 +53,19 @@ const s = StyleSheet.create({
     padding: spacing.xl,
   },
   topContainer: { justifyContent: "flex-start", paddingTop: spacing.xxl * 4 },
-  title: { color: colors.ink, fontSize: 16, fontWeight: "700", textAlign: "center" },
+  title: {
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "center",
+  },
   description: { color: colors.muted, fontSize: 14, textAlign: "center" },
-  retry: { minHeight: 40, marginTop: 4, paddingHorizontal: 18, borderRadius: 20 },
+  retry: {
+    minHeight: 40,
+    marginTop: 4,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+  },
   action: { alignSelf: "center", width: 144, marginTop: spacing.md },
 });
 

@@ -1,4 +1,3 @@
-import { Image } from "expo-image";
 import { ScrollView, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -55,9 +54,7 @@ const FilterChip = ({
     >
       {label}
     </Text>
-    {showDisclosure ? (
-      <Image source="sf:chevron.down" style={s.disclosureIcon} />
-    ) : null}
+    {showDisclosure ? <Text style={s.disclosureIcon}>⌄</Text> : null}
   </Button>
 );
 
@@ -92,7 +89,7 @@ const ShopFilterBar = ({
         label="카테고리"
         mini={isMini}
         showDisclosure={!isMini}
-        active={isMini && selectedMode === "category"}
+        active={isMini ? selectedMode === "category" : false}
         onPress={() => onOpenFilter("category")}
         testID="e2e.filter.open.category"
       />
@@ -100,7 +97,7 @@ const ShopFilterBar = ({
         label="브랜드"
         mini={isMini}
         showDisclosure={!isMini}
-        active={isMini && selectedMode === "brand"}
+        active={isMini ? selectedMode === "brand" : false}
         onPress={() => onOpenFilter("brand")}
         testID="e2e.filter.open.brand"
       />
@@ -108,7 +105,7 @@ const ShopFilterBar = ({
         label="색상"
         mini={isMini}
         showDisclosure={!isMini}
-        active={isMini && selectedMode === "color"}
+        active={isMini ? selectedMode === "color" : false}
         onPress={() => onOpenFilter("color")}
         testID="e2e.filter.open.color"
       />
@@ -116,7 +113,7 @@ const ShopFilterBar = ({
         label="사이즈"
         mini={isMini}
         showDisclosure={!isMini}
-        active={isMini && selectedMode === "size"}
+        active={isMini ? selectedMode === "size" : false}
         onPress={() => onOpenFilter("size")}
         testID="e2e.filter.open.size"
       />
@@ -124,7 +121,7 @@ const ShopFilterBar = ({
         label="가격대"
         mini={isMini}
         showDisclosure={!isMini}
-        active={isMini && selectedMode === "price"}
+        active={isMini ? selectedMode === "price" : false}
         onPress={() => onOpenFilter("price")}
         testID="e2e.filter.open.price"
       />
@@ -193,9 +190,9 @@ const s = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   disclosureIcon: {
-    width: 10,
-    height: 10,
-    tintColor: colors.muted,
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 16,
   },
   activeChip: {
     borderColor: colors.primary,

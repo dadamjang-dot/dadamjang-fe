@@ -1,10 +1,5 @@
 import { forwardRef, type ReactNode } from "react";
-import {
-  Text,
-  TextInput,
-  View,
-  type TextInputProps,
-} from "react-native";
+import { Text, TextInput, View, type TextInputProps } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors, spacing } from "@dadamjang/design-tokens";
@@ -38,7 +33,13 @@ export const AuthField = forwardRef<TextInput, AuthFieldProps>(
   ) => (
     <View style={s.field}>
       <Text style={s.label}>{label}</Text>
-      <View style={[s.inputFrame, error && s.inputFrameError, !editable && s.disabledFrame]}>
+      <View
+        style={[
+          s.inputFrame,
+          error && s.inputFrameError,
+          !editable && s.disabledFrame,
+        ]}
+      >
         {leading}
         <TextInput
           ref={ref}

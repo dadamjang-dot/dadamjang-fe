@@ -21,7 +21,10 @@ const categories: { key: StyleCategoryKey; label: string }[] = [
   { key: "ACCESSORIES", label: "잡화" },
 ];
 
-const StyleCategoryBar = ({ selectedCategory, onSelect }: StyleCategoryBarProps) => (
+const StyleCategoryBar = ({
+  selectedCategory,
+  onSelect,
+}: StyleCategoryBarProps) => (
   <ScrollView
     horizontal
     showsHorizontalScrollIndicator={false}

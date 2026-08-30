@@ -1,4 +1,5 @@
 import { ClientError, GraphQLClient, Variables } from "graphql-request";
+import { invalidateSession } from "@/shared/auth/session-invalidation";
 
 let browserClient: GraphQLClient | undefined;
 
@@ -63,7 +64,7 @@ export const requestGraphQl = async <
   } catch (error) {
     const apiError = toPartnerApiError(error);
     if (apiError.code === "UNAUTHENTICATED" && typeof window !== "undefined")
-      window.dispatchEvent(new Event("dadamjang:session-expired"));
+      invalidateSession();
     throw apiError;
   }
 };

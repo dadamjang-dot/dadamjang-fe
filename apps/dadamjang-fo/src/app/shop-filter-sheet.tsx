@@ -14,10 +14,7 @@ import {
 } from "@/features/catalog";
 import { useProductPriceSummaries } from "@/features/price-evidence";
 import { Button } from "@/shared/components";
-import {
-  ProductFilterSheet,
-  ShopFilterBar,
-} from "@/features/shop";
+import { ProductFilterSheet, ShopFilterBar } from "@/features/shop";
 
 type FilterMode = Exclude<ShopFilterMode, "sort">;
 
@@ -107,10 +104,7 @@ const CategoryOptionLabel = ({
     variant="bare"
   >
     <Text
-      style={[
-        s.categoryOptionLabel,
-        selected && s.selectedCategoryOptionLabel,
-      ]}
+      style={[s.categoryOptionLabel, selected && s.selectedCategoryOptionLabel]}
     >
       {label}
     </Text>
@@ -279,7 +273,8 @@ const ShopFilterSheetRoute = () => {
   const router = useRouter();
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   const filterMode = isFilterMode(mode) ? mode : "category";
-  const { startDraft, updateDraft, applyDraft, draftFilters } = useShopFilters();
+  const { startDraft, updateDraft, applyDraft, draftFilters } =
+    useShopFilters();
   const draftProductFilter = useMemo(
     () => toProductFilter(draftFilters),
     [draftFilters],

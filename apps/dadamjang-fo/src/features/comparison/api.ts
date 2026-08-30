@@ -4,7 +4,7 @@ import { productFields } from "@/features/catalog/api";
 
 import type { ComparisonItem } from "./types";
 
-export const getComparison = async () => {
+export const getComparison = async (signal?: AbortSignal) => {
   const data = await graphqlRequest<{ comparison: ComparisonItem[] }>(
     `query Comparison {
       comparison {
@@ -14,6 +14,8 @@ export const getComparison = async () => {
         product { ${productFields} }
       }
     }`,
+    undefined,
+    { signal },
   );
 
   return data.comparison;

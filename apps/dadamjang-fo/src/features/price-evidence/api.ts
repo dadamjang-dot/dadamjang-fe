@@ -30,6 +30,7 @@ const productPriceEvidenceFields = `
 
 export const getProductPriceSummaries = async (
   filter: ProductPriceSummaryFilter,
+  signal?: AbortSignal,
 ): Promise<ProductPriceSummaryConnection> => {
   const data = await graphqlRequest<{
     productPriceSummaries: ProductPriceSummaryConnection;
@@ -43,18 +44,21 @@ export const getProductPriceSummaries = async (
       }
     }`,
     { filter },
+    { signal },
   );
 
   return data.productPriceSummaries;
 };
 
-export const getComparisonPriceSummaries = async () => {
+export const getComparisonPriceSummaries = async (signal?: AbortSignal) => {
   const data = await graphqlRequest<{
     comparisonPriceSummaries: ProductPriceSummaryConnection["nodes"];
   }>(
     `query ComparisonPriceSummaries {
       comparisonPriceSummaries { ${productPriceSummaryFields} }
     }`,
+    undefined,
+    { signal },
   );
 
   return data.comparisonPriceSummaries;
@@ -63,6 +67,7 @@ export const getComparisonPriceSummaries = async () => {
 export const getProductPriceEvidence = async (
   productId: string,
   priceRevision: string,
+  signal?: AbortSignal,
 ) => {
   const data = await graphqlRequest<{
     productPriceEvidence: ProductPriceEvidence;
@@ -73,6 +78,7 @@ export const getProductPriceEvidence = async (
       }
     }`,
     { productId, priceRevision },
+    { signal },
   );
 
   return data.productPriceEvidence;

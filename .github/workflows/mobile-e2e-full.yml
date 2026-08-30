@@ -10,10 +10,43 @@ permissions:
 
 concurrency:
   group: mobile-e2e
-  cancel-in-progress: true
+  cancel-in-progress: false
+  queue: max
 
 jobs:
+  prepare-e2e:
+    environment: mobile-e2e
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          role-to-assume: ${{ vars.E2E_AWS_ROLE_ARN }}
+          aws-region: ${{ vars.E2E_AWS_REGION }}
+      - name: Start API and reset fixtures
+        env:
+          AWS_ECS_CLUSTER: ${{ vars.AWS_ECS_CLUSTER }}
+          AWS_ECS_SERVICE: ${{ vars.AWS_ECS_SERVICE }}
+          AWS_ECS_TASK_DEFINITION: ${{ vars.AWS_ECS_TASK_DEFINITION }}
+          AWS_PRIVATE_SUBNET_IDS: ${{ vars.AWS_PRIVATE_SUBNET_IDS }}
+          AWS_API_SECURITY_GROUP_ID: ${{ vars.AWS_API_SECURITY_GROUP_ID }}
+        run: |
+          aws ecs update-service --cluster "$AWS_ECS_CLUSTER" --service "$AWS_ECS_SERVICE" --desired-count 1 >/dev/null
+          aws ecs wait services-stable --cluster "$AWS_ECS_CLUSTER" --services "$AWS_ECS_SERVICE"
+          task_arn=$(aws ecs run-task \
+            --cluster "$AWS_ECS_CLUSTER" \
+            --task-definition "$AWS_ECS_TASK_DEFINITION" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$AWS_PRIVATE_SUBNET_IDS],securityGroups=[$AWS_API_SECURITY_GROUP_ID],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"api","command":["pnpm","e2e:reset"],"environment":[{"name":"NODE_ENV","value":"e2e"},{"name":"POSTGRES_DATABASE","value":"dadamjang_e2e"}]}]}' \
+            --query 'tasks[0].taskArn' --output text)
+          aws ecs wait tasks-stopped --cluster "$AWS_ECS_CLUSTER" --tasks "$task_arn"
+          test "$(aws ecs describe-tasks --cluster "$AWS_ECS_CLUSTER" --tasks "$task_arn" --query 'tasks[0].containers[0].exitCode' --output text)" = 0
+
   ios-full:
+    needs: prepare-e2e
     environment: mobile-e2e
     runs-on: macos-15
     timeout-minutes: 75
@@ -21,33 +54,54 @@ jobs:
       run:
         working-directory: apps/dadamjang-fo
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
         with:
           version: 11.20.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
           cache: pnpm
-      - uses: expo/expo-github-action@v8
+      - uses: expo/expo-github-action@c7b66a9c327a43a8fa7c0158e7f30d6040d2481e
         with:
-          eas-version: latest
+          eas-version: 23.0.0
           token: ${{ secrets.EXPO_TOKEN }}
-      - uses: mobile-dev-inc/action-maestro@v1
+      - name: Install Maestro 2.9.0
+        run: |
+          maestro_archive="$RUNNER_TEMP/maestro.zip"
+          maestro_root="$RUNNER_TEMP/maestro-cli"
+          curl -fsSL https://github.com/mobile-dev-inc/Maestro/releases/download/cli-2.9.0/maestro.zip -o "$maestro_archive"
+          echo "855bb2ce1399d82f4f4a73d84a4d945f70b0d43eb86127e027af82809f63f0bd  $maestro_archive" | shasum -a 256 -c -
+          mkdir -p "$maestro_root"
+          unzip -q "$maestro_archive" -d "$maestro_root"
+          maestro_bin="$(find "$maestro_root" -type f -path '*/bin/maestro' -print -quit)"
+          test -n "$maestro_bin"
+          chmod +x "$maestro_bin"
+          echo "$(dirname "$maestro_bin")" >> "$GITHUB_PATH"
       - run: pnpm install --frozen-lockfile
         working-directory: .
+      - name: Verify remote EAS API URL
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPECTED_E2E_API_URL: ${{ vars.E2E_API_URL }}
+        run: |
+          test -n "$EXPECTED_E2E_API_URL"
+          remote_api_url_file="$(mktemp)"
+          trap 'rm -f "$remote_api_url_file"' EXIT
+          printf -v remote_api_url_command 'printf "%%s" "$EXPO_PUBLIC_API_URL" > %q' "$remote_api_url_file"
+          eas env:exec preview "$remote_api_url_command" --non-interactive
+          cmp -s "$remote_api_url_file" <(printf "%s" "$EXPECTED_E2E_API_URL")
       - run: eas build --platform ios --profile e2e --non-interactive --wait --json > eas-build.json
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPO_PUBLIC_API_URL: ${{ vars.E2E_API_URL }}
       - run: |
-          mkdir -p .maestro-artifacts/app .maestro-artifacts/debug .maestro-artifacts/screenshots
-          curl -fsSL "$(jq -r '.[0].artifacts.buildUrl' eas-build.json)" -o .maestro-artifacts/app.tar.gz
-          tar -xzf .maestro-artifacts/app.tar.gz -C .maestro-artifacts/app
+          mkdir -p .maestro-artifacts/debug .maestro-artifacts/screenshots "$RUNNER_TEMP/dadamjang-e2e-app"
+          curl -fsSL "$(jq -r '.[0].artifacts.buildUrl' eas-build.json)" -o "$RUNNER_TEMP/dadamjang-e2e-app.tar.gz"
+          tar -xzf "$RUNNER_TEMP/dadamjang-e2e-app.tar.gz" -C "$RUNNER_TEMP/dadamjang-e2e-app"
           xcrun simctl boot "iPhone 16" || true
           open -a Simulator
           xcrun simctl bootstatus booted -b
-          xcrun simctl install booted "$(find .maestro-artifacts/app -name '*.app' -type d | head -1)"
+          xcrun simctl install booted "$(find "$RUNNER_TEMP/dadamjang-e2e-app" -name '*.app' -type d | head -1)"
           xcrun simctl io booted recordVideo .maestro-artifacts/video.mp4 &
           video_pid=$!
           finish_video() {
@@ -63,10 +117,30 @@ jobs:
         env:
           E2E_PRODUCT_ID: ${{ vars.E2E_PRODUCT_ID }}
           E2E_SKU_ID: ${{ vars.E2E_SKU_ID }}
-          E2E_USER_ID: ${{ secrets.E2E_USER_ID }}
+          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
           E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ios-full-maestro
           path: apps/dadamjang-fo/.maestro-artifacts
+          retention-days: 7
+
+  cleanup-e2e:
+    needs: [prepare-e2e, ios-full]
+    if: always()
+    environment: mobile-e2e
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          role-to-assume: ${{ vars.E2E_AWS_ROLE_ARN }}
+          aws-region: ${{ vars.E2E_AWS_REGION }}
+      - name: Stop API
+        env:
+          AWS_ECS_CLUSTER: ${{ vars.AWS_ECS_CLUSTER }}
+          AWS_ECS_SERVICE: ${{ vars.AWS_ECS_SERVICE }}
+        run: aws ecs update-service --cluster "$AWS_ECS_CLUSTER" --service "$AWS_ECS_SERVICE" --desired-count 0 >/dev/null

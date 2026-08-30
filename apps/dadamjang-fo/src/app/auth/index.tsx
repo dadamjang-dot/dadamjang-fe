@@ -36,7 +36,8 @@ const AuthScreenRoute = () => {
         router.replace(resolveAuthReturnTo(returnTo) as Href);
         return;
       }
-      if (!result.kakaoSignupToken) throw new Error("카카오 가입 정보를 확인하지 못했어요.");
+      if (!result.kakaoSignupToken)
+        throw new Error("카카오 가입 정보를 확인하지 못했어요.");
       setKakaoSignup({
         kakaoSignupToken: result.kakaoSignupToken,
         email: result.email ?? undefined,
@@ -67,11 +68,15 @@ const AuthScreenRoute = () => {
       <View style={s.content}>
         <View style={s.intro}>
           <Text style={s.heading}>다담장에 오신 걸 환영해요.</Text>
-          <Text style={s.description}>로그인하면 주문 내역과 위시한 상품을 한곳에서 볼 수 있어요.</Text>
+          <Text style={s.description}>
+            로그인하면 주문 내역과 위시한 상품을 한곳에서 볼 수 있어요.
+          </Text>
         </View>
         <View style={s.actions}>
           <Button
-            accessibilityLabel={isKakaoPending ? "카카오 연결 중" : "카카오로 시작하기"}
+            accessibilityLabel={
+              isKakaoPending ? "카카오 연결 중" : "카카오로 시작하기"
+            }
             disabled={isKakaoPending}
             onPress={handleKakao}
             style={s.kakaoButton}
@@ -83,13 +88,17 @@ const AuthScreenRoute = () => {
           </Button>
           <Button
             label="이메일로 시작하기"
-            onPress={() => router.push({ pathname: "/auth/signin", params: authParams })}
+            onPress={() =>
+              router.push({ pathname: "/auth/signin", params: authParams })
+            }
             testID="e2e.auth.open-signin"
             variant="secondary"
           />
           <Button
             label="가입하기"
-            onPress={() => router.push({ pathname: "/auth/signup", params: authParams })}
+            onPress={() =>
+              router.push({ pathname: "/auth/signup", params: authParams })
+            }
             style={s.signupButton}
             testID="e2e.auth.open-signup"
             variant="bare"
@@ -112,13 +121,27 @@ const AuthScreenRoute = () => {
 const s = StyleSheet.create({
   content: { gap: spacing.xl },
   intro: { gap: spacing.sm },
-  heading: { color: colors.ink, fontSize: 22, fontWeight: "800", lineHeight: 30 },
+  heading: {
+    color: colors.ink,
+    fontSize: 22,
+    fontWeight: "800",
+    lineHeight: 30,
+  },
   description: { color: colors.muted, fontSize: 14, lineHeight: 21 },
   actions: { gap: spacing.md },
   kakaoButton: { backgroundColor: colors.kakao },
   kakaoLabel: { color: colors.ink, fontSize: 15, fontWeight: "700" },
-  signupButton: { minHeight: 48, alignItems: "center", justifyContent: "center" },
-  message: { color: colors.danger, fontSize: 13, lineHeight: 18, textAlign: "center" },
+  signupButton: {
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  message: {
+    color: colors.danger,
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: "center",
+  },
 });
 
 export default AuthScreenRoute;

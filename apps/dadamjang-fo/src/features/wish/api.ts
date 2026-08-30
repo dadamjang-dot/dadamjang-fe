@@ -22,7 +22,7 @@ export type WishlistItem = {
   product: Product;
 };
 
-export const getWishlist = async () => {
+export const getWishlist = async (signal?: AbortSignal) => {
   const data = await graphqlRequest<{ wishlist: WishlistItem[] }>(
     `query Wishlist {
       wishlist {
@@ -32,6 +32,8 @@ export const getWishlist = async () => {
         product { ${productFields} }
       }
     }`,
+    undefined,
+    { signal },
   );
 
   return data.wishlist;
@@ -53,9 +55,11 @@ export const removeWish = async (productId: string) => {
   );
 };
 
-export const getFollowedBrands = async () => {
+export const getFollowedBrands = async (signal?: AbortSignal) => {
   const data = await graphqlRequest<{ followedBrands: FollowedBrand[] }>(
     "query FollowedBrands { followedBrands { brandId name slug } }",
+    undefined,
+    { signal },
   );
   return data.followedBrands;
 };
@@ -77,7 +81,7 @@ export const unfollowBrand = async (brandId: string) => {
   );
 };
 
-export const getRecentlyViewedProducts = async () => {
+export const getRecentlyViewedProducts = async (signal?: AbortSignal) => {
   const data = await graphqlRequest<{
     recentlyViewedProducts: RecentlyViewedProduct[];
   }>(
@@ -88,6 +92,8 @@ export const getRecentlyViewedProducts = async () => {
         product { ${productFields} }
       }
     }`,
+    undefined,
+    { signal },
   );
   return data.recentlyViewedProducts;
 };

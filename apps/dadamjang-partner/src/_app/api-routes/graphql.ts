@@ -6,19 +6,43 @@ import {
   type SelectionNode,
 } from "graphql";
 
-type GraphQlPayload = {
-  query?: string;
-  variables?: Record<string, unknown>;
-  operationName?: string;
-  errors?: Array<{ extensions?: { code?: string } }>;
-  data?: Record<string, unknown>;
+type GraphQlPayload = Record<string, unknown>;
+type TransientRefreshResult = {
+  kind: "transient";
+  body: string;
+  status: number;
+  contentType: string | null;
 };
+type RefreshResult =
+  | { kind: "success"; cookies: string[] }
+  | { kind: "authoritative" }
+  | TransientRefreshResult;
+type RefreshGroup = {
+  active: number;
+  refresh?: Promise<RefreshResult>;
+};
+type UpstreamFailure = {
+  kind: "failure";
+  body: string;
+  status: number;
+  contentType: "application/json";
+  reason: "aborted" | "malformed" | "network" | "oversized" | "timeout";
+};
+type UpstreamSuccess = {
+  kind: "success";
+  response: Response;
+  body: string;
+  payload: GraphQlPayload | null;
+};
+type UpstreamResult = UpstreamFailure | UpstreamSuccess;
 
 const MAX_BODY_BYTES = 1024 * 1024;
+const UPSTREAM_TIMEOUT_MS = 10_000;
 const PUBLIC_FIELDS = new Set(["signin", "refresh"]);
 const PUBLIC_ROOT_FIELD = 1;
 const PROTECTED_ROOT_FIELD = 2;
 const MAX_FRAGMENT_DEPTH = 64;
+const refreshGroups = new Map<string, RefreshGroup>();
 
 const upstreamUrl = () => {
   const value = process.env.DADAMJANG_API_URL;
@@ -32,44 +56,231 @@ const setCookies = (headers: Headers) => {
   return value ? [value] : [];
 };
 
+const COOKIE_NAME_PATTERN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const parseCookiePair = (value: string): [string, string] | null => {
+  const cookie = value.split(";", 1).at(0)?.trim();
+  if (!cookie) return null;
+  const separator = cookie.indexOf("=");
+  const name = cookie.slice(0, separator);
+  if (separator <= 0 || !COOKIE_NAME_PATTERN.test(name)) return null;
+  return [name, cookie];
+};
+
 const mergeCookies = (cookieHeader: string, cookies: string[]) => {
   const values = new Map<string, string>();
+  const addCookie = (value: string) => {
+    const pair = parseCookiePair(value);
+    if (pair) values.set(pair[0], pair[1]);
+  };
   cookieHeader
     .split(";")
     .map((value) => value.trim())
     .filter(Boolean)
-    .forEach((value) => values.set(value.slice(0, value.indexOf("=")), value));
-  cookies.forEach((value) => {
-    const cookie = value.split(";", 1)[0];
-    values.set(cookie.slice(0, cookie.indexOf("=")), cookie);
-  });
+    .forEach(addCookie);
+  cookies.forEach(addCookie);
   return [...values.values()].join("; ");
 };
 
-const forward = (body: string, cookie: string, deviceId: string) =>
-  fetch(upstreamUrl(), {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      cookie,
-      "x-device-id": deviceId,
-    },
-    body,
-    cache: "no-store",
-  });
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const decodeDeviceId = (value: string | undefined) => {
+  if (!value) return undefined;
+  try {
+    const decoded = decodeURIComponent(value);
+    return UUID_PATTERN.test(decoded) ? decoded : undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 const readPayload = (body: string): GraphQlPayload | null => {
   try {
-    return JSON.parse(body) as GraphQlPayload;
+    const payload: unknown = JSON.parse(body);
+    return isRecord(payload) ? payload : null;
   } catch {
     return null;
   }
 };
 
+const failure = (
+  status: number,
+  message: string,
+  reason: UpstreamFailure["reason"],
+): UpstreamFailure => ({
+  kind: "failure",
+  body: JSON.stringify({ error: message }),
+  status,
+  contentType: "application/json",
+  reason,
+});
+
+const readResponseBody = async (response: Response) => {
+  const reader = response.body?.getReader();
+  if (!reader) return "";
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+  while (true) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    bytes += chunk.value.byteLength;
+    if (bytes > MAX_BODY_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(chunk.value);
+  }
+  const body = new Uint8Array(bytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(body);
+};
+
+const forward = async (
+  body: string,
+  cookie: string,
+  deviceId: string,
+  requestSignal?: AbortSignal,
+): Promise<UpstreamResult> => {
+  const deadlineSignal = AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);
+  const signal = requestSignal
+    ? AbortSignal.any([requestSignal, deadlineSignal])
+    : deadlineSignal;
+  try {
+    const response = await fetch(upstreamUrl(), {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie,
+        "x-device-id": deviceId,
+      },
+      body,
+      cache: "no-store",
+      signal,
+    });
+    const responseBody = await readResponseBody(response);
+    if (responseBody === null)
+      return failure(502, "Upstream response too large", "oversized");
+    const payload = readPayload(responseBody);
+    if (response.ok && !payload)
+      return failure(502, "Upstream returned malformed JSON", "malformed");
+    return { kind: "success", response, body: responseBody, payload };
+  } catch {
+    if (requestSignal?.aborted)
+      return failure(499, "Client request aborted", "aborted");
+    return deadlineSignal.aborted
+      ? failure(504, "Upstream request timed out", "timeout")
+      : failure(502, "Upstream request failed", "network");
+  }
+};
+
+const hasErrorCode = (payload: GraphQlPayload | null, code: string) => {
+  const errors = payload?.errors;
+  return (
+    Array.isArray(errors) &&
+    errors.some(
+      (error) =>
+        isRecord(error) &&
+        isRecord(error.extensions) &&
+        error.extensions.code === code,
+    )
+  );
+};
+
 const isUnauthenticated = (payload: GraphQlPayload | null) =>
-  payload?.errors?.some(
-    (error) => error.extensions?.code === "UNAUTHENTICATED",
-  ) ?? false;
+  hasErrorCode(payload, "UNAUTHENTICATED");
+
+const hasRefreshData = (payload: GraphQlPayload | null) => {
+  const data = payload?.data;
+  if (!isRecord(data) || !isRecord(data.refresh)) return false;
+  return typeof data.refresh.role === "string";
+};
+
+const acquireRefreshGroup = (cookieHeader: string, deviceId: string) => {
+  const refreshToken =
+    cookieHeader.match(/(?:^|;\s*)refresh_token=([^;]*)/)?.[1] ?? "";
+  const key = `${deviceId}\u0000${refreshToken}`;
+  const group = refreshGroups.get(key) ?? { active: 0 };
+  group.active += 1;
+  refreshGroups.set(key, group);
+  return { key, group };
+};
+
+const releaseRefreshGroup = (key: string, group: RefreshGroup) => {
+  group.active -= 1;
+  if (group.active === 0) refreshGroups.delete(key);
+};
+
+const transientRefresh = (): TransientRefreshResult => ({
+  kind: "transient",
+  body: JSON.stringify({
+    errors: [
+      {
+        message: "Session refresh temporarily unavailable",
+        extensions: { code: "SERVICE_UNAVAILABLE" },
+      },
+    ],
+  }),
+  status: 503,
+  contentType: "application/json",
+});
+
+const performRefresh = async (
+  cookieHeader: string,
+  initialCookies: string[],
+  deviceId: string,
+): Promise<RefreshResult> => {
+  try {
+    const refresh = await forward(
+      JSON.stringify({ query: "mutation Refresh { refresh { role } }" }),
+      mergeCookies(cookieHeader, initialCookies),
+      deviceId,
+    );
+    if (refresh.kind === "failure" && refresh.reason === "network")
+      return transientRefresh();
+    if (refresh.kind === "failure")
+      return {
+        kind: "transient",
+        body: refresh.body,
+        status: refresh.status,
+        contentType: refresh.contentType,
+      };
+    const { body, payload, response } = refresh;
+    if (
+      response.status === 401 ||
+      response.status === 403 ||
+      isUnauthenticated(payload)
+    )
+      return { kind: "authoritative" };
+    if (hasErrorCode(payload, "CONFLICT")) return transientRefresh();
+    if (!response.ok || !hasRefreshData(payload))
+      return {
+        kind: "transient",
+        body: response.ok ? transientRefresh().body : body,
+        status: response.ok ? 502 : response.status,
+        contentType: response.headers.get("content-type"),
+      };
+    return { kind: "success", cookies: setCookies(response.headers) };
+  } catch {
+    return transientRefresh();
+  }
+};
+
+const refreshSession = (
+  group: RefreshGroup,
+  cookieHeader: string,
+  initialCookies: string[],
+  deviceId: string,
+) => {
+  group.refresh ??= performRefresh(cookieHeader, initialCookies, deviceId);
+  return group.refresh;
+};
 
 const rootFieldMask = (
   selections: readonly SelectionNode[],
@@ -119,15 +330,19 @@ const rootFieldMask = (
 };
 
 const isPublicOperation = (payload: GraphQlPayload) => {
-  if (!payload.query) return false;
+  if (typeof payload.query !== "string" || !payload.query) return false;
   try {
     const definitions = parse(payload.query).definitions;
     const operations = definitions.filter(
       (definition) => definition.kind === Kind.OPERATION_DEFINITION,
     );
-    const operation = payload.operationName
+    const operationName =
+      typeof payload.operationName === "string"
+        ? payload.operationName
+        : undefined;
+    const operation = operationName
       ? operations.find(
-          (definition) => definition.name?.value === payload.operationName,
+          (definition) => definition.name?.value === operationName,
         )
       : operations.length === 1
         ? operations[0]
@@ -199,13 +414,13 @@ export const handleGraphQlPost = async (request: Request) => {
       { error: "Cross-origin request rejected" },
       { status: 403 },
     );
-  if (
-    request.headers
-      .get("content-type")
-      ?.split(";", 1)[0]
-      .trim()
-      .toLowerCase() !== "application/json"
-  )
+  const contentType = request.headers
+    .get("content-type")
+    ?.split(";", 1)
+    .at(0)
+    ?.trim()
+    .toLowerCase();
+  if (contentType !== "application/json")
     return NextResponse.json(
       { error: "Content-Type must be application/json" },
       { status: 415 },
@@ -223,7 +438,7 @@ export const handleGraphQlPost = async (request: Request) => {
       { status: 413 },
     );
   const input = readPayload(body);
-  if (!input?.query)
+  if (!input || typeof input.query !== "string" || !input.query)
     return NextResponse.json(
       { error: "GraphQL query is required" },
       { status: 400 },
@@ -231,67 +446,88 @@ export const handleGraphQlPost = async (request: Request) => {
 
   const cookieHeader = request.headers.get("cookie") ?? "";
   const cookieMatch = cookieHeader.match(/(?:^|;\s*)partner_device_id=([^;]+)/);
-  const createdDeviceId = cookieMatch ? undefined : crypto.randomUUID();
-  const deviceId = decodeURIComponent(cookieMatch?.[1] ?? createdDeviceId!);
-  const initial = await forward(body, cookieHeader, deviceId);
-  const initialBody = await initial.text();
-  const initialCookies = setCookies(initial.headers);
-  if (!isUnauthenticated(readPayload(initialBody)) || isPublicOperation(input))
+  const matchedDeviceId = decodeDeviceId(cookieMatch?.[1]);
+  const deviceId = matchedDeviceId ?? crypto.randomUUID();
+  const createdDeviceId = matchedDeviceId ? undefined : deviceId;
+  const { key, group } = acquireRefreshGroup(cookieHeader, deviceId);
+  try {
+    const initial = await forward(body, cookieHeader, deviceId, request.signal);
+    if (initial.kind === "failure")
+      return responseWithCookies(
+        initial.body,
+        initial.status,
+        initial.contentType,
+        [],
+        createdDeviceId,
+      );
+    const initialBody = initial.body;
+    const initialCookies = setCookies(initial.response.headers);
+    if (!isUnauthenticated(initial.payload) || isPublicOperation(input))
+      return responseWithCookies(
+        initialBody,
+        initial.response.status,
+        initial.response.headers.get("content-type"),
+        initialCookies,
+        createdDeviceId,
+      );
+
+    const refresh = await refreshSession(
+      group,
+      cookieHeader,
+      initialCookies,
+      deviceId,
+    );
+    if (refresh.kind === "transient")
+      return responseWithCookies(
+        refresh.body,
+        refresh.status,
+        refresh.contentType,
+        [],
+        createdDeviceId,
+      );
+    if (refresh.kind === "authoritative") {
+      const response = responseWithCookies(
+        initialBody,
+        initial.response.status,
+        initial.response.headers.get("content-type"),
+        [],
+        createdDeviceId,
+      );
+      response.cookies.set("access_token", "", {
+        httpOnly: true,
+        path: "/",
+        maxAge: 0,
+      });
+      response.cookies.set("refresh_token", "", {
+        httpOnly: true,
+        path: "/",
+        maxAge: 0,
+      });
+      return response;
+    }
+
+    const retried = await forward(
+      body,
+      mergeCookies(cookieHeader, [...initialCookies, ...refresh.cookies]),
+      deviceId,
+      request.signal,
+    );
+    if (retried.kind === "failure")
+      return responseWithCookies(
+        retried.body,
+        retried.status,
+        retried.contentType,
+        refresh.cookies,
+        createdDeviceId,
+      );
     return responseWithCookies(
-      initialBody,
-      initial.status,
-      initial.headers.get("content-type"),
-      initialCookies,
+      retried.body,
+      retried.response.status,
+      retried.response.headers.get("content-type"),
+      [...refresh.cookies, ...setCookies(retried.response.headers)],
       createdDeviceId,
     );
-
-  const refreshBody = JSON.stringify({
-    query: "mutation Refresh { refresh { role } }",
-  });
-  const refresh = await forward(
-    refreshBody,
-    mergeCookies(cookieHeader, initialCookies),
-    deviceId,
-  );
-  const refreshText = await refresh.text();
-  const refreshCookies = setCookies(refresh.headers);
-  const refreshPayload = readPayload(refreshText);
-  if (
-    !refresh.ok ||
-    isUnauthenticated(refreshPayload) ||
-    !refreshPayload?.data?.refresh
-  ) {
-    const response = responseWithCookies(
-      initialBody,
-      initial.status,
-      initial.headers.get("content-type"),
-      initialCookies,
-      createdDeviceId,
-    );
-    response.cookies.set("access_token", "", {
-      httpOnly: true,
-      path: "/",
-      maxAge: 0,
-    });
-    response.cookies.set("refresh_token", "", {
-      httpOnly: true,
-      path: "/",
-      maxAge: 0,
-    });
-    return response;
+  } finally {
+    releaseRefreshGroup(key, group);
   }
-
-  const retried = await forward(
-    body,
-    mergeCookies(cookieHeader, [...initialCookies, ...refreshCookies]),
-    deviceId,
-  );
-  const retriedBody = await retried.text();
-  return responseWithCookies(
-    retriedBody,
-    retried.status,
-    retried.headers.get("content-type"),
-    [...refreshCookies, ...setCookies(retried.headers)],
-    createdDeviceId,
-  );
 };

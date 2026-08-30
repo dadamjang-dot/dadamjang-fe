@@ -13,7 +13,12 @@ type Story = StoryObj<typeof meta>;
 
 const Harness = ({ initial }: { initial: StyleCategoryKey }) => {
   const [selectedCategory, setSelectedCategory] = useState(initial);
-  return <StyleCategoryBar onSelect={setSelectedCategory} selectedCategory={selectedCategory} />;
+  return (
+    <StyleCategoryBar
+      onSelect={setSelectedCategory}
+      selectedCategory={selectedCategory}
+    />
+  );
 };
 
 export const Default: Story = {

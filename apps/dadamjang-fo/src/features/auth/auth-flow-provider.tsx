@@ -9,10 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
-import type {
-  IdentityVerificationPurpose,
-  KakaoSignupContext,
-} from "./types";
+import type { IdentityVerificationPurpose, KakaoSignupContext } from "./types";
 
 export class IdentitySheetDismissedError extends Error {
   constructor() {
@@ -29,12 +26,15 @@ type PendingIdentity = {
 
 type AuthFlowContextValue = {
   identityRequest?: IdentityRequest;
-  openIdentityProviderSheet: (purpose: IdentityVerificationPurpose) => Promise<string>;
+  openIdentityProviderSheet: (
+    purpose: IdentityVerificationPurpose,
+  ) => Promise<string>;
   completeIdentityRequest: (token: string) => void;
   cancelIdentityRequest: () => void;
   kakaoSignup?: KakaoSignupContext;
   setKakaoSignup: (signup: KakaoSignupContext) => void;
   clearKakaoSignup: () => void;
+  resetAuthFlow: () => void;
 };
 
 const AuthFlowContext = createContext<AuthFlowContextValue | null>(null);
@@ -70,7 +70,14 @@ export const AuthFlowProvider = ({ children }: { children: ReactNode }) => {
     setIdentityRequest(undefined);
   }, []);
 
-  const clearKakaoSignup = useCallback(() => setKakaoSignupState(undefined), []);
+  const clearKakaoSignup = useCallback(
+    () => setKakaoSignupState(undefined),
+    [],
+  );
+  const resetAuthFlow = useCallback(() => {
+    cancelIdentityRequest();
+    setKakaoSignupState(undefined);
+  }, [cancelIdentityRequest]);
   const value = useMemo<AuthFlowContextValue>(
     () => ({
       identityRequest,
@@ -80,6 +87,7 @@ export const AuthFlowProvider = ({ children }: { children: ReactNode }) => {
       kakaoSignup,
       setKakaoSignup: setKakaoSignupState,
       clearKakaoSignup,
+      resetAuthFlow,
     }),
     [
       cancelIdentityRequest,
@@ -88,10 +96,15 @@ export const AuthFlowProvider = ({ children }: { children: ReactNode }) => {
       identityRequest,
       kakaoSignup,
       openIdentityProviderSheet,
+      resetAuthFlow,
     ],
   );
 
-  return <AuthFlowContext.Provider value={value}>{children}</AuthFlowContext.Provider>;
+  return (
+    <AuthFlowContext.Provider value={value}>
+      {children}
+    </AuthFlowContext.Provider>
+  );
 };
 
 export const useAuthFlow = () => {

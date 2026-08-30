@@ -55,11 +55,15 @@ npx expo export --platform android --output-dir dist/android-verify
 ## 환경 변수
 
 ```txt
-EXPO_PUBLIC_API_URL=http://localhost:3000/graphql
+EXPO_PUBLIC_API_URL=http://localhost:5500/graphql
 EXPO_PUBLIC_SENTRY_DSN=
 EXPO_PUBLIC_SENTRY_ENVIRONMENT=development
 EXPO_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.1
 ```
+
+- iOS 시뮬레이터: `http://localhost:5500/graphql`
+- Android 에뮬레이터: `http://10.0.2.2:5500/graphql`
+- 실제 기기: `http://<개발 PC의 LAN IP>:5500/graphql`
 
 ## 네이티브 자산
 

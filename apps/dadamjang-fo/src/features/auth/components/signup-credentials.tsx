@@ -14,7 +14,10 @@ type SignupCredentialsProps = {
   emailVerificationToken?: string;
   onEmailVerified: (token?: string) => void;
   requestCode: (email: string) => Promise<unknown>;
-  verifyCode: (input: { email: string; code: string }) => Promise<{ emailVerificationToken: string }>;
+  verifyCode: (input: {
+    email: string;
+    code: string;
+  }) => Promise<{ emailVerificationToken: string }>;
   password: string;
   onPasswordChange: (password: string) => void;
   passwordConfirmation: string;
@@ -34,7 +37,8 @@ export const SignupCredentials = ({
   passwordConfirmation,
   onPasswordConfirmationChange,
 }: SignupCredentialsProps) => {
-  const emailNeedsVerification = !kakaoSignup || kakaoSignup.emailVerificationRequired;
+  const emailNeedsVerification =
+    !kakaoSignup || kakaoSignup.emailVerificationRequired;
   return (
     <View style={s.section}>
       <Text style={s.sectionTitle}>계정 정보</Text>

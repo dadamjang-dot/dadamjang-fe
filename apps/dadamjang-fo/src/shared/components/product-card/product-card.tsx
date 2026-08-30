@@ -16,7 +16,7 @@ type ProductCardProps = {
   onToggleLike: (nextLiked: boolean) => void;
   originalPrice?: number;
   price: number;
-  productId?: string;
+  productId: string;
 };
 
 const formatPrice = (price: number) => `${price.toLocaleString("ko-KR")}원`;
@@ -38,12 +38,17 @@ const ProductCard = ({
       accessibilityLabel={name}
       onPress={onPress}
       style={({ pressed }) => [s.productButton, pressed && s.pressedCard]}
-      testID={productId ? `e2e.product.open.${productId}` : undefined}
+      testID={`e2e.product.open.${productId}`}
       variant="bare"
     >
       <View style={s.imageWrapper}>
         {imageUrl ? (
-          <Image contentFit="cover" source={{ uri: imageUrl }} style={s.image} />
+          <Image
+            contentFit="cover"
+            recyclingKey={productId}
+            source={{ uri: imageUrl }}
+            style={s.image}
+          />
         ) : (
           <View style={s.imagePlaceholder} />
         )}
@@ -62,9 +67,7 @@ const ProductCard = ({
           <Text style={s.originalPrice}>{formatPrice(originalPrice)}</Text>
         ) : null}
       </View>
-      {isExpressDelivery ? (
-        <Text style={s.expressLabel}>바로배송</Text>
-      ) : null}
+      {isExpressDelivery ? <Text style={s.expressLabel}>바로배송</Text> : null}
     </Button>
     <Button
       accessibilityLabel={isLiked ? `${name} 좋아요 취소` : `${name} 좋아요`}
@@ -76,17 +79,12 @@ const ProductCard = ({
         isLiked && s.likedButton,
         pressed && s.pressedLikeButton,
       ]}
-      testID={
-        productId
-          ? `e2e.wish.${isLiked ? "remove" : "add"}.${productId}`
-          : undefined
-      }
+      testID={`e2e.wish.${isLiked ? "remove" : "add"}.${productId}`}
       variant="bare"
     >
-      <Image
-        source={isLiked ? "sf:heart.fill" : "sf:heart"}
-        style={[s.likeIcon, isLiked && s.likedIcon]}
-      />
+      <Text style={[s.likeIcon, isLiked && s.likedIcon]}>
+        {isLiked ? "♥" : "♡"}
+      </Text>
     </Button>
   </View>
 );
@@ -148,12 +146,12 @@ const s = StyleSheet.create({
     opacity: 0.64,
   },
   likeIcon: {
-    width: 20,
-    height: 20,
-    tintColor: colors.ink,
+    color: colors.ink,
+    fontSize: 22,
+    lineHeight: 24,
   },
   likedIcon: {
-    tintColor: colors.accent,
+    color: colors.accent,
   },
   title: {
     color: colors.ink,

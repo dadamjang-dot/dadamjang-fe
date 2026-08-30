@@ -1,10 +1,11 @@
 import { graphqlRequest } from "@dadamjang/graphql-client";
+import type { OrderStatus, PaymentStatus } from "@dadamjang/domain";
 
 export type Order = {
   orderId: string;
   orderNumber: string;
-  status: string;
-  paymentStatus: string;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
   totalAmount: number;
   paymentFailureReason?: string | null;
   items: {
@@ -38,22 +39,25 @@ const orderFields = `
   }
 `;
 
-export const getOrders = async () => {
+export const getOrders = async (signal?: AbortSignal) => {
   const data = await graphqlRequest<{ orders: Order[] }>(
     `query Orders {
       orders { ${orderFields} }
     }`,
+    undefined,
+    { signal },
   );
 
   return data.orders;
 };
 
-export const getOrder = async (orderId: string) => {
+export const getOrder = async (orderId: string, signal?: AbortSignal) => {
   const data = await graphqlRequest<{ order: Order }>(
     `query Order($orderId: String!) {
       order(orderId: $orderId) { ${orderFields} }
     }`,
     { orderId },
+    { signal },
   );
 
   return data.order;

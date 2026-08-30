@@ -1,21 +1,27 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { ReactNode, useEffect } from "react";
 import { ActionButton } from "@seed-design/react";
-import { logout, myPartner, sessionQuery } from "@/shared/auth";
+import {
+  invalidateSession,
+  logout,
+  myPartner,
+  sessionQuery,
+} from "@/shared/auth";
 export const PartnerShell = ({ children }: { children: ReactNode }) => {
   const path = usePathname();
   const router = useRouter();
-  const client = useQueryClient();
   const session = useQuery(sessionQuery());
   const partner = useQuery({
     queryKey: ["my-partner"],
     queryFn: myPartner,
-    enabled: session.isSuccess && session.data.role === "PARTNER",
     retry: false,
   });
+  useEffect(() => {
+    if (session.data && session.data.role !== "PARTNER") invalidateSession();
+  }, [session.data]);
   if (session.isPending)
     return <main className="center">세션을 확인하고 있습니다.</main>;
   if (session.isError || session.data.role !== "PARTNER")
@@ -42,14 +48,7 @@ export const PartnerShell = ({ children }: { children: ReactNode }) => {
         <div role="alert" className="gate">
           승인된 파트너와 연결 브랜드가 있어야 상품을 관리할 수 있습니다.
         </div>
-        <ActionButton
-          variant="neutralOutline"
-          onClick={async () => {
-            await logout();
-            client.clear();
-            router.replace("/login");
-          }}
-        >
+        <ActionButton variant="neutralOutline" onClick={logout}>
           로그아웃
         </ActionButton>
       </main>
@@ -75,14 +74,7 @@ export const PartnerShell = ({ children }: { children: ReactNode }) => {
             상품 관리
           </Link>
         </nav>
-        <ActionButton
-          variant="neutralOutline"
-          onClick={async () => {
-            await logout();
-            client.clear();
-            router.replace("/login");
-          }}
-        >
+        <ActionButton variant="neutralOutline" onClick={logout}>
           로그아웃
         </ActionButton>
       </aside>

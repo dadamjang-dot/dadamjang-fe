@@ -3,17 +3,24 @@ import {
   ChangeEvent,
   DragEvent,
   FormEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { ActionButton } from "@seed-design/react";
 import { PartnerTextarea, PartnerTextField } from "@/shared/ui";
 import {
   catalogOptions,
+  createUploadSlotRunner,
   createImageUpload,
   getProduct,
   publishProduct,
@@ -29,8 +36,14 @@ type ImageItem = {
   preview: string;
   local: boolean;
   progress: number;
+  order: number;
 };
 type Sku = ProductInput["skus"][number] & { identity: string };
+type SkuPatch = Partial<Omit<Sku, "identity">>;
+const UNSAVED_CHANGES_MESSAGE =
+  "저장하지 않은 변경사항이 있습니다. 이동할까요?";
+const HISTORY_GUARD_KEY = "__dadamjangProductEditorGuard";
+const MAX_CONCURRENT_UPLOADS = 3;
 let nextSkuIdentity = 0;
 const emptySku = (): Sku => ({
   identity: `new-sku-${nextSkuIdentity++}`,
@@ -41,14 +54,28 @@ const emptySku = (): Sku => ({
   price: 0,
   stock: 0,
 });
+const moveItem = <T, K extends keyof T>(
+  items: T[],
+  identityKey: K,
+  identity: T[K],
+  direction: -1 | 1,
+) => {
+  const from = items.findIndex((item) => item[identityKey] === identity);
+  const to = from + direction;
+  const item = items[from];
+  if (item === undefined || to < 0 || to >= items.length) return items;
+  const next = [...items];
+  next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+};
 export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const qc = useQueryClient();
   const existing = useQuery({
     queryKey: ["product", productId],
-    queryFn: () => getProduct(productId!),
-    enabled: !!productId,
+    queryFn: productId ? () => getProduct(productId) : skipToken,
   });
   const options = useQuery({
     queryKey: ["catalog-options"],
@@ -60,6 +87,12 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const [categoryId, setCategory] = useState("");
   const [images, setImages] = useState<ImageItem[]>([]);
   const imageRef = useRef<ImageItem[]>([]);
+  const occupiedImageKeys = useRef(new Set<string>());
+  const pendingImageSlots = useRef(0);
+  const nextImageOrder = useRef(0);
+  const runWithUploadSlot = useRef(
+    createUploadSlotRunner(MAX_CONCURRENT_UPLOADS),
+  ).current;
   const uploadControllers = useRef(new Map<string, AbortController>());
   const mounted = useRef(true);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -71,21 +104,39 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   );
   const [confirm, setConfirm] = useState(false);
   const [publishPending, setPublishPending] = useState(false);
-  const [dirty, setDirty] = useState(false);
+  const dirty = useRef(false);
   const hydrated = useRef(false);
+  const historyGuardArmed = useRef(false);
+  const markDirty = useCallback(() => {
+    dirty.current = true;
+    if (historyGuardArmed.current) return;
+    historyGuardArmed.current = true;
+    const currentState =
+      typeof history.state === "object" && history.state !== null
+        ? history.state
+        : {};
+    history.pushState(
+      { ...currentState, [HISTORY_GUARD_KEY]: true },
+      "",
+      location.href,
+    );
+  }, []);
   useEffect(() => {
     const p = existing.data?.myPartnerProduct;
-    if (!p || hydrated.current) return;
+    if (!p || existing.isFetching || hydrated.current) return;
     hydrated.current = true;
     setTitle(p.title);
     setDescription(p.description);
     setCategory(p.categoryId);
+    occupiedImageKeys.current = new Set(p.imageKeys);
+    nextImageOrder.current = p.imageKeys.length;
     setImages(
       p.imageKeys.map((key, i) => ({
         key,
         preview: p.imageUrls[i] ?? "",
         local: false,
         progress: 100,
+        order: i,
       })),
     );
     setSkus(
@@ -101,28 +152,64 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     );
     setSale(p.isOnSale);
     setExpress(p.isExpressDelivery);
-  }, [existing.data]);
+  }, [existing.data, existing.isFetching]);
   useEffect(() => {
     const guard = (event: BeforeUnloadEvent) => {
-      if (!dirty) return;
+      if (!dirty.current) return;
       event.preventDefault();
     };
     window.addEventListener("beforeunload", guard);
     return () => window.removeEventListener("beforeunload", guard);
-  }, [dirty]);
+  }, []);
   useEffect(() => {
     const guard = (event: MouseEvent) => {
       const anchor =
         event.target instanceof Element ? event.target.closest("a") : null;
-      if (!dirty || !anchor?.href) return;
-      if (window.confirm("저장하지 않은 변경사항이 있습니다. 이동할까요?"))
+      if (
+        !dirty.current ||
+        !anchor?.href ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey ||
+        anchor.target === "_blank" ||
+        anchor.hasAttribute("download")
+      )
         return;
+      if (!window.confirm(UNSAVED_CHANGES_MESSAGE)) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      dirty.current = false;
+      if (!historyGuardArmed.current) return;
       event.preventDefault();
       event.stopPropagation();
+      historyGuardArmed.current = false;
+      const target = new URL(anchor.href);
+      if (target.origin === location.origin)
+        router.replace(`${target.pathname}${target.search}${target.hash}`);
+      else location.replace(target.href);
     };
     document.addEventListener("click", guard, true);
     return () => document.removeEventListener("click", guard, true);
-  }, [dirty]);
+  }, [router]);
+  useEffect(() => {
+    const guard = () => {
+      if (!historyGuardArmed.current) return;
+      historyGuardArmed.current = false;
+      if (!dirty.current) return;
+      if (window.confirm(UNSAVED_CHANGES_MESSAGE)) {
+        dirty.current = false;
+        history.back();
+        return;
+      }
+      markDirty();
+    };
+    window.addEventListener("popstate", guard, true);
+    return () => window.removeEventListener("popstate", guard, true);
+  }, [markDirty]);
   useEffect(() => {
     imageRef.current = images;
   }, [images]);
@@ -179,12 +266,19 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     !productId ||
     (!!existing.data &&
       isProductEditable(effectiveProductState(existing.data.myPartnerProduct)));
+  const invalidateProductCaches = (id: string) =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: ["products"] }),
+      qc.invalidateQueries({ queryKey: ["dashboard"] }),
+      qc.invalidateQueries({
+        queryKey: ["product", id],
+        refetchType: "none",
+      }),
+    ]);
   const addFiles = async (files: FileList | File[]) => {
     setError("");
-    const available = Math.max(0, 10 - images.length);
-    if (files.length > available)
-      setError("이미지는 최대 10장까지 등록할 수 있습니다.");
-    for (const file of Array.from(files).slice(0, available)) {
+    const tasks: Array<{ file: File; preview: string; order: number }> = [];
+    for (const file of Array.from(files)) {
       if (
         !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
         file.size > 10 * 1024 * 1024
@@ -194,71 +288,136 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
         );
         continue;
       }
-      const preview = URL.createObjectURL(file);
-      let controller: AbortController | undefined;
-      try {
-        const { createProductImageUpload: u } = await createImageUpload({
-          filename: file.name,
-          contentType: file.type,
-          fileSize: file.size,
-        });
-        if (!mounted.current) {
-          URL.revokeObjectURL(preview);
-          return;
-        }
-        controller = new AbortController();
-        uploadControllers.current.set(u.key, controller);
-        setImages((value) => [
-          ...value,
-          { key: u.key, preview, local: true, progress: 0 },
-        ]);
-        try {
-          await uploadFile(
-            u.uploadUrl,
-            file,
-            (progress) => {
-              if (!mounted.current) return;
-              setImages((value) =>
-                value.map((item) =>
-                  item.key === u.key ? { ...item, progress } : item,
-                ),
-              );
-            },
-            controller.signal,
-          );
-        } finally {
-          uploadControllers.current.delete(u.key);
-        }
-        if (mounted.current) setDirty(true);
-      } catch (e) {
-        if (mounted.current) {
-          setImages((value) =>
-            value.filter((item) => item.preview !== preview),
-          );
-          if (!controller?.signal.aborted)
-            setError(
-              e instanceof Error ? e.message : "이미지 업로드에 실패했습니다.",
-            );
-        }
-        URL.revokeObjectURL(preview);
+      if (occupiedImageKeys.current.size + pendingImageSlots.current >= 10) {
+        setError("이미지는 최대 10장까지 등록할 수 있습니다.");
+        continue;
       }
+      const preview = URL.createObjectURL(file);
+      pendingImageSlots.current += 1;
+      tasks.push({ file, preview, order: nextImageOrder.current++ });
     }
+    let nextTask = 0;
+    const uploadNext = async () => {
+      while (nextTask < tasks.length) {
+        const task = tasks[nextTask++];
+        if (!task) return;
+        await runWithUploadSlot(async () => {
+          const { file, preview, order } = task;
+          let pendingSlot = true;
+          const releasePendingSlot = () => {
+            if (!pendingSlot) return;
+            pendingImageSlots.current -= 1;
+            pendingSlot = false;
+          };
+          let controller: AbortController | undefined;
+          let uploadKey: string | undefined;
+          let uploadSucceeded = false;
+          try {
+            if (!mounted.current) return;
+            const { createProductImageUpload: u } = await createImageUpload({
+              filename: file.name,
+              contentType: file.type,
+              fileSize: file.size,
+            });
+            releasePendingSlot();
+            if (!mounted.current) return;
+            uploadKey = u.key;
+            occupiedImageKeys.current.add(uploadKey);
+            controller = new AbortController();
+            uploadControllers.current.set(u.key, controller);
+            setImages((value) =>
+              [
+                ...value,
+                { key: u.key, preview, local: true, progress: 0, order },
+              ].sort((left, right) => left.order - right.order),
+            );
+            try {
+              await uploadFile(
+                u.uploadUrl,
+                file,
+                (progress) => {
+                  if (!mounted.current) return;
+                  setImages((value) =>
+                    value.map((item) =>
+                      item.key === u.key ? { ...item, progress } : item,
+                    ),
+                  );
+                },
+                controller.signal,
+              );
+              uploadSucceeded = true;
+            } finally {
+              uploadControllers.current.delete(u.key);
+            }
+            if (mounted.current) markDirty();
+          } catch (e) {
+            if (uploadKey) occupiedImageKeys.current.delete(uploadKey);
+            if (mounted.current) {
+              setImages((value) =>
+                value.filter((item) => item.preview !== preview),
+              );
+              if (!controller?.signal.aborted)
+                setError(
+                  e instanceof Error
+                    ? e.message
+                    : "이미지 업로드에 실패했습니다.",
+                );
+            }
+          } finally {
+            releasePendingSlot();
+            if (!uploadSucceeded) URL.revokeObjectURL(preview);
+          }
+        });
+      }
+    };
+    await Promise.all(
+      Array.from(
+        { length: Math.min(MAX_CONCURRENT_UPLOADS, tasks.length) },
+        uploadNext,
+      ),
+    );
   };
-  const remove = (i: number) =>
+  const removeImage = (key: string) =>
     setImages((v) => {
-      const item = v[i];
+      const index = v.findIndex((item) => item.key === key);
+      const item = v[index];
+      if (!item) return v;
+      occupiedImageKeys.current.delete(item.key);
       uploadControllers.current.get(item.key)?.abort();
       if (item.local) URL.revokeObjectURL(item.preview);
-      setDirty(true);
-      return v.filter((_, n) => n !== i);
+      markDirty();
+      return v.filter((_, currentIndex) => currentIndex !== index);
     });
-  const move = (i: number, d: number) =>
+  const moveImage = (key: string, direction: -1 | 1) =>
     setImages((v) => {
-      const n = [...v];
-      const [x] = n.splice(i, 1);
-      n.splice(i + d, 0, x);
-      setDirty(true);
-      return n;
+      const next = moveItem(v, "key", key, direction);
+      if (next === v) return v;
+      markDirty();
+      return next;
+    });
+  const moveSku = (identity: string, direction: -1 | 1) =>
+    setSkus((value) => {
+      const next = moveItem(value, "identity", identity, direction);
+      if (next === value) return value;
+      markDirty();
+      return next;
+    });
+  const removeSku = (identity: string) =>
+    setSkus((value) => {
+      if (value.length <= 1) return value;
+      const index = value.findIndex((sku) => sku.identity === identity);
+      if (index < 0) return value;
+      markDirty();
+      return value.filter((_, currentIndex) => currentIndex !== index);
+    });
+  const updateSku = (identity: string, patch: SkuPatch) =>
+    setSkus((value) => {
+      const index = value.findIndex((sku) => sku.identity === identity);
+      const current = value[index];
+      if (!current) return value;
+      const next = [...value];
+      next[index] = { ...current, ...patch };
+      return next;
     });
   const mutation = useMutation({
     mutationFn: async ({ submit }: { submit: boolean }) => {
@@ -325,23 +484,51 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       }
       return draft;
     },
-    onSuccess: async () => {
-      setDirty(false);
-      await qc.invalidateQueries({ queryKey: ["products"] });
-      router.push("/products");
+    onSuccess: async (draft) => {
+      const replaceHistoryGuard = historyGuardArmed.current;
+      dirty.current = false;
+      historyGuardArmed.current = false;
+      await invalidateProductCaches(draft.productId);
+      if (replaceHistoryGuard) router.replace("/products");
+      else router.push("/products");
     },
     onError: (e) => setError(e.message),
   });
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const submitter =
+      e.nativeEvent instanceof SubmitEvent ? e.nativeEvent.submitter : null;
     mutation.mutate({
-      submit:
-        (e.nativeEvent as SubmitEvent).submitter?.getAttribute(
-          "data-action",
-        ) === "submit",
+      submit: submitter?.getAttribute("data-action") === "submit",
     });
   };
+  const handlePublish = () => {
+    if (!productId) return;
+    setPublishPending(true);
+    setError("");
+    publishProduct(productId)
+      .then(async () => {
+        setConfirm(false);
+        await invalidateProductCaches(productId);
+        await existing.refetch();
+      })
+      .catch((publishError: Error) => setError(publishError.message))
+      .finally(() => setPublishPending(false));
+  };
   if (productId && existing.isPending) return <p>상품을 불러오고 있습니다.</p>;
+  if (productId && existing.isError && !existing.data)
+    return (
+      <section>
+        <p role="alert">상품을 불러오지 못했습니다.</p>
+        <ActionButton
+          type="button"
+          loading={existing.isFetching}
+          onClick={() => void existing.refetch()}
+        >
+          다시 시도
+        </ActionButton>
+      </section>
+    );
   const p = existing.data?.myPartnerProduct;
   const effectiveState = p ? effectiveProductState(p) : undefined;
   return (
@@ -355,11 +542,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
           반려 사유: {p.rejectionReason}
         </div>
       )}
-      <form
-        className="editor-grid"
-        onSubmit={onSubmit}
-        onChange={() => setDirty(true)}
-      >
+      <form className="editor-grid" onSubmit={onSubmit} onChange={markDirty}>
         <div className="editor-main">
           <fieldset disabled={!editable || mutation.isPending}>
             <label>
@@ -382,7 +565,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
-                setDirty(true);
+                markDirty();
               }}
               maxLength={200}
               required
@@ -433,7 +616,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                       alt={`상품 이미지 ${i + 1}`}
                       width={190}
                       height={140}
-                      unoptimized
+                      unoptimized={x.preview.startsWith("blob:")}
                     />
                   ) : (
                     <span
@@ -448,18 +631,21 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   <ActionButton
                     type="button"
                     disabled={i === 0}
-                    onClick={() => move(i, -1)}
+                    onClick={() => moveImage(x.key, -1)}
                   >
                     앞으로
                   </ActionButton>
                   <ActionButton
                     type="button"
                     disabled={i === images.length - 1}
-                    onClick={() => move(i, 1)}
+                    onClick={() => moveImage(x.key, 1)}
                   >
                     뒤로
                   </ActionButton>
-                  <ActionButton type="button" onClick={() => remove(i)}>
+                  <ActionButton
+                    type="button"
+                    onClick={() => removeImage(x.key)}
+                  >
                     삭제
                   </ActionButton>
                 </article>
@@ -472,36 +658,27 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   aria-label={`SKU ${i + 1} 코드`}
                   placeholder="코드"
                   value={s.code}
-                  onChange={(e) =>
-                    setSkus((v) =>
-                      v.map((x, n) =>
-                        n === i ? { ...x, code: e.target.value } : x,
-                      ),
-                    )
-                  }
+                  onChange={(event) => {
+                    const code = event.currentTarget.value;
+                    updateSku(s.identity, { code });
+                  }}
                 />
                 <input
                   aria-label={`SKU ${i + 1} 옵션명`}
                   placeholder="옵션명"
                   value={s.optionName}
-                  onChange={(e) =>
-                    setSkus((v) =>
-                      v.map((x, n) =>
-                        n === i ? { ...x, optionName: e.target.value } : x,
-                      ),
-                    )
-                  }
+                  onChange={(event) => {
+                    const optionName = event.currentTarget.value;
+                    updateSku(s.identity, { optionName });
+                  }}
                 />
                 <select
                   aria-label={`SKU ${i + 1} 색상`}
                   value={s.colorId}
-                  onChange={(e) =>
-                    setSkus((v) =>
-                      v.map((x, n) =>
-                        n === i ? { ...x, colorId: e.target.value } : x,
-                      ),
-                    )
-                  }
+                  onChange={(event) => {
+                    const colorId = event.currentTarget.value;
+                    updateSku(s.identity, { colorId });
+                  }}
                 >
                   <option value="">색상</option>
                   {options.data?.catalogFilterOptions?.colors?.map((x) => (
@@ -513,13 +690,10 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                 <select
                   aria-label={`SKU ${i + 1} 사이즈`}
                   value={s.sizeId}
-                  onChange={(e) =>
-                    setSkus((v) =>
-                      v.map((x, n) =>
-                        n === i ? { ...x, sizeId: e.target.value } : x,
-                      ),
-                    )
-                  }
+                  onChange={(event) => {
+                    const sizeId = event.currentTarget.value;
+                    updateSku(s.identity, { sizeId });
+                  }}
                 >
                   <option value="">사이즈</option>
                   {options.data?.catalogFilterOptions?.sizes?.map((x) => (
@@ -534,13 +708,10 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   min="0"
                   step="1"
                   value={s.price}
-                  onChange={(e) =>
-                    setSkus((v) =>
-                      v.map((x, n) =>
-                        n === i ? { ...x, price: Number(e.target.value) } : x,
-                      ),
-                    )
-                  }
+                  onChange={(event) => {
+                    const price = Number(event.currentTarget.value);
+                    updateSku(s.identity, { price });
+                  }}
                 />
                 <input
                   aria-label={`SKU ${i + 1} 재고`}
@@ -548,26 +719,16 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   min="0"
                   step="1"
                   value={s.stock}
-                  onChange={(e) =>
-                    setSkus((v) =>
-                      v.map((x, n) =>
-                        n === i ? { ...x, stock: Number(e.target.value) } : x,
-                      ),
-                    )
-                  }
+                  onChange={(event) => {
+                    const stock = Number(event.currentTarget.value);
+                    updateSku(s.identity, { stock });
+                  }}
                 />
                 <ActionButton
                   aria-label={`SKU ${i + 1} 위로 이동`}
                   type="button"
                   disabled={i === 0}
-                  onClick={() =>
-                    setSkus((value) => {
-                      const next = [...value];
-                      [next[i - 1], next[i]] = [next[i], next[i - 1]];
-                      setDirty(true);
-                      return next;
-                    })
-                  }
+                  onClick={() => moveSku(s.identity, -1)}
                 >
                   위로
                 </ActionButton>
@@ -575,24 +736,14 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   aria-label={`SKU ${i + 1} 아래로 이동`}
                   type="button"
                   disabled={i === skus.length - 1}
-                  onClick={() =>
-                    setSkus((value) => {
-                      const next = [...value];
-                      [next[i], next[i + 1]] = [next[i + 1], next[i]];
-                      setDirty(true);
-                      return next;
-                    })
-                  }
+                  onClick={() => moveSku(s.identity, 1)}
                 >
                   아래로
                 </ActionButton>
                 <ActionButton
                   type="button"
                   disabled={skus.length === 1}
-                  onClick={() => {
-                    setSkus((v) => v.filter((_, n) => n !== i));
-                    setDirty(true);
-                  }}
+                  onClick={() => removeSku(s.identity)}
                 >
                   행 삭제
                 </ActionButton>
@@ -603,7 +754,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
               variant="neutralOutline"
               onClick={() => {
                 setSkus((v) => [...v, emptySku()]);
-                setDirty(true);
+                markDirty();
               }}
             >
               SKU 추가
@@ -655,7 +806,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
               </ActionButton>
             </div>
           )}
-          {effectiveState === "APPROVED" && (
+          {effectiveState === "APPROVED" && productId && (
             <ActionButton type="button" onClick={() => setConfirm(true)}>
               판매 게시
             </ActionButton>
@@ -669,8 +820,9 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
           role="dialog"
           aria-modal="true"
           aria-labelledby="publish-title"
+          aria-describedby="publish-description"
         >
-          <div aria-describedby="publish-description">
+          <div>
             <h2 id="publish-title">상품을 게시할까요?</h2>
             <p id="publish-description">게시하면 고객에게 상품이 공개됩니다.</p>
             <ActionButton
@@ -679,22 +831,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
             >
               취소
             </ActionButton>
-            <ActionButton
-              loading={publishPending}
-              onClick={() => {
-                setPublishPending(true);
-                setError("");
-                publishProduct(productId!)
-                  .then(() => {
-                    setConfirm(false);
-                    return existing.refetch();
-                  })
-                  .catch((publishError: Error) =>
-                    setError(publishError.message),
-                  )
-                  .finally(() => setPublishPending(false));
-              }}
-            >
+            <ActionButton loading={publishPending} onClick={handlePublish}>
               게시
             </ActionButton>
           </div>

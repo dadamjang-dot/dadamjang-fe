@@ -12,11 +12,21 @@ type AuthLinksProps = {
 
 export const AuthLinks = ({ onFindEmail, onFindPassword }: AuthLinksProps) => (
   <View style={s.links}>
-    <Button label="이메일 찾기" onPress={onFindEmail} style={s.link} variant="bare" />
+    <Button
+      label="이메일 찾기"
+      onPress={onFindEmail}
+      style={s.link}
+      variant="bare"
+    />
     <Text accessibilityElementsHidden style={s.separator}>
       |
     </Text>
-    <Button label="비밀번호 찾기" onPress={onFindPassword} style={s.link} variant="bare" />
+    <Button
+      label="비밀번호 찾기"
+      onPress={onFindPassword}
+      style={s.link}
+      variant="bare"
+    />
   </View>
 );
 

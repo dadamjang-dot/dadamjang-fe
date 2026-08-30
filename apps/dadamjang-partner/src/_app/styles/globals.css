@@ -9,7 +9,9 @@ body {
   font-family: Arial, sans-serif;
 }
 :root {
-  --partner-accent: #f05a47;
+  --partner-accent: #cc4030;
+  --seed-color-bg-brand-solid: #cc4030;
+  --seed-color-bg-brand-solid-pressed: #a32b1c;
 }
 .mobile-block {
   display: none;
@@ -147,7 +149,7 @@ td {
 }
 .product-cell small {
   display: block;
-  color: #777;
+  color: #707070;
   margin-top: 5px;
 }
 .thumbnail {
@@ -251,7 +253,7 @@ select:focus-visible,
 textarea:focus-visible,
 button:focus-visible,
 a:focus-visible {
-  outline: 3px solid #f7a89d;
+  outline: 3px solid #b83225;
   outline-offset: 2px;
 }
 .modal {

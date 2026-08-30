@@ -10,7 +10,8 @@ const meta = {
     author: "integration-user",
     content: "오늘의 스타일을 공유합니다.",
     hashtags: ["daily_look", "street"],
-    imageUrl: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600",
+    imageUrl:
+      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600",
     likeCount: 12,
     onPress: () => undefined,
     onToggleLike: () => undefined,
@@ -26,7 +27,8 @@ export const Default: Story = {
     author: "integration-user",
     content: "오늘의 스타일을 공유합니다.",
     hashtags: ["daily_look", "street"],
-    imageUrl: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600",
+    imageUrl:
+      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600",
     isLiked: false,
     likeCount: 12,
     onPress: () => undefined,
@@ -60,7 +62,8 @@ export const Ranking: Story = {
     author: "ranking-user",
     content: "랭킹 카드 상태",
     hashtags: ["ranking"],
-    imageUrl: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=600",
+    imageUrl:
+      "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=600",
     isLiked: false,
     likeCount: 42,
     onPress: () => undefined,

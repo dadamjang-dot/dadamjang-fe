@@ -1,11 +1,11 @@
-import { cleanup } from "@testing-library/react-native";
-
 class TestNetworkError extends Error {
   constructor() {
     super("Unexpected GraphQL network request in test");
     this.name = "TestNetworkError";
   }
 }
+
+process.env.EXPO_PUBLIC_API_URL = "http://127.0.0.1:5500/graphql";
 
 jest.mock("expo-linking", () => ({
   addEventListener: jest.fn(() => ({ remove: jest.fn() })),
@@ -20,6 +20,7 @@ jest.mock("expo-crypto", () => ({
 }));
 
 jest.mock("@sentry/react-native", () => ({
+  captureException: jest.fn(),
   init: jest.fn(),
   wrap: jest.fn((component: unknown) => component),
 }));
@@ -34,8 +35,7 @@ global.fetch = jest.fn(async () => {
   throw new TestNetworkError();
 });
 
-afterEach(async () => {
-  await cleanup();
+afterEach(() => {
   jest.clearAllMocks();
   jest.restoreAllMocks();
 });

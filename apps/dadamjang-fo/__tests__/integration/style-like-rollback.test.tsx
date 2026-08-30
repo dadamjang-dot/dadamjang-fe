@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook } from "@testing-library/react-native";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
-import { likeStylePost } from "@/features/style/api";
+import { likeStylePost, unlikeStylePost } from "@/features/style/api";
 import { styleQueryKeys, useToggleStylePostLike } from "@/features/style/hooks";
 import type { StylePost } from "@/features/style/types";
 
@@ -50,6 +50,16 @@ const createWrapper = (client: QueryClient) => {
   return TestWrapper;
 };
 
+const createDeferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, reject, resolve };
+};
+
 describe("style post like rollback", () => {
   it("restores feed and detail caches when the like request fails", async () => {
     const client = createClient();
@@ -68,6 +78,109 @@ describe("style post like rollback", () => {
 
     expect(client.getQueryData(styleQueryKeys.posts(undefined, "RECOMMENDED"))).toEqual(feed);
     expect(client.getQueryData(styleQueryKeys.post(post.stylePostId))).toEqual(post);
+    act(() => {
+      unmount();
+      client.clear();
+    });
+  });
+
+  it("serializes toggles for one post and prevents an older rollback", async () => {
+    const client = createClient();
+    const firstToggle = createDeferred<StylePost>();
+    client.setQueryData(styleQueryKeys.post(post.stylePostId), post);
+    jest.mocked(likeStylePost).mockReturnValueOnce(firstToggle.promise);
+    jest.mocked(unlikeStylePost).mockResolvedValueOnce(post);
+    const { result, unmount } = renderHook(useToggleStylePostLike, {
+      wrapper: createWrapper(client),
+    });
+    let firstRequest!: Promise<StylePost>;
+    let secondRequest!: Promise<StylePost>;
+
+    act(() => {
+      firstRequest = result.current.mutateAsync({
+        stylePostId: post.stylePostId,
+        nextLiked: true,
+      });
+      secondRequest = result.current.mutateAsync({
+        stylePostId: post.stylePostId,
+        nextLiked: false,
+      });
+    });
+
+    await waitFor(() => expect(likeStylePost).toHaveBeenCalledTimes(1));
+    expect(unlikeStylePost).not.toHaveBeenCalled();
+    firstToggle.reject(new Error("like failed"));
+    await expect(firstRequest).rejects.toThrow("like failed");
+    await act(async () => {
+      await secondRequest;
+    });
+
+    expect(unlikeStylePost).toHaveBeenCalledTimes(1);
+    expect(client.getQueryData(styleQueryKeys.post(post.stylePostId))).toEqual(
+      post,
+    );
+    act(() => {
+      unmount();
+      client.clear();
+    });
+  });
+
+  it("coordinates one post across separate hook instances", async () => {
+    const client = createClient();
+    const firstToggle = createDeferred<StylePost>();
+    const secondToggle = createDeferred<StylePost>();
+    client.setQueryData(styleQueryKeys.post(post.stylePostId), post);
+    jest
+      .mocked(likeStylePost)
+      .mockReturnValueOnce(firstToggle.promise)
+      .mockReturnValueOnce(secondToggle.promise);
+    const { result, unmount } = renderHook(
+      () => ({
+        detail: useToggleStylePostLike(),
+        feed: useToggleStylePostLike(),
+      }),
+      { wrapper: createWrapper(client) },
+    );
+    let firstRequest!: Promise<StylePost>;
+    let secondRequest!: Promise<StylePost>;
+
+    act(() => {
+      firstRequest = result.current.feed.mutateAsync({
+        stylePostId: post.stylePostId,
+        nextLiked: true,
+      });
+    });
+    await waitFor(() => expect(likeStylePost).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      secondRequest = result.current.detail.mutateAsync({
+        stylePostId: post.stylePostId,
+        nextLiked: true,
+      });
+    });
+    await waitFor(() =>
+      expect(
+        client.getQueryData<StylePost>(styleQueryKeys.post(post.stylePostId))
+          ?.isLiked,
+      ).toBe(true),
+    );
+    const callsBeforeFirstSettled = jest.mocked(likeStylePost).mock.calls.length;
+
+    await act(async () => {
+      firstToggle.reject(new Error("older like failed"));
+      await expect(firstRequest).rejects.toThrow("older like failed");
+    });
+    await waitFor(() => expect(likeStylePost).toHaveBeenCalledTimes(2));
+    const isLikedAfterOlderFailure = client.getQueryData<StylePost>(
+      styleQueryKeys.post(post.stylePostId),
+    )?.isLiked;
+    secondToggle.resolve({ ...post, isLiked: true, likeCount: 3 });
+    await act(async () => {
+      await secondRequest;
+    });
+
+    expect(callsBeforeFirstSettled).toBe(1);
+    expect(isLikedAfterOlderFailure).toBe(true);
     act(() => {
       unmount();
       client.clear();

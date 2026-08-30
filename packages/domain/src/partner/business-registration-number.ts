@@ -1,7 +1,7 @@
 const BUSINESS_REGISTRATION_NUMBER_LENGTH = 10;
 
 export const normalizeBusinessRegistrationNumber = (value: string) =>
-  value.replaceAll(/\D/g, '');
+  value.replaceAll(/\D/g, "");
 
 export const formatBusinessRegistrationNumber = (value: string) => {
   const normalizedValue = normalizeBusinessRegistrationNumber(value).slice(
@@ -18,4 +18,5 @@ export const formatBusinessRegistrationNumber = (value: string) => {
 };
 
 export const isBusinessRegistrationNumber = (value: string) =>
-  normalizeBusinessRegistrationNumber(value).length === BUSINESS_REGISTRATION_NUMBER_LENGTH;
+  normalizeBusinessRegistrationNumber(value).length ===
+  BUSINESS_REGISTRATION_NUMBER_LENGTH;

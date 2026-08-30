@@ -1,9 +1,5 @@
 import { type ReactNode } from "react";
-import {
-  Pressable,
-  Text,
-  type PressableProps,
-} from "react-native";
+import { Pressable, Text, type PressableProps } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors, spacing } from "@dadamjang/design-tokens";

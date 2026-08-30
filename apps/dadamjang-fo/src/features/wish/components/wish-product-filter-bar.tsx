@@ -98,7 +98,12 @@ const s = StyleSheet.create({
   activeChip: { borderColor: colors.ink, backgroundColor: colors.ink },
   chipLabel: { color: colors.ink, fontSize: 13, fontWeight: "600" },
   activeChipLabel: { color: colors.surface },
-  sortButton: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8 },
+  sortButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+  },
   sortLabel: { color: colors.muted, fontSize: 13, fontWeight: "600" },
   chevron: { color: colors.muted, fontSize: 18, lineHeight: 16 },
 });

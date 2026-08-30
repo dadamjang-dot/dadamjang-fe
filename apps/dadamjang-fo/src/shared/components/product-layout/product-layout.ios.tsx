@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { StyleSheet, View, type LayoutChangeEvent } from "react-native";
+import { View, type LayoutChangeEvent } from "react-native";
+import { StyleSheet } from "react-native-unistyles";
 import Animated, {
   useSharedValue,
   Easing,
@@ -8,7 +9,11 @@ import Animated, {
 import { LiquidGlassView } from "@callstack/liquid-glass";
 
 import { ProductHeader, SearchContent } from "@/shared/components";
-import { ActionButtonGroup, ActionButtonContent } from "@dadamjang/mobile";
+import {
+  ActionButtonGroup,
+  ActionButtonContent,
+  type ActionButtonGroupAnimation,
+} from "@dadamjang/mobile";
 import { colors } from "@dadamjang/design-tokens";
 import type { ProductLayoutProps } from "./product-layout.types";
 import {
@@ -19,11 +24,7 @@ import {
 const actionTransitionPhaseEnd = 0.25;
 const searchTransitionDuration = 280;
 
-const ProductLayout = ({
-  headerActions,
-  variant,
-  children,
-}: ProductLayoutProps) => {
+const ProductLayout = (props: ProductLayoutProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
@@ -38,8 +39,8 @@ const ProductLayout = ({
 
   const handleChildrenLayout = useCallback(
     (event: LayoutChangeEvent) => {
-      if (childrenWidth.value === 0 && event.nativeEvent.layout.width > 0) {
-        childrenWidth.value = event.nativeEvent.layout.width;
+      if (childrenWidth.get() === 0 && event.nativeEvent.layout.width > 0) {
+        childrenWidth.set(event.nativeEvent.layout.width);
       }
     },
     [childrenWidth],
@@ -47,18 +48,20 @@ const ProductLayout = ({
 
   const handleCancelLayout = useCallback(
     (event: LayoutChangeEvent) => {
-      if (cancelWidth.value === 0 && event.nativeEvent.layout.width > 0) {
-        cancelWidth.value = event.nativeEvent.layout.width;
+      if (cancelWidth.get() === 0 && event.nativeEvent.layout.width > 0) {
+        cancelWidth.set(event.nativeEvent.layout.width);
       }
     },
     [cancelWidth],
   );
 
   useEffect(() => {
-    progress.value = withTiming(isSearching ? 1 : 0, {
-      duration: searchTransitionDuration,
-      easing: Easing.linear,
-    });
+    progress.set(
+      withTiming(isSearching ? 1 : 0, {
+        duration: searchTransitionDuration,
+        easing: Easing.linear,
+      }),
+    );
   }, [isSearching, progress]);
 
   const circularPairAnim = useCircularPairAnimation(
@@ -66,23 +69,40 @@ const ProductLayout = ({
     childrenWidth,
     cancelWidth,
   );
-  const capsuleAnim = useCapsuleAnimation(
-    progress,
-    childrenWidth,
-    cancelWidth,
-  );
+  const capsuleAnim = useCapsuleAnimation(progress, childrenWidth, cancelWidth);
 
   const { groupAnim, cancelAnim } =
-    variant === "circularPair" ? circularPairAnim : capsuleAnim;
+    props.variant === "circularPair" ? circularPairAnim : capsuleAnim;
+
+  const renderActionButtonGroup = (
+    animations?: readonly [
+      ActionButtonGroupAnimation,
+      ActionButtonGroupAnimation?,
+    ],
+  ) =>
+    props.variant === "circularPair" ? (
+      <ActionButtonGroup
+        actions={props.headerActions}
+        animations={animations}
+        variant="circularPair"
+      />
+    ) : (
+      <ActionButtonGroup
+        actions={props.headerActions}
+        animations={animations}
+        variant="capsule"
+      />
+    );
 
   const buttonGroup = (
     <View style={s.buttonRow}>
-      <ActionButtonGroup
-        actions={headerActions}
-        variant={variant}
-        animations={groupAnim}
-      />
-      <Animated.View style={cancelAnim}>
+      <View pointerEvents={isSearching ? "none" : "auto"}>
+        {renderActionButtonGroup(groupAnim)}
+      </View>
+      <Animated.View
+        pointerEvents={isSearching ? "auto" : "none"}
+        style={[s.cancelLayer, cancelAnim]}
+      >
         <LiquidGlassView
           effect="clear"
           interactive
@@ -110,15 +130,17 @@ const ProductLayout = ({
         searchValue={searchValue}
       >
         <View onLayout={handleChildrenLayout} style={s.measureOuter}>
-          <ActionButtonGroup actions={headerActions} variant={variant} />
+          {renderActionButtonGroup()}
         </View>
         <View onLayout={handleCancelLayout} style={s.measureOuter}>
-          <ActionButtonContent action={{ label: "취소", onPress: () => {} }} />
+          <ActionButtonContent
+            action={{ label: "취소", onPress: handleCancelSearch }}
+          />
         </View>
         {buttonGroup}
       </ProductHeader>
 
-      {isSearching ? <SearchContent keyword={searchValue} /> : children}
+      {isSearching ? <SearchContent keyword={searchValue} /> : props.children}
     </View>
   );
 };
@@ -127,11 +149,15 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
   buttonRow: {
     height: 40,
+    position: "relative",
     flexDirection: "row",
-    gap: 8,
     alignItems: "center",
     justifyContent: "flex-end",
     flexShrink: 0,
+  },
+  cancelLayer: {
+    position: "absolute",
+    right: 0,
   },
   measureOuter: {
     position: "absolute",

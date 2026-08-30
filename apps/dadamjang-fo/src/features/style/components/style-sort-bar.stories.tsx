@@ -12,7 +12,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const Harness = () => {
-  const [sort, setSort] = useState<"RECOMMENDED" | "POPULAR" | "LATEST">("RECOMMENDED");
+  const [sort, setSort] = useState<"RECOMMENDED" | "POPULAR" | "LATEST">(
+    "RECOMMENDED",
+  );
   return <StyleSortBar onSelect={setSort} sort={sort} />;
 };
 

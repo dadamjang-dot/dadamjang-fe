@@ -1,5 +1,5 @@
 import { LiquidGlassView } from "@callstack/liquid-glass";
-import { SymbolView, type SFSymbol } from "expo-symbols";
+import { SymbolView } from "expo-symbols";
 import { Pressable, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -24,14 +24,16 @@ export const ActionButtonContent = ({
 
   return (
     <Pressable
-      accessibilityLabel={action.accessibilityLabel ?? action.label ?? action.icon}
+      accessibilityLabel={
+        action.accessibilityLabel ?? action.label ?? action.icon?.sf
+      }
       accessibilityRole="button"
       onPress={action.onPress}
       style={[s.action, isIconOnly ? s.iconAction : s.labelAction]}
     >
       {action.icon ? (
         <SymbolView
-          name={action.icon as SFSymbol}
+          name={action.icon.sf}
           size={action.iconSize ?? 24}
           tintColor={colors.primary}
         />
@@ -43,10 +45,10 @@ export const ActionButtonContent = ({
 };
 
 const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
-  if (!actions.length) return null;
+  const [action] = actions;
+  if (!action) return null;
 
   if (actions.length === 1) {
-    const action = actions[0];
     const isIconOnly = Boolean(iconOnly && action.icon && !action.label);
 
     return (
@@ -72,7 +74,7 @@ const ActionButton = ({ actions, iconOnly }: ActionButtonProps) => {
       <View style={s.groupContent}>
         {actions.map((action, index) => (
           <ActionButtonContent
-            key={action.label ?? action.icon ?? index}
+            key={action.accessibilityLabel ?? action.label ?? index}
             action={action}
             iconOnly={iconOnly}
           />

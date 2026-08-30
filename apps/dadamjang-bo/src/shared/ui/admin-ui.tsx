@@ -11,7 +11,7 @@ import {
   TextField,
   useSnackbarAdapter,
 } from "@seed-design/react";
-import { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import styles from "./admin-ui.module.css";
 
 export type DataTableColumn<T> = {
@@ -240,43 +240,66 @@ export const ConfirmDialog = ({
   confirmLabel: string;
   critical?: boolean;
   pending?: boolean;
-  onConfirm: () => void;
+  onConfirm: () => boolean | void;
   children?: ReactNode;
-}) => (
-  <Dialog.Root
-    open={open}
-    onOpenChange={onOpenChange}
-    role="alertdialog"
-    closeOnInteractOutside={!pending}
-  >
-    <Dialog.Backdrop className={styles.dialogBackdrop} />
-    <Dialog.Positioner className={styles.dialogPositioner}>
-      <Dialog.Content className={styles.dialogContent}>
-        <Dialog.Header className={styles.dialogHeader}>
-          <Dialog.Title className={styles.dialogTitle}>{title}</Dialog.Title>
-          <Dialog.Description className={styles.dialogDescription}>
-            {description}
-          </Dialog.Description>
-        </Dialog.Header>
-        {children ? <div className={styles.dialogBody}>{children}</div> : null}
-        <Dialog.Footer className={styles.dialogFooter}>
-          <Dialog.Action asChild>
-            <ActionButton variant="neutralOutline" disabled={pending}>
-              취소
+}) => {
+  const submitting = useRef(false);
+
+  useEffect(() => {
+    if (!open || !pending) submitting.current = false;
+  }, [open, pending]);
+
+  const handleConfirm = () => {
+    if (submitting.current) return;
+    submitting.current = true;
+    try {
+      if (onConfirm() === false) submitting.current = false;
+    } catch (error) {
+      submitting.current = false;
+      throw error;
+    }
+  };
+
+  return (
+    <Dialog.Root
+      open={open}
+      onOpenChange={onOpenChange}
+      role="alertdialog"
+      closeOnEscape={!pending}
+      closeOnInteractOutside={!pending}
+    >
+      <Dialog.Backdrop className={styles.dialogBackdrop} />
+      <Dialog.Positioner className={styles.dialogPositioner}>
+        <Dialog.Content className={styles.dialogContent}>
+          <Dialog.Header className={styles.dialogHeader}>
+            <Dialog.Title className={styles.dialogTitle}>{title}</Dialog.Title>
+            <Dialog.Description className={styles.dialogDescription}>
+              {description}
+            </Dialog.Description>
+          </Dialog.Header>
+          {children ? (
+            <div className={styles.dialogBody}>{children}</div>
+          ) : null}
+          <Dialog.Footer className={styles.dialogFooter}>
+            <Dialog.Action asChild>
+              <ActionButton variant="neutralOutline" disabled={pending}>
+                취소
+              </ActionButton>
+            </Dialog.Action>
+            <ActionButton
+              disabled={pending}
+              variant={critical ? "criticalSolid" : "neutralSolid"}
+              loading={pending}
+              onClick={handleConfirm}
+            >
+              {confirmLabel}
             </ActionButton>
-          </Dialog.Action>
-          <ActionButton
-            variant={critical ? "criticalSolid" : "neutralSolid"}
-            loading={pending}
-            onClick={onConfirm}
-          >
-            {confirmLabel}
-          </ActionButton>
-        </Dialog.Footer>
-      </Dialog.Content>
-    </Dialog.Positioner>
-  </Dialog.Root>
-);
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog.Positioner>
+    </Dialog.Root>
+  );
+};
 
 export const DetailPanel = ({
   open,
@@ -301,7 +324,22 @@ export const DetailPanel = ({
             닫기
           </SidePanel.CloseButton>
         </SidePanel.Header>
-        <SidePanel.Body className={styles.panelBody}>{children}</SidePanel.Body>
+        <SidePanel.Body
+          className={styles.panelBody}
+          onPointerDown={(event) => {
+            const target = event.target;
+            if (
+              target instanceof Element &&
+              target.closest(
+                "a, button, input, select, textarea, [role='button']",
+              )
+            ) {
+              event.stopPropagation();
+            }
+          }}
+        >
+          {children}
+        </SidePanel.Body>
       </SidePanel.Content>
     </SidePanel.Positioner>
   </SidePanel.Root>
@@ -361,38 +399,22 @@ export const ApiCallout = ({ message }: { message: string }) => (
 export const AdminTextField = ({
   label,
   error,
-  textarea = false,
   ...props
 }: React.InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   error?: string;
-  textarea?: boolean;
 }) => {
   const id = props.id ?? props.name;
   return (
     <label className={styles.filterControlWide} htmlFor={id}>
       <span className={styles.controlLabel}>{label}</span>
       <TextField.Root>
-        {textarea ? (
-          <TextField.Textarea
-            id={id}
-            name={props.name}
-            value={String(props.value ?? "")}
-            onChange={
-              props.onChange as unknown as React.ChangeEventHandler<HTMLTextAreaElement>
-            }
-            required={props.required}
-            aria-label={label}
-            aria-invalid={!!error}
-          />
-        ) : (
-          <TextField.Input
-            {...props}
-            id={id}
-            aria-label={label}
-            aria-invalid={!!error}
-          />
-        )}
+        <TextField.Input
+          {...props}
+          id={id}
+          aria-label={label}
+          aria-invalid={!!error}
+        />
       </TextField.Root>
       {error ? <span role="alert">{error}</span> : null}
     </label>

@@ -13,4 +13,7 @@ export const calculateCartTotal = (lines: CartLine[]) =>
     .reduce((total, line) => total + calculateCartLineTotal(line), 0);
 
 export const canCheckout = (lines: CartLine[]) =>
-  lines.some((line) => (line.selected ?? true) && line.quantity > 0 && line.unitPrice >= 0);
+  lines.some(
+    (line) =>
+      (line.selected ?? true) && line.quantity > 0 && line.unitPrice >= 0,
+  );

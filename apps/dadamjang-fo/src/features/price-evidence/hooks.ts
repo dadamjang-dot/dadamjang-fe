@@ -11,16 +11,34 @@ import {
 } from "./api";
 import { priceEvidenceQueryKeys } from "./query-keys";
 
-import type { ProductPriceSummaryFilter } from "./types";
+import type {
+  ProductPriceSummaryConnection,
+  ProductPriceSummaryFilter,
+} from "./types";
+
+const getNextProductPriceSummaryCursor = (
+  lastPage: ProductPriceSummaryConnection,
+  allPages: ProductPriceSummaryConnection[],
+) => {
+  if (!lastPage.hasNextPage || lastPage.nextCursor === null) return undefined;
+  const { nextCursor } = lastPage;
+  if (
+    allPages.some(
+      (page, index) =>
+        index < allPages.length - 1 && page.nextCursor === nextCursor,
+    )
+  )
+    return undefined;
+  return nextCursor;
+};
 
 export const useProductPriceSummaries = (filter: ProductPriceSummaryFilter) =>
   useInfiniteQuery({
     queryKey: priceEvidenceQueryKeys.productPriceSummary(filter),
-    queryFn: ({ pageParam }) =>
-      getProductPriceSummaries({ ...filter, after: pageParam }),
+    queryFn: ({ pageParam, signal }) =>
+      getProductPriceSummaries({ ...filter, after: pageParam }, signal),
     initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasNextPage ? lastPage.nextCursor : undefined,
+    getNextPageParam: getNextProductPriceSummaryCursor,
   });
 
 export const useProductPriceEvidence = (
@@ -33,17 +51,19 @@ export const useProductPriceEvidence = (
       productId,
       priceRevision,
     ),
-    queryFn: () => getProductPriceEvidence(productId, priceRevision),
+    queryFn: ({ signal }) =>
+      getProductPriceEvidence(productId, priceRevision, signal),
     enabled,
     staleTime: 60_000,
   });
 
-export const useComparisonPriceSummaries = () =>
+export const useComparisonPriceSummaries = (enabled = true) =>
   useQuery({
+    enabled,
     queryKey: priceEvidenceQueryKeys.productPriceSummary({
       query: "comparison",
     }),
-    queryFn: getComparisonPriceSummaries,
+    queryFn: ({ signal }) => getComparisonPriceSummaries(signal),
   });
 
 export const usePriceEvidenceInvalidation = () => {

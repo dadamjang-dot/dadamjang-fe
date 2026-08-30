@@ -13,7 +13,12 @@ const KakaoCallbackScreen = () => (
 );
 
 const s = StyleSheet.create({
-  screen: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.surface },
+  screen: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+  },
   label: { color: colors.ink, fontSize: 15 },
 });
 

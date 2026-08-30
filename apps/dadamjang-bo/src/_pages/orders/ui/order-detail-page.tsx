@@ -189,9 +189,9 @@ export const OrderDetailPage = () => {
         confirmLabel="상태 변경"
         critical={nextStatus === "CANCELLED" || nextStatus === "FAILED"}
         pending={transition.isPending}
-        onConfirm={() =>
-          nextStatus && transition.mutate({ orderId, nextStatus })
-        }
+        onConfirm={() => {
+          if (nextStatus) transition.mutate({ orderId, nextStatus });
+        }}
       >
         {transition.error ? (
           <ApiCallout

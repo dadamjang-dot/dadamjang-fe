@@ -58,7 +58,8 @@ const FindPasswordScreen = () => {
     <AuthScreen testID="e2e.auth.find-password">
       <View style={s.form}>
         <Text style={s.description}>
-          가입한 이메일을 인증하고 새 비밀번호를 설정해요. 안전을 위해 가입 여부와 관계없이 같은 결과를 안내해요.
+          가입한 이메일을 인증하고 새 비밀번호를 설정해요. 안전을 위해 가입
+          여부와 관계없이 같은 결과를 안내해요.
         </Text>
         {!verificationToken ? (
           <EmailVerificationFields
@@ -115,7 +116,12 @@ const FindPasswordScreen = () => {
 
 const s = StyleSheet.create({
   form: { gap: spacing.lg },
-  description: { marginBottom: spacing.sm, color: colors.muted, fontSize: 14, lineHeight: 21 },
+  description: {
+    marginBottom: spacing.sm,
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 21,
+  },
   message: { color: colors.danger, fontSize: 13, lineHeight: 18 },
 });
 

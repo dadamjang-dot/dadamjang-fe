@@ -16,6 +16,7 @@ export const productFields = `
 
 export const getProducts = async (
   filter: ProductFilter,
+  signal?: AbortSignal,
 ): Promise<ProductConnection> => {
   const data = await graphqlRequest<{ products: ProductConnection }>(
     `query Products($filter: ProductFilterInput) {
@@ -27,41 +28,48 @@ export const getProducts = async (
       }
     }`,
     { filter },
+    { signal },
   );
 
   return data.products;
 };
 
-export const getCategories = async () => {
+export const getCategories = async (signal?: AbortSignal) => {
   const data = await graphqlRequest<{ categories: Category[] }>(
     `query Categories {
       categories { categoryId name slug parentId sortOrder }
     }`,
+    undefined,
+    { signal },
   );
 
   return data.categories;
 };
 
-export const getCatalogFilterOptions =
-  async (): Promise<CatalogFilterOptions> => {
-    const data = await graphqlRequest<{
-      catalogFilterOptions: CatalogFilterOptions;
-    }>(
-      `query CatalogFilterOptions {
+export const getCatalogFilterOptions = async (
+  signal?: AbortSignal,
+): Promise<CatalogFilterOptions> => {
+  const data = await graphqlRequest<{
+    catalogFilterOptions: CatalogFilterOptions;
+  }>(
+    `query CatalogFilterOptions {
       catalogFilterOptions {
         categories { categoryId name slug parentId sortOrder }
         brands { brandId name slug }
         colors { colorId name slug hexCode }
         sizes { sizeId name slug sortOrder }
       }
-    }`,
-    );
+      }`,
+    undefined,
+    { signal },
+  );
 
-    return data.catalogFilterOptions;
-  };
+  return data.catalogFilterOptions;
+};
 
 export const getPersonalizedFeed = async (
   filter: Pick<ProductFilter, "after" | "first">,
+  signal?: AbortSignal,
 ): Promise<PersonalizedFeedConnection> => {
   const data = await graphqlRequest<{
     personalizedFeed: PersonalizedFeedConnection;
@@ -75,17 +83,19 @@ export const getPersonalizedFeed = async (
       }
     }`,
     filter,
+    { signal },
   );
 
   return data.personalizedFeed;
 };
 
-export const getProduct = async (productId: string) => {
+export const getProduct = async (productId: string, signal?: AbortSignal) => {
   const data = await graphqlRequest<{
     product: ProductConnection["nodes"][number];
   }>(
     `query Product($productId: String!) { product(productId: $productId) { ${productFields} } }`,
     { productId },
+    { signal },
   );
 
   return data.product;

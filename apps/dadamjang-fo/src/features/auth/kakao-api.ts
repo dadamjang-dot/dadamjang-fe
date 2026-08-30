@@ -1,4 +1,8 @@
-import { getDeviceId, graphqlRequest, setAuthTokens } from "@dadamjang/graphql-client";
+import {
+  getDeviceId,
+  graphqlRequest,
+  setAuthTokens,
+} from "@dadamjang/graphql-client";
 
 import type {
   ConsentAcceptance,
@@ -15,12 +19,15 @@ export const startKakaoLogin = async () => {
       startKakaoLogin { flowId authUrl expiresAt }
     }`,
     undefined,
-    { "x-device-id": deviceId },
+    { requestHeaders: { "x-device-id": deviceId } },
   );
   return data.startKakaoLogin;
 };
 
-export const completeKakaoLogin = async (flowId: string) => {
+export const completeKakaoLogin = async (
+  flowId: string,
+  callbackToken: string,
+) => {
   const deviceId = await getDeviceId();
   const data = await graphqlRequest<{ completeKakaoLogin: KakaoLoginResult }>(
     `mutation CompleteKakaoLogin($input: CompleteKakaoLoginInput!) {
@@ -32,10 +39,11 @@ export const completeKakaoLogin = async (flowId: string) => {
         emailVerificationRequired
       }
     }`,
-    { input: { flowId } },
-    { "x-device-id": deviceId },
+    { input: { flowId, callbackToken } },
+    { requestHeaders: { "x-device-id": deviceId } },
   );
-  if (data.completeKakaoLogin.tokenPayload) await setAuthTokens(data.completeKakaoLogin.tokenPayload);
+  if (data.completeKakaoLogin.tokenPayload)
+    await setAuthTokens(data.completeKakaoLogin.tokenPayload);
   return data.completeKakaoLogin;
 };
 
@@ -52,7 +60,7 @@ export const completeKakaoSignupFo = async (input: {
       completeKakaoSignupFo(input: $input) { accessToken refreshToken role }
     }`,
     { input },
-    { "x-device-id": deviceId },
+    { requestHeaders: { "x-device-id": deviceId } },
   );
   await setAuthTokens(data.completeKakaoSignupFo);
   return data.completeKakaoSignupFo;

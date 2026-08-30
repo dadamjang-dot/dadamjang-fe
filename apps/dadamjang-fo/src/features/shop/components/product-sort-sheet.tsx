@@ -19,7 +19,10 @@ type ProductSortSheetProps = {
   onSelect: (sort: ProductSort) => void;
 };
 
-const ProductSortSheet = ({ selectedSort, onSelect }: ProductSortSheetProps) => (
+const ProductSortSheet = ({
+  selectedSort,
+  onSelect,
+}: ProductSortSheetProps) => (
   <ScrollView
     contentContainerStyle={s.content}
     contentInsetAdjustmentBehavior="automatic"
@@ -37,8 +40,12 @@ const ProductSortSheet = ({ selectedSort, onSelect }: ProductSortSheetProps) => 
           variant="bare"
         >
           <Text style={s.optionLabel}>{option.label}</Text>
-          <View style={[s.check, option.id === selectedSort && s.selectedCheck]}>
-            {option.id === selectedSort ? <Text style={s.checkLabel}>✓</Text> : null}
+          <View
+            style={[s.check, option.id === selectedSort && s.selectedCheck]}
+          >
+            {option.id === selectedSort ? (
+              <Text style={s.checkLabel}>✓</Text>
+            ) : null}
           </View>
         </Button>
       ))}

@@ -37,7 +37,17 @@ const StylePostCard = ({
       style={({ pressed }) => [s.imageLink, pressed && s.pressed]}
     >
       <View style={s.imageWrap}>
-        {imageUrl ? <Image contentFit="cover" source={imageUrl} style={s.image} transition={120} /> : <View style={s.imagePlaceholder} />}
+        {imageUrl ? (
+          <Image
+            contentFit="cover"
+            recyclingKey={stylePostId}
+            source={imageUrl}
+            style={s.image}
+            transition={120}
+          />
+        ) : (
+          <View style={s.imagePlaceholder} />
+        )}
         {rank ? <Text style={s.rank}>{rank}</Text> : null}
       </View>
     </Pressable>
@@ -49,7 +59,12 @@ const StylePostCard = ({
           onPress={() => onPress(stylePostId)}
           style={({ pressed }) => [s.tagsLink, pressed && s.pressed]}
         >
-          <Text numberOfLines={1} style={s.tags}>{hashtags.slice(0, 2).map((tag) => `#${tag}`).join(" ")}</Text>
+          <Text numberOfLines={1} style={s.tags}>
+            {hashtags
+              .slice(0, 2)
+              .map((tag) => `#${tag}`)
+              .join(" ")}
+          </Text>
         </Pressable>
         <Button
           accessibilityLabel={isLiked ? "좋아요 취소" : "좋아요"}
@@ -58,7 +73,7 @@ const StylePostCard = ({
           style={s.likeButton}
           variant="bare"
         >
-          <Image source={isLiked ? "sf:heart.fill" : "sf:heart"} style={s.likeIcon} />
+          <Text style={s.likeIcon}>{isLiked ? "♥" : "♡"}</Text>
           <Text style={s.likeCount}>{likeCount}</Text>
         </Button>
       </View>
@@ -70,15 +85,43 @@ const s = StyleSheet.create({
   card: { minWidth: 0, backgroundColor: colors.surface },
   imageLink: { minWidth: 0 },
   pressed: { opacity: 0.72 },
-  imageWrap: { position: "relative", aspectRatio: 0.78, backgroundColor: colors.primarySoft, borderRadius: 12, overflow: "hidden" },
+  imageWrap: {
+    position: "relative",
+    aspectRatio: 0.78,
+    backgroundColor: colors.primarySoft,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
   image: { width: "100%", height: "100%" },
   imagePlaceholder: { flex: 1, backgroundColor: colors.primarySoft },
-  rank: { position: "absolute", top: 8, left: 8, minWidth: 26, paddingHorizontal: 6, paddingVertical: 4, color: colors.surface, backgroundColor: colors.ink, fontSize: 13, fontWeight: "700", textAlign: "center" },
+  rank: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    minWidth: 26,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    color: colors.surface,
+    backgroundColor: colors.ink,
+    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "center",
+  },
   body: { paddingTop: spacing.sm },
-  likeButton: { flexDirection: "row", alignItems: "center", gap: 3, paddingVertical: 2 },
-  likeIcon: { width: 15, height: 15, tintColor: colors.ink },
+  likeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingVertical: 2,
+  },
+  likeIcon: { color: colors.ink, fontSize: 16, lineHeight: 18 },
   likeCount: { color: colors.ink, fontSize: 12, fontVariant: ["tabular-nums"] },
-  metaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.xs },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.xs,
+  },
   tagsLink: { flex: 1, minWidth: 0 },
   tags: { color: colors.muted, fontSize: 12 },
 });
