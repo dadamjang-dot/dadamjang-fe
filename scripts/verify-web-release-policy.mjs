@@ -1,7 +1,18 @@
-import { readFile, readdir } from "node:fs/promises";
+import {
+  chmod,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const root = new URL("../", import.meta.url);
+const rootPath = fileURLToPath(root);
 const read = (path) => readFile(new URL(path, root), "utf8");
 const listSourceFiles = async (directory) => {
   const entries = await readdir(new URL(`${directory}/`, root), {
@@ -79,6 +90,48 @@ ${script}`,
       },
     },
   );
+const runHandoffValidation = async (script, values) => {
+  const directory = await mkdtemp(join(tmpdir(), "dadamjang-handoff-"));
+  const outputPath = join(directory, "github-output");
+  const result = spawnSync(
+    "/bin/bash",
+    ["-eu", "-o", "pipefail", "-c", script],
+    {
+      encoding: "utf8",
+      env: { ...process.env, ...values, GITHUB_OUTPUT: outputPath },
+    },
+  );
+  const output = await readFile(outputPath, "utf8").catch(() => "");
+  await rm(directory, { force: true, recursive: true });
+  return { ...result, output };
+};
+const runMaestroSmoke = async (args, env = {}) => {
+  const directory = await mkdtemp(join(tmpdir(), "dadamjang-maestro-"));
+  const capturePath = join(directory, "capture");
+  const maestroPath = join(directory, "maestro");
+  await writeFile(
+    maestroPath,
+    '#!/usr/bin/env bash\nprintf "%s\\n" "$PWD" "$@" > "$MAESTRO_CAPTURE"\n',
+  );
+  await chmod(maestroPath, 0o755);
+  const result = spawnSync(
+    "/bin/bash",
+    [join(rootPath, "scripts/run-fo-maestro-smoke.sh"), ...args],
+    {
+      cwd: rootPath,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        ...env,
+        MAESTRO_CAPTURE: capturePath,
+        PATH: `${directory}:${process.env.PATH ?? ""}`,
+      },
+    },
+  );
+  const capture = await readFile(capturePath, "utf8").catch(() => "");
+  await rm(directory, { force: true, recursive: true });
+  return { ...result, capture };
+};
 
 const expectedActions = new Map([
   ["actions/checkout", "11d5960a326750d5838078e36cf38b85af677262"],
@@ -125,6 +178,20 @@ const mobileWorkflows = workflows.filter(([path]) => path.includes("mobile"));
 for (const [path, workflow] of mobileWorkflows) {
   const prepareJob = readJob(workflow, "prepare-e2e");
   const cleanupJob = readJob(workflow, "cleanup-e2e");
+  const handoffValidation = readRunStep(
+    prepareJob,
+    "Validate E2E infrastructure handoff",
+  );
+  const handoffVariables = [
+    ["E2E_AWS_ROLE_ARN", "MOBILE_ROLE_ARN"],
+    ["E2E_AWS_REGION", "MOBILE_AWS_REGION"],
+    ["E2E_API_URL", "MOBILE_API_URL"],
+    ["AWS_ECS_CLUSTER", "MOBILE_ECS_CLUSTER"],
+    ["AWS_ECS_SERVICE", "MOBILE_ECS_SERVICE"],
+    ["AWS_ECS_TASK_DEFINITION", "MOBILE_TASK_DEFINITION"],
+    ["AWS_PRIVATE_SUBNET_IDS", "MOBILE_PRIVATE_SUBNET_IDS"],
+    ["AWS_API_SECURITY_GROUP_ID", "MOBILE_API_SECURITY_GROUP_ID"],
+  ];
   const buildJobNames = path.endsWith("mobile-e2e-smoke.yml")
     ? ["ios-smoke", "android-smoke"]
     : ["ios-full"];
@@ -255,6 +322,56 @@ for (const [path, workflow] of mobileWorkflows) {
     );
   }
   check(
+    handoffVariables.every(
+      ([workflowVariable, localVariable]) =>
+        prepareJob.includes(`vars.${workflowVariable}`) &&
+        handoffValidation.includes(workflowVariable) &&
+        handoffValidation.includes(localVariable),
+    ) &&
+      handoffValidation.includes("e2e Terraform outputs are unavailable") &&
+      prepareJob.indexOf("Validate E2E infrastructure handoff") <
+        prepareJob.indexOf("aws-actions/configure-aws-credentials"),
+    `${path}: E2E output handoff must fail clearly before AWS authentication`,
+  );
+  check(
+    prepareJob.includes(
+      "handoff-valid: ${{ steps.handoff.outputs.handoff-valid }}",
+    ) &&
+      handoffValidation.includes(
+        'echo "handoff-valid=true" >> "$GITHUB_OUTPUT"',
+      ) &&
+      cleanupJob.includes("always()") &&
+      cleanupJob.includes(
+        "needs.prepare-e2e.outputs.handoff-valid == 'true'",
+      ) &&
+      cleanupJob.indexOf("aws-actions/configure-aws-credentials") >
+        cleanupJob.indexOf("needs.prepare-e2e.outputs.handoff-valid == 'true'"),
+    `${path}: cleanup must require a successful AWS handoff`,
+  );
+  const handoffValues = Object.fromEntries(
+    handoffVariables.map(([, localVariable]) => [localVariable, "configured"]),
+  );
+  const successfulHandoff = await runHandoffValidation(
+    handoffValidation,
+    handoffValues,
+  );
+  check(
+    successfulHandoff.status === 0 &&
+      successfulHandoff.output === "handoff-valid=true\n",
+    `${path}: valid handoff does not publish handoff-valid`,
+  );
+  for (const [workflowVariable, localVariable] of handoffVariables) {
+    const invalidHandoff = await runHandoffValidation(handoffValidation, {
+      ...handoffValues,
+      [localVariable]: "",
+    });
+    check(
+      invalidHandoff.status === 1 &&
+        invalidHandoff.stderr.includes(workflowVariable),
+      `${path}: ${workflowVariable} is not rejected before AWS authentication`,
+    );
+  }
+  check(
     prepareJob.includes("aws ecs update-service") &&
       prepareJob.includes("--desired-count 1"),
     `${path}: E2E API is not scaled up`,
@@ -295,6 +412,8 @@ check(
 const rootPackage = JSON.parse(await read("package.json"));
 const boPackage = JSON.parse(await read("apps/dadamjang-bo/package.json"));
 const foPackage = JSON.parse(await read("apps/dadamjang-fo/package.json"));
+const foReadme = await read("README.md");
+const maestroSmokeRunner = await read("scripts/run-fo-maestro-smoke.sh");
 const graphqlClientPackage = JSON.parse(
   await read("packages/graphql-client/package.json"),
 );
@@ -318,6 +437,40 @@ for (const path of nativeProductionFiles) {
 check(
   rootPackage.scripts?.["format:check"] !== undefined,
   "package.json: root format:check is missing",
+);
+check(
+  rootPackage.scripts?.["fo:e2e:ios"] ===
+    "bash scripts/run-fo-maestro-smoke.sh ios" &&
+    rootPackage.scripts?.["fo:e2e:android"] ===
+      "bash scripts/run-fo-maestro-smoke.sh android",
+  "package.json: local Maestro smoke scripts are missing",
+);
+check(
+  maestroSmokeRunner.includes("E2E_PRODUCT_ID") &&
+    maestroSmokeRunner.includes(".maestro/${platform}-smoke.yaml") &&
+    maestroSmokeRunner.includes("command -v maestro") &&
+    maestroSmokeRunner.includes('cd "$script_dir/../apps/dadamjang-fo"'),
+  "scripts/run-fo-maestro-smoke.sh: local smoke runner must require Maestro and E2E_PRODUCT_ID",
+);
+check(
+  foReadme.includes("E2E_AWS_REGION") &&
+    foReadme.includes("terraform-apply.yml") &&
+    foReadme.includes("fo:e2e:ios") &&
+    foReadme.includes("fo:e2e:android"),
+  "README.md: local smoke path and unavailable remote E2E cause are undocumented",
+);
+const invalidPlatform = await runMaestroSmoke(["web"]);
+const missingProductId = await runMaestroSmoke(["ios"]);
+const iosSmoke = await runMaestroSmoke(["ios"], {
+  E2E_PRODUCT_ID: "product-1",
+});
+check(
+  invalidPlatform.status === 64 &&
+    missingProductId.status === 1 &&
+    iosSmoke.status === 0 &&
+    iosSmoke.capture ===
+      `${join(rootPath, "apps/dadamjang-fo")}\ntest\n.maestro/ios-smoke.yaml\n`,
+  "scripts/run-fo-maestro-smoke.sh: invalid platform, missing ID, or app cwd is not enforced",
 );
 check(
   rootPackage.scripts?.["measure:fo-problems"] === undefined,
