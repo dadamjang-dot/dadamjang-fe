@@ -35,4 +35,15 @@ describe("notification route rules", () => {
       expect(getAllowedNotificationRoute(notification)).toBeUndefined();
     },
   );
+
+  it("rejects an unknown runtime notification type", () => {
+    const notification = {
+      entityId: productId,
+      route: `/product/${productId}`,
+      type: "PROMOTION",
+    };
+
+    expect(isAllowedNotificationRoute(notification)).toBe(false);
+    expect(getAllowedNotificationRoute(notification)).toBeUndefined();
+  });
 });

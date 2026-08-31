@@ -1,3 +1,4 @@
+import { LegendList } from "@legendapp/list/react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   fireEvent,
@@ -193,7 +194,40 @@ describe("notification inbox route", () => {
     expect(screen.getAllByTestId(/^e2e\.notification\.open\./)).toHaveLength(4);
   });
 
-  it("appends the next keyset page and supports pull-to-refresh", async () => {
+  it("loads an explicitly requested page when a filter has no visible rows yet", async () => {
+    jest.mocked(getFoNotifications).mockImplementation(async ({ after }) =>
+      after === "cursor-style"
+        ? page([notifications[3]!])
+        : page([notifications[0]!], {
+            hasNextPage: true,
+            nextCursor: "cursor-style",
+          }),
+    );
+    renderRoute();
+    await screen.findByLabelText("알림 목록");
+
+    fireEvent.press(screen.getByRole("button", { name: "스타일" }));
+    layoutLegendList("알림 목록");
+
+    expect(screen.queryByText("조건에 맞는 알림이 없어요.")).toBeNull();
+    expect(screen.getByRole("button", { name: "더 불러오기" })).toBeVisible();
+    scrollLegendListToEnd("알림 목록");
+    expect(getFoNotifications).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(screen.getByRole("button", { name: "더 불러오기" }));
+
+    await waitFor(() => expect(getFoNotifications).toHaveBeenCalledTimes(2));
+    layoutLegendList("알림 목록");
+    expect(
+      await screen.findByText("스타일에 좋아요가 달렸어요"),
+    ).toBeOnTheScreen();
+    expect(getFoNotifications).toHaveBeenLastCalledWith(
+      { after: "cursor-style", first: 20 },
+      expect.anything(),
+    );
+  });
+
+  it("appends the next keyset page", async () => {
     jest.mocked(getFoNotifications).mockImplementation(async ({ after }) =>
       after === "cursor-2"
         ? page([notifications[3]!], { unreadCount: 2 })
@@ -213,9 +247,34 @@ describe("notification inbox route", () => {
       { after: "cursor-2", first: 20 },
       expect.anything(),
     );
+  });
+
+  it("replaces cached rows with the newest first page on refresh", async () => {
+    const newestNotification: FoNotification = {
+      ...notifications[3]!,
+      notificationId: "notification-newest",
+      title: "방금 도착한 새 알림",
+      createdAt: "2026-08-31T12:05:00.000Z",
+    };
+    jest
+      .mocked(getFoNotifications)
+      .mockResolvedValueOnce(page([notifications[0]!, notifications[1]!]))
+      .mockResolvedValueOnce(page([newestNotification, notifications[0]!]));
+    renderRoute();
+    await screen.findByLabelText("알림 목록");
+    layoutLegendList("알림 목록");
 
     fireEvent(screen.getByLabelText("알림 목록"), "refresh");
-    await waitFor(() => expect(getFoNotifications).toHaveBeenCalledTimes(3));
+
+    await waitFor(() => expect(getFoNotifications).toHaveBeenCalledTimes(2));
+    layoutLegendList("알림 목록");
+    await screen.findByText("방금 도착한 새 알림");
+    expect(screen.queryByText("위시 상품 가격이 내려갔어요")).toBeNull();
+    expect(
+      screen
+        .UNSAFE_getByType(LegendList)
+        .props.data.map(({ notificationId }: FoNotification) => notificationId),
+    ).toEqual(["notification-newest", "notification-order"]);
   });
 
   it("marks one notification read before pushing its verified destination", async () => {
@@ -264,14 +323,29 @@ describe("notification inbox route", () => {
 
   it("marks every notification read", async () => {
     const user = userEvent.setup();
+    const readNotifications = notifications.map((notification) => ({
+      ...notification,
+      readAt: notification.readAt ?? createdAt,
+    }));
+    jest
+      .mocked(getFoNotifications)
+      .mockResolvedValueOnce(page(notifications))
+      .mockResolvedValueOnce(page(readNotifications));
     renderRoute();
     await screen.findByLabelText("알림 목록");
     layoutLegendList("알림 목록");
 
+    expect(screen.getByLabelText("3개의 읽지 않은 알림")).toBeVisible();
+    expect(screen.getAllByText("새 알림")).toHaveLength(3);
     await user.press(screen.getByRole("button", { name: "모두 읽음" }));
 
     await waitFor(() =>
       expect(markAllFoNotificationsRead).toHaveBeenCalledTimes(1),
     );
+    await waitFor(() => expect(getFoNotifications).toHaveBeenCalledTimes(2));
+    layoutLegendList("알림 목록");
+    expect(screen.getByLabelText("0개의 읽지 않은 알림")).toBeVisible();
+    expect(screen.queryByText("새 알림")).toBeNull();
+    expect(screen.getByRole("button", { name: "모두 읽음" })).toBeDisabled();
   });
 });

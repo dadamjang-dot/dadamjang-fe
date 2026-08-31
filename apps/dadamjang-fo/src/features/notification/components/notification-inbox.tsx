@@ -58,6 +58,8 @@ const NotificationInbox = ({
         : notifications.filter(({ type }) => type === filter),
     [filter, notifications],
   );
+  const needsFilteredPage =
+    filter !== "ALL" && visibleNotifications.length === 0 && hasNextPage;
 
   return (
     <View style={s.container}>
@@ -119,10 +121,20 @@ const NotificationInbox = ({
           ListEmptyComponent={
             <View style={s.state}>
               <Text style={s.stateTitle}>
-                {notifications.length
-                  ? "조건에 맞는 알림이 없어요."
-                  : "아직 알림이 없어요."}
+                {needsFilteredPage
+                  ? "조건에 맞는 알림을 더 찾아볼 수 있어요."
+                  : notifications.length
+                    ? "조건에 맞는 알림이 없어요."
+                    : "아직 알림이 없어요."}
               </Text>
+              {needsFilteredPage ? (
+                <Button
+                  disabled={isFetchingNextPage}
+                  label="더 불러오기"
+                  onPress={onLoadMore}
+                  style={s.retryButton}
+                />
+              ) : null}
             </View>
           }
           ListFooterComponent={
@@ -131,7 +143,9 @@ const NotificationInbox = ({
             ) : null
           }
           onEndReached={
-            hasNextPage && !isFetchingNextPage ? onLoadMore : undefined
+            hasNextPage && !isFetchingNextPage && !needsFilteredPage
+              ? onLoadMore
+              : undefined
           }
           onEndReachedThreshold={0.6}
           onRefresh={onRefresh}
