@@ -18,3 +18,18 @@ export type FoNotificationConnection = {
   hasNextPage: boolean;
   unreadCount: number;
 };
+
+export type FoNotificationPreferences = {
+  pushEnabled: boolean;
+  orderPushEnabled: boolean;
+  wishPushEnabled: boolean;
+  stylePushEnabled: boolean;
+  updatedAt: string;
+};
+
+export type UpdateFoNotificationPreferencesInput = Partial<
+  Pick<
+    FoNotificationPreferences,
+    "pushEnabled" | "orderPushEnabled" | "wishPushEnabled" | "stylePushEnabled"
+  >
+>;

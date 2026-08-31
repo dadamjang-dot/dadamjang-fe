@@ -6,6 +6,7 @@ import { GraphqlError, logoutAuthSession } from "@dadamjang/graphql-client";
 
 import {
   completeKakaoSignupFo,
+  deactivateFoAccount,
   findFoEmail,
   getActiveSignupConsentDocuments,
   getCurrentUser,
@@ -142,6 +143,11 @@ export const useReactivateFoAccount = () =>
   useViewerMutation((reactivationToken: string) =>
     reactivateFoAccount(reactivationToken),
   );
+
+export const useDeactivateFoAccount = () =>
+  useMutation<Awaited<ReturnType<typeof deactivateFoAccount>>, Error, void>({
+    mutationFn: deactivateFoAccount,
+  });
 
 export const useSignUpFo = () => useViewerMutation(signUpFo);
 

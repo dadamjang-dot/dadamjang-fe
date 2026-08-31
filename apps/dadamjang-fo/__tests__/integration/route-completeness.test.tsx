@@ -426,10 +426,13 @@ describe("FO route completeness", () => {
     render(<MyScreen />);
 
     expect(screen.getByText("buyer")).toBeVisible();
+    expect(screen.queryByText("로그아웃")).toBeNull();
+    await user.press(screen.getByRole("button", { name: "주문 내역" }));
     await user.press(screen.getByRole("button", { name: "설정" }));
     await user.press(screen.getByRole("button", { name: "장바구니" }));
 
     expect(mockPush.mock.calls.map(([path]) => path)).toEqual([
+      "/orders",
       "/settings",
       "/cart",
     ]);

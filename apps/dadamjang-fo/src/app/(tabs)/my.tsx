@@ -5,13 +5,12 @@ import { StyleSheet } from "react-native-unistyles";
 import { colors, spacing } from "@dadamjang/design-tokens";
 import { ActionButtonGroup } from "@dadamjang/mobile";
 
-import { useCurrentUser, useSignOut } from "@/features/auth";
+import { useCurrentUser } from "@/features/auth";
 import { Button, TitleHeader } from "@/shared/components";
 
 const MyScreen = () => {
   const router = useRouter();
   const currentUser = useCurrentUser();
-  const signOut = useSignOut();
   const isWaiting =
     currentUser.authStatus === "loading" ||
     currentUser.authStatus === "offline";
@@ -39,7 +38,11 @@ const MyScreen = () => {
         <View style={s.account}>
           <Text style={s.accountId}>{currentUser.data.userid}</Text>
           <Text style={s.stateDescription}>{currentUser.data.email}</Text>
-          <Button label="로그아웃" onPress={() => void signOut()} />
+          <Button
+            label="주문 내역"
+            onPress={() => router.push("/orders")}
+            variant="secondary"
+          />
         </View>
       ) : isWaiting ? (
         <View style={s.state}>

@@ -11,6 +11,7 @@ jest.mock("expo-linking", () => ({
   addEventListener: jest.fn(() => ({ remove: jest.fn() })),
   createURL: jest.fn((path: string) => `dadamjang://${path}`),
   getInitialURL: jest.fn(async () => null),
+  openSettings: jest.fn(async () => undefined),
   openURL: jest.fn(async () => undefined),
   parse: jest.fn((url: string) => ({ path: url.replace(/^.*?:\/\//, "") })),
 }));

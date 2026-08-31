@@ -7,6 +7,7 @@ import {
 import type {
   ConsentAcceptance,
   CurrentUser,
+  FoAccountDeactivation,
   SignInFoResult,
   SignupConsentDocument,
   TokenPayload,
@@ -14,11 +15,22 @@ import type {
 
 export const getCurrentUser = async (signal?: AbortSignal) => {
   const data = await graphqlRequest<{ me: CurrentUser }>(
-    "query Me { me { userId userid email role } }",
+    "query Me { me { userId userid email role hasPassword } }",
     undefined,
     { signal },
   );
   return data.me;
+};
+
+export const deactivateFoAccount = async () => {
+  const data = await graphqlRequest<{
+    deactivateFoAccount: FoAccountDeactivation;
+  }>(
+    `mutation DeactivateFoAccount {
+      deactivateFoAccount { ok scheduledAnonymizationAt }
+    }`,
+  );
+  return data.deactivateFoAccount;
 };
 
 export const signInFo = async (email: string, password: string) => {

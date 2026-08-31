@@ -7,17 +7,23 @@ import {
 
 import {
   getFoNotification,
+  getFoNotificationPreferences,
   getFoNotifications,
   markAllFoNotificationsRead,
   markFoNotificationRead,
+  updateFoNotificationPreferences,
 } from "./api";
-import type { FoNotificationConnection } from "./types";
+import type {
+  FoNotificationConnection,
+  FoNotificationPreferences,
+} from "./types";
 
 export const foNotificationQueryKeys = {
   all: () => ["fo-notifications"] as const,
   list: () => ["fo-notifications", "list"] as const,
   detail: (notificationId: string) =>
     ["fo-notifications", "detail", notificationId] as const,
+  preferences: () => ["fo-notifications", "preferences"] as const,
 };
 
 const getNextNotificationCursor = (
@@ -74,5 +80,33 @@ export const useMarkAllFoNotificationsRead = () => {
       queryClient.invalidateQueries({
         queryKey: foNotificationQueryKeys.all(),
       }),
+  });
+};
+
+export const useFoNotificationPreferences = (enabled = true) =>
+  useQuery({
+    enabled,
+    queryKey: foNotificationQueryKeys.preferences(),
+    queryFn: ({ signal }) => getFoNotificationPreferences(signal),
+  });
+
+export const useUpdateFoNotificationPreferences = () => {
+  const queryClient = useQueryClient();
+  const queryKey = foNotificationQueryKeys.preferences();
+  return useMutation({
+    mutationFn: updateFoNotificationPreferences,
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous =
+        queryClient.getQueryData<FoNotificationPreferences>(queryKey);
+      if (previous)
+        queryClient.setQueryData(queryKey, { ...previous, ...input });
+      return { previous };
+    },
+    onError: (_error, _input, context) => {
+      if (context?.previous)
+        queryClient.setQueryData(queryKey, context.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
 };

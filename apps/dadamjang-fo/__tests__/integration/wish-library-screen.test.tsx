@@ -186,6 +186,7 @@ describe("WISH library screen", () => {
       userid: "buyer",
       email: "buyer@example.com",
       role: "USER",
+      hasPassword: true,
     });
     jest
       .mocked(getWishlist)

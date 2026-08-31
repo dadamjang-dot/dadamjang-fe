@@ -35,3 +35,17 @@ export const setNotificationChannelAsync = jest.fn(async (channelId: string) => 
 
 export const DEFAULT_ACTION_IDENTIFIER =
   "expo.modules.notifications.actions.DEFAULT";
+
+export const IosAuthorizationStatus = {
+  NOT_DETERMINED: 0,
+  DENIED: 1,
+  AUTHORIZED: 2,
+  PROVISIONAL: 3,
+  EPHEMERAL: 4,
+};
+
+export const PermissionStatus = {
+  DENIED: "denied",
+  GRANTED: "granted",
+  UNDETERMINED: "undetermined",
+};

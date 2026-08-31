@@ -6,6 +6,8 @@ import { getDeviceId } from "@dadamjang/graphql-client";
 import {
   completeIdentityVerification,
   completeKakaoLogin,
+  deactivateFoAccount,
+  getCurrentUser,
   reactivateFoAccount,
   signInFo,
   startIdentityVerification,
@@ -15,9 +17,11 @@ import { getProducts } from "@/features/catalog/api";
 import { getOrder } from "@/features/order/api";
 import {
   getFoNotification,
+  getFoNotificationPreferences,
   getFoNotifications,
   markAllFoNotificationsRead,
   markFoNotificationRead,
+  updateFoNotificationPreferences,
 } from "@/features/notification/api";
 import {
   createStylePost,
@@ -333,6 +337,58 @@ describe("feature API contracts", () => {
     );
     expect(mockRequests[0]?.query).toContain(
       "nextCursor hasNextPage unreadCount",
+    );
+  });
+
+  it("uses viewer password state, deactivation, and preference contracts", async () => {
+    const viewer = {
+      userId: "user-1",
+      userid: "buyer",
+      email: "buyer@example.test",
+      role: "USER" as const,
+      hasPassword: true,
+    };
+    const preferences = {
+      pushEnabled: true,
+      orderPushEnabled: true,
+      wishPushEnabled: false,
+      stylePushEnabled: true,
+      updatedAt: "2026-08-31T00:00:00.000Z",
+    };
+    const deactivation = {
+      ok: true,
+      scheduledAnonymizationAt: "2026-09-30T00:00:00.000Z",
+    };
+    mockResponses.push(
+      { me: viewer },
+      { foNotificationPreferences: preferences },
+      {
+        updateFoNotificationPreferences: {
+          ...preferences,
+          orderPushEnabled: false,
+        },
+      },
+      { deactivateFoAccount: deactivation },
+    );
+
+    await expect(getCurrentUser()).resolves.toEqual(viewer);
+    await expect(getFoNotificationPreferences()).resolves.toEqual(preferences);
+    await expect(
+      updateFoNotificationPreferences({ orderPushEnabled: false }),
+    ).resolves.toEqual({ ...preferences, orderPushEnabled: false });
+    await expect(deactivateFoAccount()).resolves.toEqual(deactivation);
+
+    expect(mockRequests[0]?.query).toContain(
+      "me { userId userid email role hasPassword }",
+    );
+    expect(mockRequests[1]?.query).toContain(
+      "foNotificationPreferences { pushEnabled orderPushEnabled wishPushEnabled stylePushEnabled updatedAt }",
+    );
+    expect(mockRequests[2]?.variables).toEqual({
+      input: { orderPushEnabled: false },
+    });
+    expect(mockRequests[3]?.query).toContain(
+      "deactivateFoAccount { ok scheduledAnonymizationAt }",
     );
   });
 

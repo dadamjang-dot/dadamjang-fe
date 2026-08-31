@@ -150,6 +150,7 @@ describe("native auth network lifecycle", () => {
       userid: "buyer",
       email: "buyer@example.com",
       role: "USER",
+      hasPassword: true,
     });
     jest.mocked(getAccessToken).mockResolvedValue(null);
     jest.mocked(NetInfo.fetch).mockResolvedValue(onlineState);

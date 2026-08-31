@@ -189,6 +189,7 @@ describe("cart and wish screens", () => {
       userid: "buyer",
       email: "buyer@example.com",
       role: "USER",
+      hasPassword: true,
     });
     jest.mocked(getCart).mockResolvedValue(cart);
     jest.mocked(getWishlist).mockResolvedValue(wishlist);

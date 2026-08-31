@@ -3,6 +3,12 @@ export type CurrentUser = {
   userid: string;
   email: string;
   role: "USER" | "PARTNER" | "ADMIN";
+  hasPassword: boolean;
+};
+
+export type FoAccountDeactivation = {
+  ok: boolean;
+  scheduledAnonymizationAt: string;
 };
 
 export type TokenPayload = {

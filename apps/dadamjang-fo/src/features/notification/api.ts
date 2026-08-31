@@ -1,6 +1,11 @@
 import { graphqlRequest } from "@dadamjang/graphql-client";
 
-import type { FoNotification, FoNotificationConnection } from "./types";
+import type {
+  FoNotification,
+  FoNotificationConnection,
+  FoNotificationPreferences,
+  UpdateFoNotificationPreferencesInput,
+} from "./types";
 
 const notificationFields =
   "notificationId type title body route entityId readAt createdAt";
@@ -55,4 +60,36 @@ export const markAllFoNotificationsRead = async (): Promise<boolean> => {
     "mutation MarkAllFoNotificationsRead { markAllFoNotificationsRead }",
   );
   return data.markAllFoNotificationsRead;
+};
+
+const notificationPreferenceFields =
+  "pushEnabled orderPushEnabled wishPushEnabled stylePushEnabled updatedAt";
+
+export const getFoNotificationPreferences = async (
+  signal?: AbortSignal,
+): Promise<FoNotificationPreferences> => {
+  const data = await graphqlRequest<{
+    foNotificationPreferences: FoNotificationPreferences;
+  }>(
+    `query FoNotificationPreferences {
+      foNotificationPreferences { ${notificationPreferenceFields} }
+    }`,
+    undefined,
+    { signal },
+  );
+  return data.foNotificationPreferences;
+};
+
+export const updateFoNotificationPreferences = async (
+  input: UpdateFoNotificationPreferencesInput,
+): Promise<FoNotificationPreferences> => {
+  const data = await graphqlRequest<{
+    updateFoNotificationPreferences: FoNotificationPreferences;
+  }>(
+    `mutation UpdateFoNotificationPreferences($input: UpdateFoNotificationPreferencesInput!) {
+      updateFoNotificationPreferences(input: $input) { ${notificationPreferenceFields} }
+    }`,
+    { input },
+  );
+  return data.updateFoNotificationPreferences;
 };
