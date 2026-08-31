@@ -14,6 +14,12 @@ import { checkoutCart, upsertCartItem } from "@/features/cart/api";
 import { getProducts } from "@/features/catalog/api";
 import { getOrder } from "@/features/order/api";
 import {
+  getFoNotification,
+  getFoNotifications,
+  markAllFoNotificationsRead,
+  markFoNotificationRead,
+} from "@/features/notification/api";
+import {
   createStylePost,
   getStylePosts,
   uploadStylePostImage,
@@ -268,6 +274,66 @@ describe("feature API contracts", () => {
       { input: { idempotencyKey: "checkout-1" } },
       { orderId: "order-1" },
     ]);
+  });
+
+  it("uses the authorized FO notification inbox contract", async () => {
+    const notification = {
+      notificationId: "notification-1",
+      type: "ORDER_STATUS" as const,
+      title: "상품을 준비하고 있어요",
+      body: "준비가 끝나면 다시 알려드릴게요.",
+      route: "/order/order-1",
+      entityId: "order-1",
+      readAt: null,
+      createdAt: "2026-08-31T12:00:00.000Z",
+    };
+    const connection = {
+      nodes: [notification],
+      nextCursor: "cursor-2",
+      hasNextPage: true,
+      unreadCount: 1,
+    };
+    mockResponses.push(
+      { foNotifications: connection },
+      { foNotification: notification },
+      {
+        markFoNotificationRead: {
+          ...notification,
+          readAt: "2026-08-31T12:01:00.000Z",
+        },
+      },
+      { markAllFoNotificationsRead: true },
+    );
+
+    await expect(
+      getFoNotifications({ after: "cursor-1", first: 20 }),
+    ).resolves.toEqual(connection);
+    await expect(getFoNotification("notification-1")).resolves.toEqual(
+      notification,
+    );
+    await expect(markFoNotificationRead("notification-1")).resolves.toEqual(
+      expect.objectContaining({ readAt: "2026-08-31T12:01:00.000Z" }),
+    );
+    await expect(markAllFoNotificationsRead()).resolves.toBe(true);
+
+    expect(mockRequests.map(({ variables }) => variables)).toEqual([
+      { after: "cursor-1", first: 20 },
+      { notificationId: "notification-1" },
+      { notificationId: "notification-1" },
+      undefined,
+    ]);
+    expect(mockRequests.map(({ query }) => query)).toEqual([
+      expect.stringContaining("query FoNotifications"),
+      expect.stringContaining("query FoNotification"),
+      expect.stringContaining("mutation MarkFoNotificationRead"),
+      expect.stringContaining("mutation MarkAllFoNotificationsRead"),
+    ]);
+    expect(mockRequests[0]?.query).toContain(
+      "notificationId type title body route entityId readAt createdAt",
+    );
+    expect(mockRequests[0]?.query).toContain(
+      "nextCursor hasNextPage unreadCount",
+    );
   });
 
   it("sends style feed filters and structured style post input", async () => {
