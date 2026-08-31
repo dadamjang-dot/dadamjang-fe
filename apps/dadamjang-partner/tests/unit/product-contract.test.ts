@@ -27,6 +27,7 @@ describe("partner product contract", () => {
     expect(PARTNER_PRODUCT_MUTATION_FIELDS).toEqual({
       create: "createPartnerProductDraft",
       update: "updatePartnerProductDraft",
+      publishedInventory: "updatePublishedProductSkus",
       submit: "submitPartnerProductForReview",
       publish: "publishPartnerProduct",
     });

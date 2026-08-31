@@ -67,10 +67,16 @@ export type ProductInput = {
   isOnSale: boolean;
   isExpressDelivery: boolean;
 };
+export type PublishedProductSkuInput = {
+  skuId: string;
+  price: number;
+  stock: number;
+};
 const PRODUCT_FIELDS = `productId partnerId brandId brand { brandId name slug } categoryId title description imageUrls imageKeys status approvalStatus rejectionReason isOnSale isExpressDelivery skus { skuId code colorId sizeId optionName price stock } createdAt updatedAt`;
 export const PARTNER_PRODUCT_MUTATION_FIELDS = {
   create: "createPartnerProductDraft",
   update: "updatePartnerProductDraft",
+  publishedInventory: "updatePublishedProductSkus",
   submit: "submitPartnerProductForReview",
   publish: "publishPartnerProduct",
 } as const;
@@ -129,6 +135,14 @@ export const saveProduct = (
         `mutation CreateProduct($input: PartnerProductInput!) { createPartnerProductDraft(input: $input) { ${PRODUCT_FIELDS} } }`,
         productInputVariables(input),
       );
+export const savePublishedProductSkus = (
+  productId: string,
+  skus: PublishedProductSkuInput[],
+) =>
+  requestGraphQl<{ updatePublishedProductSkus: PartnerProduct }>(
+    `mutation UpdatePublishedProductSkus($input: UpdatePublishedProductSkusInput!) { updatePublishedProductSkus(input: $input) { ${PRODUCT_FIELDS} } }`,
+    { input: { productId, skus } },
+  );
 export const submitProduct = (productId: string) =>
   requestGraphQl<{ submitPartnerProductForReview: PartnerProduct }>(
     `mutation SubmitProduct($productId: String!) { submitPartnerProductForReview(productId: $productId) { ${PRODUCT_FIELDS} } }`,
