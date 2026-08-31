@@ -538,13 +538,14 @@ test("published inventory save stays disabled while its mutation is pending", as
   page,
 }) => {
   const published = product("APPROVED", "PUBLISHED");
+  const update = Promise.withResolvers<void>();
   const calls = await routeGraphQl(
     page,
     protectedHandlers({
       CatalogOptions: () => options,
       PartnerProduct: () => ({ myPartnerProduct: published }),
       UpdatePublishedProductSkus: async () => {
-        await new Promise((resolve) => setTimeout(resolve, 750));
+        await update.promise;
         return { updatePublishedProductSkus: published };
       },
       PartnerProducts: () => list([published]),
@@ -553,22 +554,31 @@ test("published inventory save stays disabled while its mutation is pending", as
 
   await page.goto("/products/product-1/edit");
   const save = page.getByRole("button", { name: "저장", exact: true });
-  await save.click();
-  await expect
-    .poll(() => calls.filter(({ query }) => query.includes("mutation ")))
-    .toHaveLength(1);
-  const disabledWhilePending = await save.isDisabled();
   await save.evaluate((button) => {
     if (!(button instanceof HTMLButtonElement))
       throw new Error("Expected button");
     button.click();
   });
-  await page.waitForTimeout(100);
-
+  try {
+    await expect
+      .poll(() => calls.filter(({ query }) => query.includes("mutation ")))
+      .toHaveLength(1);
+    await expect(save).toBeDisabled();
+    await save.evaluate((button) => {
+      if (!(button instanceof HTMLButtonElement))
+        throw new Error("Expected button");
+      button.click();
+    });
+    expect(
+      calls.filter(({ query }) => query.includes("mutation ")),
+    ).toHaveLength(1);
+  } finally {
+    update.resolve();
+  }
+  await expect(page).toHaveURL(/\/products$/);
   expect(calls.filter(({ query }) => query.includes("mutation "))).toHaveLength(
     1,
   );
-  expect(disabledWhilePending).toBe(true);
 });
 
 test("published product rejects a missing SKU id", async ({ page }) => {
