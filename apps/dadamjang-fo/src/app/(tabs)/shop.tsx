@@ -84,9 +84,9 @@ const ShopScreen = () => {
 
   const headerActions: IconAction[] = [
     {
-      accessibilityLabel: "비교함",
-      icon: { md: "menu", sf: "arrow.left.arrow.right" },
-      onPress: () => router.push("/compare"),
+      accessibilityLabel: "쇼핑 메뉴",
+      icon: { md: "menu", sf: "line.3.horizontal" },
+      onPress: () => router.push("/shop-menu-sheet"),
     },
     {
       accessibilityLabel: "장바구니",

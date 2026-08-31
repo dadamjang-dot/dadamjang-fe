@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
+import HomeScreen from "@/app/(tabs)";
 import ShopScreen from "@/app/(tabs)/shop";
 import StyleScreen from "@/app/(tabs)/style";
 import CartScreen from "@/app/cart";
@@ -33,7 +34,12 @@ import {
   likeStylePost,
 } from "@/features/style/api";
 import type { StylePost } from "@/features/style/types";
-import { addWish, followBrand, getFollowedBrands, getWishlist } from "@/features/wish/api";
+import {
+  addWish,
+  followBrand,
+  getFollowedBrands,
+  getWishlist,
+} from "@/features/wish/api";
 
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
@@ -107,7 +113,8 @@ jest.mock("@/features/wish/api", () => ({
 
 jest.mock("@/features/shop", () => {
   const React = jest.requireActual<typeof import("react")>("react");
-  const { Pressable } = jest.requireActual<typeof import("react-native")>("react-native");
+  const { Pressable } =
+    jest.requireActual<typeof import("react-native")>("react-native");
   return {
     ShopCategoryBar: () => null,
     ShopFilterBar: () => null,
@@ -200,7 +207,8 @@ jest.mock("@/shared/components", () => {
 
 jest.mock("@legendapp/list/react-native", () => {
   const React = jest.requireActual<typeof import("react")>("react");
-  const { View } = jest.requireActual<typeof import("react-native")>("react-native");
+  const { View } =
+    jest.requireActual<typeof import("react-native")>("react-native");
   return {
     LegendList: ({
       data,
@@ -297,7 +305,9 @@ const createWrapper = (hasSession = false) => {
 describe("protected FO routes and actions", () => {
   beforeEach(() => {
     jest.mocked(getCategories).mockResolvedValue([]);
-    jest.mocked(getCart).mockResolvedValue({ cartId: "cart-1", items: [], totalAmount: 0 });
+    jest
+      .mocked(getCart)
+      .mockResolvedValue({ cartId: "cart-1", items: [], totalAmount: 0 });
     jest.mocked(getOrders).mockResolvedValue([]);
     jest.mocked(getProduct).mockResolvedValue(product);
     jest.mocked(getComparison).mockResolvedValue([]);
@@ -333,20 +343,23 @@ describe("protected FO routes and actions", () => {
     ["/cart", CartScreen, getCart],
     ["/orders", OrdersScreen, getOrders],
     ["/compare", CompareScreen, getComparison],
-  ])("redirects %s without starting its protected query", async (path, Screen, query) => {
-    mockPathname = path;
-    render(<Screen />, { wrapper: createWrapper() });
+  ])(
+    "redirects %s without starting its protected query",
+    async (path, Screen, query) => {
+      mockPathname = path;
+      render(<Screen />, { wrapper: createWrapper() });
 
-    await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith({
-        pathname: "/auth/signin",
-        params: { returnTo: path },
-      }),
-    );
-    expect(query).not.toHaveBeenCalled();
-    if (path === "/compare")
-      expect(getComparisonPriceSummaries).not.toHaveBeenCalled();
-  });
+      await waitFor(() =>
+        expect(mockReplace).toHaveBeenCalledWith({
+          pathname: "/auth/signin",
+          params: { returnTo: path },
+        }),
+      );
+      expect(query).not.toHaveBeenCalled();
+      if (path === "/compare")
+        expect(getComparisonPriceSummaries).not.toHaveBeenCalled();
+    },
+  );
 
   it("gates add-to-cart and brand follow on the original product route", async () => {
     mockPathname = "/product/product-1";
@@ -379,13 +392,26 @@ describe("protected FO routes and actions", () => {
     });
   });
 
+  it("gates Home notifications with the notification return target", async () => {
+    mockPathname = "/";
+    const user = userEvent.setup();
+    render(<HomeScreen />, { wrapper: createWrapper() });
+
+    await user.press(screen.getByRole("button", { name: "알림" }));
+
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/auth/signin",
+      params: { returnTo: "/notifications" },
+    });
+  });
+
   it("gates Style feed actions with their exact return targets", async () => {
     mockPathname = "/style";
     const user = userEvent.setup();
     render(<StyleScreen />, { wrapper: createWrapper() });
 
     expect(await screen.findByText("스타일 피드 준비")).toBeVisible();
-    await user.press(screen.getByRole("button", { name: "스타일 작성" }));
+    await user.press(screen.getByRole("button", { name: "스타일 등록" }));
     await user.press(
       screen.getByRole("button", { name: "스타일 피드 좋아요" }),
     );
@@ -425,7 +451,9 @@ describe("protected FO routes and actions", () => {
 
   it("keeps a hydrating Cart in its loading state without querying or redirecting", () => {
     mockPathname = "/cart";
-    jest.mocked(getCurrentUser).mockImplementation(() => new Promise(() => undefined));
+    jest
+      .mocked(getCurrentUser)
+      .mockImplementation(() => new Promise(() => undefined));
     render(<CartScreen />, { wrapper: createWrapper(true) });
 
     expect(screen.getByText("로그인 상태를 확인하고 있어요.")).toBeVisible();

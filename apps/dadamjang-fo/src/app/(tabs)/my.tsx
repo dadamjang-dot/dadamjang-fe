@@ -19,23 +19,21 @@ const MyScreen = () => {
   return (
     <View style={s.container}>
       <TitleHeader title="마이">
-        {currentUser.authStatus === "authenticated" ? (
-          <ActionButtonGroup
-            actions={[
-              {
-                accessibilityLabel: "주문 내역",
-                icon: { md: "menu", sf: "list.bullet.rectangle" },
-                onPress: () => router.push("/orders"),
-              },
-              {
-                accessibilityLabel: "장바구니",
-                icon: { md: "shopping_cart", sf: "cart" },
-                onPress: () => router.push("/cart"),
-              },
-            ]}
-            variant="circularPair"
-          />
-        ) : null}
+        <ActionButtonGroup
+          actions={[
+            {
+              accessibilityLabel: "설정",
+              icon: { md: "settings", sf: "gearshape" },
+              onPress: () => router.push("/settings"),
+            },
+            {
+              accessibilityLabel: "장바구니",
+              icon: { md: "shopping_cart", sf: "cart" },
+              onPress: () => router.push("/cart"),
+            },
+          ]}
+          variant="circularPair"
+        />
       </TitleHeader>
       {currentUser.authStatus === "authenticated" && currentUser.data ? (
         <View style={s.account}>
