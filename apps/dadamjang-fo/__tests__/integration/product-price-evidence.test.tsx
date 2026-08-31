@@ -31,7 +31,6 @@ jest.mock("@/features/auth", () => ({ useAuthActionGate: jest.fn() }));
 jest.mock("@/features/cart", () => ({ useCartActions: jest.fn() }));
 jest.mock("@/features/catalog", () => ({ useProduct: jest.fn() }));
 jest.mock("@/features/price-evidence/api", () => ({
-  getComparisonPriceSummaries: jest.fn(),
   getProductPriceEvidence: (...args: unknown[]) =>
     mockGetProductPriceEvidence(...args),
   getProductPriceSummaries: jest.fn(),

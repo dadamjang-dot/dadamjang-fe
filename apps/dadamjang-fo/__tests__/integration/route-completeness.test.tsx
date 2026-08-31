@@ -11,11 +11,8 @@ import MyScreen from "@/app/(tabs)/my";
 import ShopScreen from "@/app/(tabs)/shop";
 import StyleScreen from "@/app/(tabs)/style";
 import WishScreen from "@/app/(tabs)/wish";
-import CompareScreen from "@/app/compare";
 import { useAuthActionGate, useCurrentUser, useSignOut } from "@/features/auth";
 import { useProductSearch } from "@/features/catalog";
-import { useComparison, useComparisonActions } from "@/features/comparison";
-import { useComparisonPriceSummaries } from "@/features/price-evidence";
 import { SearchContent } from "@/shared/components/search-content";
 
 const mockPush = jest.fn();
@@ -62,16 +59,10 @@ jest.mock("@/features/catalog", () => ({
   })),
 }));
 
-jest.mock("@/features/comparison", () => ({
-  useComparison: jest.fn(),
-  useComparisonActions: jest.fn(),
-}));
-
 jest.mock("@/features/price-evidence", () => ({
   priceEvidenceQueryKeys: {
     productPriceSummary: jest.fn(() => ["product-price-summary"]),
   },
-  useComparisonPriceSummaries: jest.fn(),
   useProductPriceSummaries: jest.fn(() => ({
     data: { pages: [] },
     fetchNextPage: jest.fn(),
@@ -319,18 +310,6 @@ const product = {
   createdAt: "2026-08-29T00:00:00.000Z",
 };
 
-const summary = {
-  productId: "product-1",
-  name: "리넨 셔츠",
-  thumbnail: "https://cdn.example.com/product-1.jpg",
-  basePrice: 25_000,
-  finalPrice: 19_000,
-  priceRevision: "revision-1",
-  lowestPriceEvidenceSummary: "최근 최저가",
-  isOnSale: true,
-  isExpressDelivery: false,
-};
-
 describe("FO route completeness", () => {
   beforeEach(() => {
     mockActionButtonGroups.length = 0;
@@ -370,38 +349,6 @@ describe("FO route completeness", () => {
       isError: false,
       isLoading: false,
       refetch: jest.fn(),
-    } as never);
-    jest.mocked(useComparison).mockReturnValue({
-      data: [
-        {
-          comparisonItemId: "comparison-1",
-          productId: "product-1",
-          product,
-          createdAt: "2026-08-29T00:00:00.000Z",
-        },
-        {
-          comparisonItemId: "comparison-2",
-          productId: "product-2",
-          product: {
-            ...product,
-            productId: "product-2",
-            title: "매칭 안 된 상품",
-          },
-          createdAt: "2026-08-29T00:00:00.000Z",
-        },
-      ],
-      isError: false,
-      isLoading: false,
-      refetch: jest.fn(),
-    } as never);
-    jest.mocked(useComparisonPriceSummaries).mockReturnValue({
-      data: [summary],
-      isError: false,
-      isLoading: false,
-      refetch: jest.fn(),
-    } as never);
-    jest.mocked(useComparisonActions).mockReturnValue({
-      remove: { mutate: jest.fn() },
     } as never);
   });
 
@@ -602,24 +549,5 @@ describe("FO route completeness", () => {
     } as never);
     rendered.rerender(<SearchContent keyword="리넨" />);
     expect(screen.getByText("검색 결과가 없어요.")).toBeVisible();
-  });
-
-  it("renders only matching comparison summaries with open and remove actions", async () => {
-    const remove = jest.fn();
-    jest
-      .mocked(useComparisonActions)
-      .mockReturnValue({ remove: { mutate: remove } } as never);
-    const user = userEvent.setup();
-    render(<CompareScreen />);
-
-    expect(screen.getByText("리넨 셔츠")).toBeVisible();
-    expect(screen.queryByText("매칭 안 된 상품")).not.toBeOnTheScreen();
-    await user.press(screen.getByRole("button", { name: "리넨 셔츠 열기" }));
-    await user.press(
-      screen.getByRole("button", { name: "리넨 셔츠 비교에서 삭제" }),
-    );
-
-    expect(mockPush).toHaveBeenCalledWith("/product/product-1");
-    expect(remove).toHaveBeenCalledWith("product-1");
   });
 });

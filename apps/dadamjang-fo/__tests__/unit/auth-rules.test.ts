@@ -60,6 +60,7 @@ describe("auth rules", () => {
     );
     expect(resolveAuthReturnTo("/style-compose")).toBe("/style-compose");
     expect(resolveAuthReturnTo("/style/style-1")).toBe("/style/style-1");
+    expect(resolveAuthReturnTo("/compare")).toBe("/");
     expect(resolveAuthReturnTo("https://evil.example")).toBe("/");
     expect(resolveAuthReturnTo("//evil.example")).toBe("/");
     expect(resolveAuthReturnTo(undefined)).toBe("/");

@@ -12,7 +12,6 @@ export interface ShopMenuSheetProps {
   isError: boolean;
   isLoading: boolean;
   selectedCategoryId?: string;
-  onOpenComparison: () => void;
   onRetry: () => void;
   onSelectCategory: (categoryId?: string) => void;
 }
@@ -22,7 +21,6 @@ const ShopMenuSheet = ({
   isError,
   isLoading,
   selectedCategoryId,
-  onOpenComparison,
   onRetry,
   onSelectCategory,
 }: ShopMenuSheetProps) => {
@@ -62,7 +60,9 @@ const ShopMenuSheet = ({
     (categoriesByParentId.get(parentId) ?? []).flatMap((category) => [
       <Button
         accessibilityLabel={category.name}
-        accessibilityState={{ selected: category.categoryId === selectedCategoryId }}
+        accessibilityState={{
+          selected: category.categoryId === selectedCategoryId,
+        }}
         key={category.categoryId}
         onPress={() => onSelectCategory(category.categoryId)}
         style={[s.category, level > 0 && s.childCategory]}
@@ -71,7 +71,8 @@ const ShopMenuSheet = ({
         <Text
           style={[
             s.categoryLabel,
-            category.categoryId === selectedCategoryId && s.selectedCategoryLabel,
+            category.categoryId === selectedCategoryId &&
+              s.selectedCategoryLabel,
           ]}
         >
           {category.name}
@@ -101,7 +102,6 @@ const ShopMenuSheet = ({
         </Button>
         {renderCategories(null)}
       </View>
-      <Button label="비교함" onPress={onOpenComparison} style={s.comparison} />
     </ScrollView>
   );
 };
@@ -137,11 +137,6 @@ const s = StyleSheet.create({
   selectedCategoryLabel: {
     color: colors.primary,
     fontWeight: "700",
-  },
-  comparison: {
-    minHeight: 48,
-    borderRadius: 6,
-    backgroundColor: colors.primary,
   },
   state: {
     flex: 1,

@@ -50,20 +50,6 @@ export const getProductPriceSummaries = async (
   return data.productPriceSummaries;
 };
 
-export const getComparisonPriceSummaries = async (signal?: AbortSignal) => {
-  const data = await graphqlRequest<{
-    comparisonPriceSummaries: ProductPriceSummaryConnection["nodes"];
-  }>(
-    `query ComparisonPriceSummaries {
-      comparisonPriceSummaries { ${productPriceSummaryFields} }
-    }`,
-    undefined,
-    { signal },
-  );
-
-  return data.comparisonPriceSummaries;
-};
-
 export const getProductPriceSummary = async (
   productId: string,
   signal?: AbortSignal,

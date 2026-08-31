@@ -60,7 +60,6 @@ export const hasCompleteSignupConsentDocuments = (
 const allowedExactPaths = new Set([
   "/",
   "/cart",
-  "/compare",
   "/notifications",
   "/orders",
   "/settings",

@@ -12,7 +12,6 @@ import HomeScreen from "@/app/(tabs)";
 import ShopScreen from "@/app/(tabs)/shop";
 import StyleScreen from "@/app/(tabs)/style";
 import CartScreen from "@/app/cart";
-import CompareScreen from "@/app/compare";
 import OrderDetailScreen from "@/app/order/[order-id]";
 import OrdersScreen from "@/app/orders";
 import ProductScreen from "@/app/product/[product-id]";
@@ -22,10 +21,8 @@ import { getCurrentUser } from "@/features/auth/api";
 import { getCart, upsertCartItem } from "@/features/cart/api";
 import { getCategories, getProduct } from "@/features/catalog/api";
 import { ShopFiltersProvider } from "@/features/catalog/shop-filters";
-import { getComparison } from "@/features/comparison/api";
 import { getOrder, getOrders } from "@/features/order/api";
 import {
-  getComparisonPriceSummaries,
   getProductPriceSummaries,
   getProductPriceSummary,
 } from "@/features/price-evidence/api";
@@ -74,19 +71,12 @@ jest.mock("@/features/catalog/api", () => ({
   productFields: "productId",
 }));
 
-jest.mock("@/features/comparison/api", () => ({
-  addComparisonItem: jest.fn(),
-  getComparison: jest.fn(),
-  removeComparisonItem: jest.fn(),
-}));
-
 jest.mock("@/features/order/api", () => ({
   getOrder: jest.fn(),
   getOrders: jest.fn(),
 }));
 
 jest.mock("@/features/price-evidence/api", () => ({
-  getComparisonPriceSummaries: jest.fn(),
   getProductPriceEvidence: jest.fn(),
   getProductPriceSummaries: jest.fn(),
   getProductPriceSummary: jest.fn(),
@@ -312,8 +302,6 @@ describe("protected FO routes and actions", () => {
       .mockResolvedValue({ cartId: "cart-1", items: [], totalAmount: 0 });
     jest.mocked(getOrders).mockResolvedValue([]);
     jest.mocked(getProduct).mockResolvedValue(product);
-    jest.mocked(getComparison).mockResolvedValue([]);
-    jest.mocked(getComparisonPriceSummaries).mockResolvedValue([]);
     jest.mocked(getProductPriceSummaries).mockResolvedValue({
       nodes: [],
       totalCount: 0,
@@ -344,7 +332,6 @@ describe("protected FO routes and actions", () => {
   it.each([
     ["/cart", CartScreen, getCart],
     ["/orders", OrdersScreen, getOrders],
-    ["/compare", CompareScreen, getComparison],
   ])(
     "redirects %s without starting its protected query",
     async (path, Screen, query) => {
@@ -358,8 +345,6 @@ describe("protected FO routes and actions", () => {
         }),
       );
       expect(query).not.toHaveBeenCalled();
-      if (path === "/compare")
-        expect(getComparisonPriceSummaries).not.toHaveBeenCalled();
     },
   );
 

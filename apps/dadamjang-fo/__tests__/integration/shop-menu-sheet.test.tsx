@@ -4,10 +4,9 @@ import ShopMenuSheetRoute from "@/app/shop-menu-sheet";
 import { useCategories, useShopFilters } from "@/features/catalog";
 
 const mockBack = jest.fn();
-const mockReplace = jest.fn();
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ back: mockBack, replace: mockReplace }),
+  useRouter: () => ({ back: mockBack }),
 }));
 
 jest.mock("@/features/catalog", () => ({
@@ -93,15 +92,15 @@ describe("shop menu sheet route", () => {
   it("orders every category level and marks the current category", () => {
     render(<ShopMenuSheetRoute />);
 
-    expect(screen.getAllByRole("button").map((button) => button.props.accessibilityLabel)).toEqual([
-      "전체",
-      "아우터",
-      "재킷",
-      "코트",
-      "상의",
-      "비교함",
-    ]);
-    expect(screen.getByRole("button", { name: "재킷" }).props.accessibilityState).toMatchObject({
+    expect(
+      screen
+        .getAllByRole("button")
+        .map((button) => button.props.accessibilityLabel),
+    ).toEqual(["전체", "아우터", "재킷", "코트", "상의"]);
+    expect(screen.queryByText("비교함")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "재킷" }).props.accessibilityState,
+    ).toMatchObject({
       selected: true,
     });
   });
@@ -128,12 +127,5 @@ describe("shop menu sheet route", () => {
       categorySource: undefined,
     });
     expect(mockBack).toHaveBeenCalled();
-  });
-
-  it("replaces the sheet with the comparison screen", () => {
-    render(<ShopMenuSheetRoute />);
-    fireEvent.press(screen.getByText("비교함"));
-
-    expect(mockReplace).toHaveBeenCalledWith("/compare");
   });
 });

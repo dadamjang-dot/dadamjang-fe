@@ -5,7 +5,6 @@ import {
 } from "@tanstack/react-query";
 
 import {
-  getComparisonPriceSummaries,
   getProductPriceEvidence,
   getProductPriceSummary,
   getProductPriceSummaries,
@@ -64,15 +63,6 @@ export const useProductPriceSummary = (productId: string) =>
     queryFn: ({ signal }) => getProductPriceSummary(productId, signal),
     enabled: Boolean(productId),
     staleTime: 60_000,
-  });
-
-export const useComparisonPriceSummaries = (enabled = true) =>
-  useQuery({
-    enabled,
-    queryKey: priceEvidenceQueryKeys.productPriceSummary({
-      query: "comparison",
-    }),
-    queryFn: ({ signal }) => getComparisonPriceSummaries(signal),
   });
 
 export const usePriceEvidenceInvalidation = () => {
