@@ -10,9 +10,9 @@ export const useOrders = (enabled = true) =>
     queryFn: ({ signal }) => getOrders(signal),
   });
 
-export const useOrder = (orderId: string) =>
+export const useOrder = (orderId: string, enabled = true) =>
   useQuery({
     queryKey: orderQueryKeys.detail(orderId),
     queryFn: ({ signal }) => getOrder(orderId, signal),
-    enabled: Boolean(orderId),
+    enabled: Boolean(orderId) && enabled,
   });

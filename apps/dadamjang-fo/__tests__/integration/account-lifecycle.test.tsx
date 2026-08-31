@@ -91,6 +91,17 @@ afterEach(() => {
 });
 
 describe("account lifecycle auth flow", () => {
+  it("opens explicit email sign-in from the auth landing", () => {
+    render(<AuthScreenRoute />, { wrapper: createAuthFlowWrapper() });
+
+    fireEvent.press(screen.getByTestId("e2e.auth.open-signin"));
+
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/auth/signin",
+      params: undefined,
+    });
+  });
+
   it("keeps a sanitized reactivation target only in provider memory", () => {
     const { result } = renderHook(useAuthFlow, {
       wrapper: createAuthFlowWrapper(),

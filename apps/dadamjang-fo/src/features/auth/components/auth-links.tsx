@@ -23,20 +23,24 @@ export const AuthLinks = ({ onFindEmail, onFindPassword }: AuthLinksProps) => {
   return (
     <View style={s.links}>
       <Button
-        label="이메일 찾기"
+        accessibilityLabel="이메일 찾기"
         onPress={onFindEmail}
         style={s.link}
         variant="bare"
-      />
+      >
+        <Text style={s.linkLabel}>이메일 찾기</Text>
+      </Button>
       <Text accessibilityElementsHidden style={s.separator}>
         |
       </Text>
       <Button
-        label="비밀번호 찾기"
+        accessibilityLabel="비밀번호 찾기"
         onPress={openPasswordReset}
         style={s.link}
         variant="bare"
-      />
+      >
+        <Text style={s.linkLabel}>비밀번호 찾기</Text>
+      </Button>
     </View>
   );
 };
@@ -54,5 +58,6 @@ const s = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: spacing.xs,
   },
+  linkLabel: { color: colors.muted, fontSize: 15, fontWeight: "400" },
   separator: { color: colors.line, fontSize: 13 },
 });

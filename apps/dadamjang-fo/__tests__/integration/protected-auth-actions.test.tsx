@@ -13,6 +13,7 @@ import ShopScreen from "@/app/(tabs)/shop";
 import StyleScreen from "@/app/(tabs)/style";
 import CartScreen from "@/app/cart";
 import CompareScreen from "@/app/compare";
+import OrderDetailScreen from "@/app/order/[order-id]";
 import OrdersScreen from "@/app/orders";
 import ProductScreen from "@/app/product/[product-id]";
 import StylePostScreen from "@/app/style/[style-id]";
@@ -22,7 +23,7 @@ import { getCart, upsertCartItem } from "@/features/cart/api";
 import { getCategories, getProduct } from "@/features/catalog/api";
 import { ShopFiltersProvider } from "@/features/catalog/shop-filters";
 import { getComparison } from "@/features/comparison/api";
-import { getOrders } from "@/features/order/api";
+import { getOrder, getOrders } from "@/features/order/api";
 import {
   getComparisonPriceSummaries,
   getProductPriceSummaries,
@@ -47,6 +48,7 @@ let mockPathname = "/";
 
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({
+    "order-id": "order-1",
     "product-id": "product-1",
     "style-id": "style-1",
   }),
@@ -351,7 +353,7 @@ describe("protected FO routes and actions", () => {
 
       await waitFor(() =>
         expect(mockReplace).toHaveBeenCalledWith({
-          pathname: "/auth/signin",
+          pathname: "/auth",
           params: { returnTo: path },
         }),
       );
@@ -360,6 +362,19 @@ describe("protected FO routes and actions", () => {
         expect(getComparisonPriceSummaries).not.toHaveBeenCalled();
     },
   );
+
+  it("redirects order detail without starting its protected query", async () => {
+    mockPathname = "/order/order-1";
+    render(<OrderDetailScreen />, { wrapper: createWrapper() });
+
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith({
+        pathname: "/auth",
+        params: { returnTo: "/order/order-1" },
+      }),
+    );
+    expect(getOrder).not.toHaveBeenCalled();
+  });
 
   it("gates add-to-cart and brand follow on the original product route", async () => {
     mockPathname = "/product/product-1";
@@ -374,7 +389,7 @@ describe("protected FO routes and actions", () => {
     expect(followBrand).not.toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledTimes(2);
     expect(mockPush).toHaveBeenLastCalledWith({
-      pathname: "/auth/signin",
+      pathname: "/auth",
       params: { returnTo: "/product/product-1" },
     });
   });
@@ -387,7 +402,7 @@ describe("protected FO routes and actions", () => {
 
     expect(addWish).not.toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith({
-      pathname: "/auth/signin",
+      pathname: "/auth",
       params: { returnTo: "/shop" },
     });
   });
@@ -400,7 +415,7 @@ describe("protected FO routes and actions", () => {
     await user.press(screen.getByRole("button", { name: "알림" }));
 
     expect(mockPush).toHaveBeenCalledWith({
-      pathname: "/auth/signin",
+      pathname: "/auth",
       params: { returnTo: "/notifications" },
     });
   });
@@ -420,13 +435,13 @@ describe("protected FO routes and actions", () => {
     expect(mockPush.mock.calls).toEqual([
       [
         {
-          pathname: "/auth/signin",
+          pathname: "/auth",
           params: { returnTo: "/style-compose" },
         },
       ],
       [
         {
-          pathname: "/auth/signin",
+          pathname: "/auth",
           params: { returnTo: "/style/style-1" },
         },
       ],
@@ -444,7 +459,7 @@ describe("protected FO routes and actions", () => {
 
     expect(likeStylePost).not.toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith({
-      pathname: "/auth/signin",
+      pathname: "/auth",
       params: { returnTo: "/style/style-1" },
     });
   });

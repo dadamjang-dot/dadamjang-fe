@@ -133,7 +133,7 @@ describe("settings", () => {
     clients.splice(0).forEach((client) => client.clear());
   });
 
-  it("keeps app version public and gates protected rows through sign-in", () => {
+  it("keeps app version public and gates protected rows through auth", () => {
     renderSettings(false);
 
     expect(
@@ -143,11 +143,11 @@ describe("settings", () => {
     fireEvent.press(screen.getByRole("button", { name: "계정 설정" }));
 
     expect(mockRouter.push).toHaveBeenNthCalledWith(1, {
-      pathname: "/auth/signin",
+      pathname: "/auth",
       params: { returnTo: "/settings" },
     });
     expect(mockRouter.push).toHaveBeenNthCalledWith(2, {
-      pathname: "/auth/signin",
+      pathname: "/auth",
       params: { returnTo: "/settings" },
     });
     expect(screen.queryByText("member@example.test")).toBeNull();

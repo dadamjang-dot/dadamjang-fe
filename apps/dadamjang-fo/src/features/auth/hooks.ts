@@ -91,7 +91,7 @@ export const useAuthActionGate = (returnTo: string) => {
   const redirectToSignIn = useCallback(
     (replace = false, returnToOverride?: string) => {
       const href = {
-        pathname: "/auth/signin" as const,
+        pathname: "/auth" as const,
         params: {
           returnTo: resolveAuthReturnTo(returnToOverride ?? sanitizedReturnTo),
         },
