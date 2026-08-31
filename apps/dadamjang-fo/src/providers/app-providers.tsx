@@ -24,6 +24,7 @@ import {
   AuthSessionStateProvider,
   useAuthFlow,
 } from "@/features/auth";
+import { useFoPushNotifications } from "@/features/notification";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,14 +54,19 @@ const readSessionHydration = async (): Promise<SessionHydration> => {
 };
 
 type SessionResetBoundaryProps = AppProvidersProps & {
+  hasSession: boolean;
   refreshSessionHydration: () => Promise<SessionHydration>;
+  sessionRevision: number;
 };
 
 const SessionResetBoundary = ({
   children,
+  hasSession,
   refreshSessionHydration,
+  sessionRevision,
 }: SessionResetBoundaryProps) => {
   const { resetAuthFlow } = useAuthFlow();
+  useFoPushNotifications(hasSession, sessionRevision);
   useEffect(
     () =>
       setSessionResetHandler(async () => {
@@ -77,6 +83,7 @@ const SessionResetBoundary = ({
 
 export const AppProviders = ({ children }: AppProvidersProps) => {
   const [isBootstrapped, setIsBootstrapped] = useState(false);
+  const [sessionRevision, setSessionRevision] = useState(0);
   const [sessionHydration, setSessionHydration] = useState<SessionHydration>({
     error: null,
     hasSession: false,
@@ -84,6 +91,7 @@ export const AppProviders = ({ children }: AppProvidersProps) => {
   const refreshSessionHydration = useCallback(async () => {
     const session = await readSessionHydration();
     setSessionHydration(session);
+    setSessionRevision((current) => current + 1);
     return session;
   }, []);
 
@@ -116,6 +124,7 @@ export const AppProviders = ({ children }: AppProvidersProps) => {
         );
       }
       setSessionHydration(session);
+      setSessionRevision((current) => current + 1);
       setIsBootstrapped(true);
     };
 
@@ -143,7 +152,9 @@ export const AppProviders = ({ children }: AppProvidersProps) => {
       <AuthSessionStateProvider value={authSessionState}>
         <AuthFlowProvider>
           <SessionResetBoundary
+            hasSession={sessionHydration.hasSession}
             refreshSessionHydration={refreshSessionHydration}
+            sessionRevision={sessionRevision}
           >
             {children}
           </SessionResetBoundary>

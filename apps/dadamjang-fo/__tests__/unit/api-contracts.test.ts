@@ -21,6 +21,7 @@ import {
   getFoNotifications,
   markAllFoNotificationsRead,
   markFoNotificationRead,
+  registerFoPushDevice,
   updateFoNotificationPreferences,
 } from "@/features/notification/api";
 import {
@@ -162,6 +163,30 @@ describe("feature API contracts", () => {
     });
     expect(mockRequests[0]?.headers).toEqual({ "x-device-id": "device-1" });
     expect(mockStoredTokens).toEqual([tokens]);
+  });
+
+  it("binds Push registration to the stable local device", async () => {
+    mockResponses.push({ registerFoPushDevice: true });
+
+    await expect(
+      registerFoPushDevice({
+        expoPushToken: "ExponentPushToken[token-1]",
+        platform: "IOS",
+      }),
+    ).resolves.toBe(true);
+
+    expect(mockRequests.at(-1)).toMatchObject({
+      variables: {
+        input: {
+          expoPushToken: "ExponentPushToken[token-1]",
+          platform: "IOS",
+        },
+      },
+      headers: { "x-device-id": "device-1" },
+    });
+    expect(mockRequests.at(-1)?.query).toContain(
+      "mutation RegisterFoPushDevice",
+    );
   });
 
   it("binds identity verification requests to the local device", async () => {

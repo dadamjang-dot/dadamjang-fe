@@ -225,7 +225,7 @@ describe("native auth network lifecycle", () => {
     );
 
     expect(await screen.findByText("authenticated")).toBeOnTheScreen();
-    expect(getCurrentUser).toHaveBeenCalledTimes(1);
+    expect(getCurrentUser).toHaveBeenCalledTimes(2);
   });
 
   it("updates query focus from AppState and removes native listeners", async () => {

@@ -1,9 +1,10 @@
-import { graphqlRequest } from "@dadamjang/graphql-client";
+import { getDeviceId, graphqlRequest } from "@dadamjang/graphql-client";
 
 import type {
   FoNotification,
   FoNotificationConnection,
   FoNotificationPreferences,
+  RegisterFoPushDeviceInput,
   UpdateFoNotificationPreferencesInput,
 } from "./types";
 
@@ -92,4 +93,18 @@ export const updateFoNotificationPreferences = async (
     { input },
   );
   return data.updateFoNotificationPreferences;
+};
+
+export const registerFoPushDevice = async (
+  input: RegisterFoPushDeviceInput,
+): Promise<boolean> => {
+  const deviceId = await getDeviceId();
+  const data = await graphqlRequest<{ registerFoPushDevice: boolean }>(
+    `mutation RegisterFoPushDevice($input: RegisterFoPushDeviceInput!) {
+      registerFoPushDevice(input: $input)
+    }`,
+    { input },
+    { requestHeaders: { "x-device-id": deviceId } },
+  );
+  return data.registerFoPushDevice;
 };

@@ -1,6 +1,19 @@
 export type FoNotificationType =
   "ORDER_STATUS" | "WISH_PRICE_DROP" | "WISH_RESTOCK" | "STYLE_LIKE";
 
+export type FoPushPlatform = "ANDROID" | "IOS";
+
+export type FoPushNotificationData = {
+  notificationId: string;
+  type: FoNotificationType;
+  entityId: string;
+};
+
+export type RegisterFoPushDeviceInput = {
+  expoPushToken: string;
+  platform: FoPushPlatform;
+};
+
 export type FoNotification = {
   notificationId: string;
   type: FoNotificationType;
