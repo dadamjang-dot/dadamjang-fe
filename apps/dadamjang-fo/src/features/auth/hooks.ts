@@ -9,6 +9,7 @@ import {
   findFoEmail,
   getActiveSignupConsentDocuments,
   getCurrentUser,
+  reactivateFoAccount,
   requestPasswordResetCode,
   requestSignupEmailCode,
   resetPassword,
@@ -120,8 +121,8 @@ export const useAuthActionGate = (returnTo: string) => {
   };
 };
 
-const useViewerMutation = <TVariables>(
-  mutationFn: (variables: TVariables) => Promise<unknown>,
+const useViewerMutation = <TVariables, TResult>(
+  mutationFn: (variables: TVariables) => Promise<TResult>,
 ) => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -135,6 +136,11 @@ export const useSignIn = () =>
   useViewerMutation(
     ({ email, password }: { email: string; password: string }) =>
       signInFo(email, password),
+  );
+
+export const useReactivateFoAccount = () =>
+  useViewerMutation((reactivationToken: string) =>
+    reactivateFoAccount(reactivationToken),
   );
 
 export const useSignUpFo = () => useViewerMutation(signUpFo);

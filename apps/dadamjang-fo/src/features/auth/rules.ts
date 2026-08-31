@@ -62,6 +62,7 @@ const allowedExactPaths = new Set([
   "/cart",
   "/compare",
   "/orders",
+  "/settings",
   "/shop",
   "/style-compose",
 ]);

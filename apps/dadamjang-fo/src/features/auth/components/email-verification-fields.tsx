@@ -11,6 +11,7 @@ type VerificationPayload = { emailVerificationToken: string };
 
 type EmailVerificationFieldsProps = {
   email: string;
+  emailEditable?: boolean;
   onEmailChange: (email: string) => void;
   verificationToken?: string;
   onVerified: (token?: string) => void;
@@ -24,6 +25,7 @@ type EmailVerificationFieldsProps = {
 
 export const EmailVerificationFields = ({
   email,
+  emailEditable = true,
   onEmailChange,
   verificationToken,
   onVerified,
@@ -118,6 +120,7 @@ export const EmailVerificationFields = ({
         autoCapitalize="none"
         autoComplete="email"
         autoCorrect={false}
+        editable={emailEditable}
         keyboardType="email-address"
         label="이메일 주소"
         onAction={handleRequest}

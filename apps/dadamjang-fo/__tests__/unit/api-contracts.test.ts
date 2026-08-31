@@ -6,6 +6,7 @@ import { getDeviceId } from "@dadamjang/graphql-client";
 import {
   completeIdentityVerification,
   completeKakaoLogin,
+  reactivateFoAccount,
   signInFo,
   startIdentityVerification,
 } from "@/features/auth/api";
@@ -90,20 +91,64 @@ describe("feature API contracts", () => {
     jest.mocked(getDeviceId).mockResolvedValue("device-1");
   });
 
-  it("sends FO credentials and persists returned sign-in tokens", async () => {
+  it("persists FO credentials only when sign-in returns SIGNED_IN", async () => {
     const tokens = {
       accessToken: "access",
       refreshToken: "refresh",
       role: "USER" as const,
     };
-    mockResponses.push({ signinFo: tokens });
+    const result = {
+      status: "SIGNED_IN" as const,
+      tokenPayload: tokens,
+      reactivationToken: null,
+    };
+    mockResponses.push({ signinFo: result });
 
     await expect(signInFo("buyer@example.com", "password")).resolves.toEqual(
-      tokens,
+      result,
     );
     expect(mockRequests[0]?.query).toContain("mutation SigninFo");
     expect(mockRequests[0]?.variables).toEqual({
       input: { email: "buyer@example.com", password: "password" },
+    });
+    expect(mockRequests[0]?.headers).toEqual({ "x-device-id": "device-1" });
+    expect(mockStoredTokens).toEqual([tokens]);
+  });
+
+  it("returns FO reactivation without creating a local session", async () => {
+    const result = {
+      status: "REACTIVATION_REQUIRED" as const,
+      tokenPayload: null,
+      reactivationToken: "reactivation-token",
+    };
+    mockResponses.push({ signinFo: result });
+
+    await expect(signInFo("buyer@example.com", "password")).resolves.toEqual(
+      result,
+    );
+
+    expect(mockRequests[0]?.query).toContain("reactivationToken");
+    expect(mockStoredTokens).toEqual([]);
+  });
+
+  it("reactivates on the issuing device and persists the new session", async () => {
+    const tokens = {
+      accessToken: "reactivated-access",
+      refreshToken: "reactivated-refresh",
+      role: "USER" as const,
+    };
+    mockResponses.push({ reactivateFoAccount: tokens });
+
+    await expect(reactivateFoAccount("reactivation-token")).resolves.toEqual(
+      tokens,
+    );
+
+    expect(mockRequests[0]?.query).toContain("mutation ReactivateFoAccount");
+    expect(mockRequests[0]?.query).toContain(
+      "reactivateFoAccount(reactivationToken: $token)",
+    );
+    expect(mockRequests[0]?.variables).toEqual({
+      token: "reactivation-token",
     });
     expect(mockRequests[0]?.headers).toEqual({ "x-device-id": "device-1" });
     expect(mockStoredTokens).toEqual([tokens]);
@@ -129,10 +174,15 @@ describe("feature API contracts", () => {
   it("forwards one-time callback tokens through auth completion requests", async () => {
     const kakaoResult = {
       status: "SIGNED_IN" as const,
-      tokenPayload: null,
+      tokenPayload: {
+        accessToken: "kakao-access",
+        refreshToken: "kakao-refresh",
+        role: "USER" as const,
+      },
       kakaoSignupToken: null,
       email: null,
       emailVerificationRequired: false,
+      reactivationToken: null,
     };
     const identityResult = { identityVerificationToken: "identity-proof" };
     mockResponses.push(
@@ -151,6 +201,26 @@ describe("feature API contracts", () => {
       { input: { callbackToken: "callback-token", flowId: "flow-1" } },
       { callbackToken: "callback-token", sessionId: "identity-session" },
     ]);
+    expect(mockRequests[0]?.query).toContain("reactivationToken");
+  });
+
+  it("does not persist a Kakao reactivation response", async () => {
+    const result = {
+      status: "REACTIVATION_REQUIRED" as const,
+      tokenPayload: null,
+      kakaoSignupToken: null,
+      email: null,
+      emailVerificationRequired: false,
+      reactivationToken: "reactivation-token",
+    };
+    mockResponses.push({ completeKakaoLogin: result });
+
+    await expect(
+      completeKakaoLogin("flow-1", "callback-token"),
+    ).resolves.toEqual(result);
+
+    expect(mockStoredTokens).toEqual([]);
+    expect(mockRequests[0]?.query).toContain("reactivationToken");
   });
 
   it("passes catalog filters without changing the public GraphQL shape", async () => {
@@ -187,7 +257,9 @@ describe("feature API contracts", () => {
 
     await upsertCartItem("sku-1", 3);
     await addWish("product-1");
-    await expect(checkoutCart({ idempotencyKey: "checkout-1" })).resolves.toEqual(checkout);
+    await expect(
+      checkoutCart({ idempotencyKey: "checkout-1" }),
+    ).resolves.toEqual(checkout);
     await expect(getOrder("order-1")).resolves.toEqual(order);
 
     expect(mockRequests.map(({ variables }) => variables)).toEqual([

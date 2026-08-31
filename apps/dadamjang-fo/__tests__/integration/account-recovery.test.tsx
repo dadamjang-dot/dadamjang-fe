@@ -1,7 +1,14 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react-native";
 
 import FindEmailScreen from "@/app/auth/find-email";
 import FindPasswordScreen from "@/app/auth/find-password";
+import { PasswordResetForm } from "@/features/auth/components";
 
 const mockReplace = jest.fn();
 const mockOpenIdentityProviderSheet = jest.fn();
@@ -20,18 +27,26 @@ jest.mock("@/features/auth", () => {
   return {
     ...rules,
     IdentitySheetDismissedError: class IdentitySheetDismissedError extends Error {},
-    useAuthFlow: () => ({ openIdentityProviderSheet: mockOpenIdentityProviderSheet }),
+    useAuthFlow: () => ({
+      openIdentityProviderSheet: mockOpenIdentityProviderSheet,
+    }),
     useFindFoEmail: () => ({ mutateAsync: mockFindEmail, isPending: false }),
     useRequestPasswordResetCode: () => ({ mutateAsync: mockRequestCode }),
     useVerifyPasswordResetCode: () => ({ mutateAsync: mockVerifyCode }),
-    useResetPassword: () => ({ mutateAsync: mockResetPassword, isPending: false }),
+    useResetPassword: () => ({
+      mutateAsync: mockResetPassword,
+      isPending: false,
+    }),
   };
 });
 
 describe("account recovery screens", () => {
   beforeEach(() => {
     mockOpenIdentityProviderSheet.mockResolvedValue("identity-proof");
-    mockFindEmail.mockResolvedValue({ found: true, maskedEmail: "ab***@example.com" });
+    mockFindEmail.mockResolvedValue({
+      found: true,
+      maskedEmail: "ab***@example.com",
+    });
     mockRequestCode.mockResolvedValue({ ok: true });
     mockVerifyCode.mockResolvedValue({ emailVerificationToken: "reset-proof" });
     mockResetPassword.mockResolvedValue({ ok: true });
@@ -57,7 +72,10 @@ describe("account recovery screens", () => {
     await act(async () => {
       fireEvent.press(screen.getByText("인증번호 받기"));
     });
-    await fireEvent.changeText(screen.getByTestId("e2e.auth.password-reset.code"), "123456");
+    await fireEvent.changeText(
+      screen.getByTestId("e2e.auth.password-reset.code"),
+      "123456",
+    );
     await act(async () => {
       fireEvent.press(screen.getByText("확인"));
     });
@@ -84,5 +102,24 @@ describe("account recovery screens", () => {
       pathname: "/auth/signin",
       params: undefined,
     });
+  });
+
+  it("supports a locked account email for protected settings reuse", () => {
+    render(
+      <PasswordResetForm
+        emailEditable={false}
+        initialEmail="member@example.com"
+        onComplete={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("e2e.auth.password-reset.email")).toHaveProp(
+      "editable",
+      false,
+    );
+    expect(screen.getByTestId("e2e.auth.password-reset.email")).toHaveProp(
+      "value",
+      "member@example.com",
+    );
   });
 });
