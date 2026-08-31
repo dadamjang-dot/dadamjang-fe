@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  onlineManager,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import {
   act,
   cleanup,
@@ -11,7 +15,7 @@ import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 import * as Notifications from "expo-notifications";
 import type { ReactNode } from "react";
-import { Alert } from "react-native";
+import { ActivityIndicator, Alert } from "react-native";
 
 import { logoutAuthSession, resetAuthSession } from "@dadamjang/graphql-client";
 
@@ -74,13 +78,17 @@ const createClient = () =>
     },
   });
 
-const renderSettings = (hasSession: boolean) => {
+const renderSettings = (
+  hasSession: boolean,
+  sessionError: unknown | null = null,
+  retry = jest.fn(async () => undefined),
+) => {
   const client = createClient();
   clients.push(client);
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>
       <AuthSessionStateProvider
-        value={{ error: null, hasSession, retry: jest.fn() }}
+        value={{ error: sessionError, hasSession, retry }}
       >
         {children}
       </AuthSessionStateProvider>
@@ -103,6 +111,7 @@ const resolveUser = (overrides?: {
 
 describe("settings", () => {
   beforeEach(() => {
+    onlineManager.setOnline(true);
     jest.mocked(getFoNotificationPreferences).mockResolvedValue(preferences);
     jest
       .mocked(updateFoNotificationPreferences)
@@ -118,6 +127,7 @@ describe("settings", () => {
   });
 
   afterEach(async () => {
+    onlineManager.setOnline(true);
     cleanup();
     await Promise.all(clients.map((client) => client.cancelQueries()));
     clients.splice(0).forEach((client) => client.clear());
@@ -141,6 +151,44 @@ describe("settings", () => {
       params: { returnTo: "/settings" },
     });
     expect(screen.queryByText("member@example.test")).toBeNull();
+  });
+
+  it("shows auth loading guidance without guest actions while keeping the version public", () => {
+    jest.mocked(getCurrentUser).mockReturnValue(new Promise(() => undefined));
+    renderSettings(true);
+
+    expect(
+      screen.getByText("로그인 상태를 확인하고 있어요."),
+    ).toBeOnTheScreen();
+    expect(screen.UNSAFE_getByType(ActivityIndicator)).toBeTruthy();
+    expect(screen.queryByText("로그인 후 이용할 수 있어요")).toBeNull();
+    expect(screen.queryByRole("button", { name: "푸시 알림 설정" })).toBeNull();
+    expect(screen.getByText("앱 버전 1.0.0")).toBeOnTheScreen();
+  });
+
+  it("shows offline guidance without dead guest actions while keeping the version public", () => {
+    onlineManager.setOnline(false);
+    renderSettings(true);
+
+    expect(screen.getByText("연결을 기다리고 있어요.")).toBeOnTheScreen();
+    expect(screen.queryByText("로그인 후 이용할 수 있어요")).toBeNull();
+    expect(screen.queryByRole("button", { name: "푸시 알림 설정" })).toBeNull();
+    expect(screen.getByText("앱 버전 1.0.0")).toBeOnTheScreen();
+  });
+
+  it("shows an auth error retry without guest actions while keeping the version public", () => {
+    const retryAuth = jest.fn(async () => undefined);
+    renderSettings(true, new Error("session failed"), retryAuth);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "로그인 상태를 확인하지 못했어요.",
+    );
+    fireEvent.press(screen.getByRole("button", { name: "다시 시도" }));
+
+    expect(retryAuth).toHaveBeenCalled();
+    expect(screen.queryByText("로그인 후 이용할 수 있어요")).toBeNull();
+    expect(screen.queryByRole("button", { name: "푸시 알림 설정" })).toBeNull();
+    expect(screen.getByText("앱 버전 1.0.0")).toBeOnTheScreen();
   });
 
   it("shows authenticated permission, preference, and role-gated account rows", async () => {

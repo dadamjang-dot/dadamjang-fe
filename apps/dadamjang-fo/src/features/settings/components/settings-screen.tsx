@@ -168,7 +168,27 @@ const SettingsScreen = () => {
       style={s.container}
     >
       <TitleHeader title="설정" />
-      {!auth.isAuthenticated ? (
+      {auth.authStatus === "loading" ? (
+        <View style={s.section}>
+          <ActivityIndicator color={colors.primary} />
+          <Text style={s.rowValue}>로그인 상태를 확인하고 있어요.</Text>
+        </View>
+      ) : auth.authStatus === "offline" ? (
+        <View style={s.section}>
+          <Text style={s.rowValue}>연결을 기다리고 있어요.</Text>
+        </View>
+      ) : auth.authStatus === "error" ? (
+        <View style={s.section}>
+          <Text accessibilityRole="alert" selectable style={s.error}>
+            로그인 상태를 확인하지 못했어요.
+          </Text>
+          <Button
+            label="다시 시도"
+            onPress={() => void auth.retryAuth()}
+            variant="secondary"
+          />
+        </View>
+      ) : auth.authStatus === "unauthenticated" ? (
         <View style={s.section}>
           <Text style={s.sectionTitle}>로그인 후 이용할 수 있어요</Text>
           <Button
