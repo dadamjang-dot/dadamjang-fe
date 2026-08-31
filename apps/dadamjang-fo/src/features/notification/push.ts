@@ -8,6 +8,7 @@ import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Platform } from "react-native";
 
 import { GraphqlError } from "@dadamjang/graphql-client";
 
@@ -123,13 +124,6 @@ export const getExpoPushRegistration = async (
   signal?: AbortSignal,
 ) => {
   throwIfPushRegistrationAborted(signal);
-  if (platform === "ANDROID") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "default",
-      importance: Notifications.AndroidImportance.HIGH,
-    });
-    throwIfPushRegistrationAborted(signal);
-  }
   const token = await Notifications.getExpoPushTokenAsync({ projectId });
   throwIfPushRegistrationAborted(signal);
   return { expoPushToken: token.data, platform };
@@ -170,16 +164,23 @@ export const useFoPushNotifications = (
         ) {
           return;
         }
-        if (!(await ensureNotificationPermission(controller.signal))) return;
-        const platform = getFoPushPlatform(process.env.EXPO_OS);
-        const projectId = getProjectId();
-        if (!platform || !projectId) return;
+        const platform = getFoPushPlatform(Platform.OS);
+        if (!platform) return;
+        if (platform === "ANDROID") {
+          await Notifications.setNotificationChannelAsync("default", {
+            name: "default",
+            importance: Notifications.AndroidImportance.HIGH,
+          });
+        }
         if (
           controller.signal.aborted ||
           activeSession.current?.revision !== session.revision
         ) {
           return;
         }
+        if (!(await ensureNotificationPermission(controller.signal))) return;
+        const projectId = getProjectId();
+        if (!projectId) return;
         const registration = await getExpoPushRegistration(
           projectId,
           platform,

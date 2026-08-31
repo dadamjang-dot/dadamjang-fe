@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react-native";
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
-import { Text } from "react-native";
+import { Platform, Text } from "react-native";
 
 import {
   GraphqlError,
@@ -22,10 +22,6 @@ import {
   getFoNotification,
   markFoNotificationRead,
 } from "@/features/notification/api";
-import {
-  getExpoPushRegistration,
-  getFoPushPlatform,
-} from "@/features/notification/push";
 import type { FoNotification } from "@/features/notification/types";
 import { AppProviders } from "@/providers/app-providers";
 
@@ -514,10 +510,20 @@ describe("Expo Push lifecycle", () => {
     await waitFor(() => expect(registerFoPushDevice).toHaveBeenCalledTimes(1));
   });
 
-  it("creates the Android channel before fetching the registration token", async () => {
-    expect(getFoPushPlatform("android")).toBe("ANDROID");
-    const registration = await getExpoPushRegistration(projectId, "ANDROID");
+  it("creates the Android 13 channel before requesting notification access", async () => {
+    jest.replaceProperty(Platform, "OS", "android");
+    jest
+      .mocked(Notifications.getPermissionsAsync)
+      .mockResolvedValue(
+        permission(Notifications.PermissionStatus.UNDETERMINED),
+      );
+    jest
+      .mocked(Notifications.requestPermissionsAsync)
+      .mockResolvedValue(permission(Notifications.PermissionStatus.GRANTED));
 
+    renderApp();
+
+    await waitFor(() => expect(registerFoPushDevice).toHaveBeenCalledTimes(1));
     expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledWith(
       "default",
       { importance: 6, name: "default" },
@@ -526,13 +532,24 @@ describe("Expo Push lifecycle", () => {
       jest.mocked(Notifications.setNotificationChannelAsync).mock
         .invocationCallOrder[0],
     ).toBeLessThan(
-      jest.mocked(Notifications.getExpoPushTokenAsync).mock
+      jest.mocked(Notifications.requestPermissionsAsync).mock
         .invocationCallOrder[0]!,
     );
-    expect(registration).toEqual({
-      expoPushToken: "ExponentPushToken[token-1]",
-      platform: "ANDROID",
-    });
+    expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips notification permission APIs on unsupported platforms", async () => {
+    jest.replaceProperty(Platform, "OS", "web");
+
+    renderApp();
+
+    expect(await screen.findByTestId("push-ready")).toBeOnTheScreen();
+    await waitFor(() => expect(getCurrentUser).toHaveBeenCalledTimes(1));
+    expect(Notifications.getPermissionsAsync).not.toHaveBeenCalled();
+    expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+    expect(Notifications.setNotificationChannelAsync).not.toHaveBeenCalled();
+    expect(Notifications.getExpoPushTokenAsync).not.toHaveBeenCalled();
+    expect(registerFoPushDevice).not.toHaveBeenCalled();
   });
 
   it("retries missing EAS configuration on the next authenticated foreground", async () => {
