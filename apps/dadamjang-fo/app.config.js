@@ -39,6 +39,7 @@ module.exports = ({ config }) => ({
     ],
     "expo-secure-store",
     "expo-image",
+    "expo-notifications",
     [
       "expo-image-picker",
       {

@@ -19,6 +19,10 @@ jest.mock("expo-crypto", () => ({
   randomUUID: jest.fn(() => "00000000-0000-4000-8000-000000000000"),
 }));
 
+jest.mock("expo-constants", () => require("./mocks/expo-constants"));
+
+jest.mock("expo-notifications", () => require("./mocks/expo-notifications"));
+
 jest.mock("@sentry/react-native", () => ({
   addBreadcrumb: jest.fn(),
   captureException: jest.fn(),

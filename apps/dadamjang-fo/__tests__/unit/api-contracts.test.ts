@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { getDeviceId } from "@dadamjang/graphql-client";
 
 import {
@@ -15,6 +18,13 @@ import {
   uploadStylePostImage,
 } from "@/features/style/api";
 import { addWish } from "@/features/wish/api";
+
+jest.mock("../../plugins/with-ios-build-settings.cjs", () => jest.fn());
+
+const packageJson = JSON.parse(
+  readFileSync(resolve(__dirname, "../../package.json"), "utf8"),
+) as { dependencies?: Record<string, string> };
+const appConfig = require("../../app.config.js")({ config: {} });
 
 type CapturedRequest = {
   query: string;
@@ -58,6 +68,19 @@ jest.mock("@dadamjang/graphql-client", () => ({
 }));
 
 describe("feature API contracts", () => {
+  it("declares Expo notification dependencies and preserves the EAS project", () => {
+    expect(packageJson.dependencies).toEqual(
+      expect.objectContaining({
+        "expo-constants": expect.any(String),
+        "expo-notifications": expect.any(String),
+      }),
+    );
+    expect(appConfig.plugins).toContain("expo-notifications");
+    expect(appConfig.extra.eas.projectId).toBe(
+      "095bcf9d-2bf8-4274-bb83-838d70c4f608",
+    );
+  });
+
   beforeEach(() => {
     mockRequests.length = 0;
     mockResponses.length = 0;
