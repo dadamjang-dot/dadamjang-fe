@@ -282,6 +282,8 @@ export const useFoPushNotifications = (
   );
 
   useEffect(() => {
+    if (!getFoPushPlatform(Platform.OS)) return;
+
     let isMounted = true;
     const releaseNotificationHandler = acquireNotificationHandler();
     const responseSubscription =

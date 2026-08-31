@@ -549,6 +549,11 @@ describe("Expo Push lifecycle", () => {
     expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
     expect(Notifications.setNotificationChannelAsync).not.toHaveBeenCalled();
     expect(Notifications.getExpoPushTokenAsync).not.toHaveBeenCalled();
+    expect(Notifications.setNotificationHandler).not.toHaveBeenCalled();
+    expect(
+      Notifications.addNotificationResponseReceivedListener,
+    ).not.toHaveBeenCalled();
+    expect(Notifications.getLastNotificationResponse).not.toHaveBeenCalled();
     expect(registerFoPushDevice).not.toHaveBeenCalled();
   });
 
