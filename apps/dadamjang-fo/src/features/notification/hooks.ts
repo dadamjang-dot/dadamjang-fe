@@ -11,13 +11,11 @@ import {
   getFoNotifications,
   markAllFoNotificationsRead,
   markFoNotificationRead,
-  registerFoPushDevice,
   updateFoNotificationPreferences,
 } from "./api";
 import type {
   FoNotificationConnection,
   FoNotificationPreferences,
-  RegisterFoPushDeviceInput,
 } from "./types";
 
 export const foNotificationQueryKeys = {
@@ -84,7 +82,6 @@ export const useMarkAllFoNotificationsRead = () => {
       }),
   });
 };
-
 export const useFoNotificationPreferences = (enabled = true) =>
   useQuery({
     enabled,
@@ -112,9 +109,3 @@ export const useUpdateFoNotificationPreferences = () => {
     onSettled: () => queryClient.invalidateQueries({ queryKey }),
   });
 };
-
-export const useRegisterFoPushDevice = () =>
-  useMutation({
-    mutationFn: (input: RegisterFoPushDeviceInput) =>
-      registerFoPushDevice(input),
-  });

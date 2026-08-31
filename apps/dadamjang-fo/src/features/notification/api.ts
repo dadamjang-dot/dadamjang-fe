@@ -11,6 +11,10 @@ import type {
 const notificationFields =
   "notificationId type title body route entityId readAt createdAt";
 
+const throwIfPushRegistrationAborted = (signal?: AbortSignal) => {
+  if (signal?.aborted) throw new Error("Push registration aborted");
+};
+
 export const getFoNotifications = async (
   input: { after?: string; first?: number },
   signal?: AbortSignal,
@@ -97,14 +101,17 @@ export const updateFoNotificationPreferences = async (
 
 export const registerFoPushDevice = async (
   input: RegisterFoPushDeviceInput,
+  signal?: AbortSignal,
 ): Promise<boolean> => {
+  throwIfPushRegistrationAborted(signal);
   const deviceId = await getDeviceId();
+  throwIfPushRegistrationAborted(signal);
   const data = await graphqlRequest<{ registerFoPushDevice: boolean }>(
     `mutation RegisterFoPushDevice($input: RegisterFoPushDeviceInput!) {
       registerFoPushDevice(input: $input)
     }`,
     { input },
-    { requestHeaders: { "x-device-id": deviceId } },
+    { requestHeaders: { "x-device-id": deviceId }, signal },
   );
   return data.registerFoPushDevice;
 };

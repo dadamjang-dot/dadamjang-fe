@@ -87,7 +87,7 @@ type RegisterInput = {
 const registerFoPushDevice = (
   jest.requireMock("@/features/notification/api") as {
     registerFoPushDevice: jest.MockedFunction<
-      (input: RegisterInput) => Promise<boolean>
+      (input: RegisterInput, signal?: AbortSignal) => Promise<boolean>
     >;
   }
 ).registerFoPushDevice;
@@ -359,10 +359,13 @@ describe("Expo Push lifecycle", () => {
       renderApp();
 
       await waitFor(() =>
-        expect(registerFoPushDevice).toHaveBeenCalledWith({
-          expoPushToken: "ExponentPushToken[token-1]",
-          platform: "IOS",
-        }),
+        expect(registerFoPushDevice).toHaveBeenCalledWith(
+          {
+            expoPushToken: "ExponentPushToken[token-1]",
+            platform: "IOS",
+          },
+          expect.any(AbortSignal),
+        ),
       );
       expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
       expect(Notifications.getExpoPushTokenAsync).toHaveBeenCalledWith({
@@ -433,6 +436,35 @@ describe("Expo Push lifecycle", () => {
     expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
     expect(Notifications.getExpoPushTokenAsync).not.toHaveBeenCalled();
     expect(registerFoPushDevice).not.toHaveBeenCalled();
+  });
+
+  it("registers with React Native's minimal AbortSignal contract", async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      AbortSignal.prototype,
+      "throwIfAborted",
+    );
+    Object.defineProperty(AbortSignal.prototype, "throwIfAborted", {
+      configurable: true,
+      value: undefined,
+    });
+
+    try {
+      renderApp();
+
+      await waitFor(() =>
+        expect(registerFoPushDevice).toHaveBeenCalledTimes(1),
+      );
+    } finally {
+      if (descriptor) {
+        Object.defineProperty(
+          AbortSignal.prototype,
+          "throwIfAborted",
+          descriptor,
+        );
+      } else {
+        Reflect.deleteProperty(AbortSignal.prototype, "throwIfAborted");
+      }
+    }
   });
 
   it("waits for connectivity before validating and registering the viewer", async () => {
@@ -591,14 +623,118 @@ describe("Expo Push lifecycle", () => {
 
     await waitFor(() => expect(registerFoPushDevice).toHaveBeenCalledTimes(2));
     expect(maxActiveRegistrations).toBe(1);
-    expect(registerFoPushDevice).toHaveBeenNthCalledWith(1, {
-      expoPushToken: "ExponentPushToken[session-a]",
-      platform: "IOS",
+    expect(registerFoPushDevice).toHaveBeenNthCalledWith(
+      1,
+      {
+        expoPushToken: "ExponentPushToken[session-a]",
+        platform: "IOS",
+      },
+      expect.any(AbortSignal),
+    );
+    expect(registerFoPushDevice).toHaveBeenLastCalledWith(
+      {
+        expoPushToken: "ExponentPushToken[session-b]",
+        platform: "IOS",
+      },
+      expect.any(AbortSignal),
+    );
+  });
+
+  it("coalesces foreground and reconnect triggers into one queued retry", async () => {
+    let rejectFirstRegistration: ((error: Error) => void) | undefined;
+    const firstRegistration = new Promise<boolean>((_resolve, reject) => {
+      rejectFirstRegistration = reject;
     });
-    expect(registerFoPushDevice).toHaveBeenLastCalledWith({
-      expoPushToken: "ExponentPushToken[session-b]",
-      platform: "IOS",
+    let activeRegistrations = 0;
+    let maxActiveRegistrations = 0;
+    registerFoPushDevice
+      .mockImplementationOnce(async () => {
+        activeRegistrations += 1;
+        maxActiveRegistrations = Math.max(
+          maxActiveRegistrations,
+          activeRegistrations,
+        );
+        try {
+          return await firstRegistration;
+        } finally {
+          activeRegistrations -= 1;
+        }
+      })
+      .mockImplementationOnce(async () => {
+        activeRegistrations += 1;
+        maxActiveRegistrations = Math.max(
+          maxActiveRegistrations,
+          activeRegistrations,
+        );
+        activeRegistrations -= 1;
+        return true;
+      });
+
+    renderApp();
+    await waitFor(() => expect(registerFoPushDevice).toHaveBeenCalledTimes(1));
+
+    foreground();
+    act(() => onlineManager.setOnline(false));
+    act(() => onlineManager.setOnline(true));
+    await act(async () => Promise.resolve());
+
+    expect(registerFoPushDevice).toHaveBeenCalledTimes(1);
+
+    rejectFirstRegistration?.(new Error("temporary failure"));
+    await act(async () => firstRegistration.catch(() => undefined));
+
+    await waitFor(() => expect(registerFoPushDevice).toHaveBeenCalledTimes(2));
+    expect(maxActiveRegistrations).toBe(1);
+  });
+
+  it("times out a hung session and registers only the latest session", async () => {
+    let resolveHungToken:
+      ((token: Notifications.ExpoPushToken) => void) | undefined;
+    const hungToken = new Promise<Notifications.ExpoPushToken>((resolve) => {
+      resolveHungToken = resolve;
     });
+    jest
+      .mocked(Notifications.getExpoPushTokenAsync)
+      .mockReturnValueOnce(hungToken)
+      .mockResolvedValueOnce({
+        type: "expo",
+        data: "ExponentPushToken[session-b]",
+      });
+
+    renderApp();
+    await waitFor(() =>
+      expect(Notifications.getExpoPushTokenAsync).toHaveBeenCalledTimes(1),
+    );
+
+    await setSession("replacement-access");
+
+    expect(registerFoPushDevice).not.toHaveBeenCalled();
+
+    await act(async () => {
+      jest.advanceTimersByTime(10_000);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(registerFoPushDevice).toHaveBeenCalledTimes(1));
+    expect(registerFoPushDevice).toHaveBeenLastCalledWith(
+      {
+        expoPushToken: "ExponentPushToken[session-b]",
+        platform: "IOS",
+      },
+      expect.any(AbortSignal),
+    );
+    expect(getCurrentUser).toHaveBeenNthCalledWith(1, expect.any(AbortSignal));
+    expect(getCurrentUser).toHaveBeenNthCalledWith(2, expect.any(AbortSignal));
+
+    resolveHungToken?.({
+      type: "expo",
+      data: "ExponentPushToken[session-a]",
+    });
+    await act(async () => hungToken);
+
+    expect(registerFoPushDevice).toHaveBeenCalledTimes(1);
+    expect(Notifications.getExpoPushTokenAsync).toHaveBeenCalledTimes(2);
   });
 
   it("suppresses a rejected token until the token or auth session changes", async () => {
@@ -743,6 +879,72 @@ describe("Expo Push lifecycle", () => {
       ),
     );
     expect(getFoNotification).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects reverted cached detail after a session reset", async () => {
+    const cachedEntityId = "30000000-0000-4000-8000-000000000009";
+    const replacementEntityId = "30000000-0000-4000-8000-000000000010";
+    const cachedRoute = `/order/${cachedEntityId}`;
+    const replacementRoute = `/order/${replacementEntityId}`;
+    let observedAbort = false;
+    jest
+      .mocked(getFoNotification)
+      .mockResolvedValueOnce(
+        notification({ entityId: cachedEntityId, route: cachedRoute }),
+      )
+      .mockImplementationOnce(
+        (_notificationId, signal) =>
+          new Promise<FoNotification>(() => {
+            signal?.addEventListener(
+              "abort",
+              () => {
+                observedAbort = true;
+              },
+              { once: true },
+            );
+          }),
+      )
+      .mockResolvedValueOnce(
+        notification({
+          entityId: replacementEntityId,
+          route: replacementRoute,
+        }),
+      );
+    jest.mocked(markFoNotificationRead).mockResolvedValue(
+      notification({
+        readAt: "2026-08-31T00:01:00.000Z",
+        entityId: cachedEntityId,
+        route: cachedRoute,
+      }),
+    );
+    renderApp();
+    expect(await screen.findByTestId("push-ready")).toBeOnTheScreen();
+    await waitFor(() => expect(responseListener).toBeDefined());
+
+    act(() => responseListener?.(response("cache-seed-response")));
+    await waitFor(() =>
+      expect(mockRouter.push).toHaveBeenCalledWith(cachedRoute),
+    );
+    mockRouter.push.mockClear();
+    mockRouter.replace.mockClear();
+    jest.mocked(markFoNotificationRead).mockClear();
+
+    act(() => responseListener?.(response("cached-cancel-response")));
+    await waitFor(() => expect(getFoNotification).toHaveBeenCalledTimes(2));
+
+    await setSession(null);
+
+    expect(observedAbort).toBe(true);
+    expect(markFoNotificationRead).not.toHaveBeenCalled();
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+    expect(mockRouter.push).not.toHaveBeenCalled();
+
+    await setSession("replacement-access");
+
+    await waitFor(() =>
+      expect(mockRouter.push).toHaveBeenCalledWith(replacementRoute),
+    );
+    expect(getFoNotification).toHaveBeenCalledTimes(3);
   });
 
   it("retries a 401 tap under a replacement authenticated session", async () => {

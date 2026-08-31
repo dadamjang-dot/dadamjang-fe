@@ -42,6 +42,7 @@ type CapturedRequest = {
   query: string;
   variables: Record<string, unknown> | undefined;
   headers: Record<string, string> | undefined;
+  signal: AbortSignal | undefined;
 };
 
 const mockRequests: CapturedRequest[] = [];
@@ -64,12 +65,16 @@ jest.mock("@dadamjang/graphql-client", () => ({
     (
       query: string,
       variables?: Record<string, unknown>,
-      options?: { requestHeaders?: Record<string, string> },
+      options?: {
+        requestHeaders?: Record<string, string>;
+        signal?: AbortSignal;
+      },
     ) => {
       mockRequests.push({
         query,
         variables,
         headers: options?.requestHeaders,
+        signal: options?.signal,
       });
       return Promise.resolve(mockResponses.shift());
     },
@@ -187,6 +192,21 @@ describe("feature API contracts", () => {
     expect(mockRequests.at(-1)?.query).toContain(
       "mutation RegisterFoPushDevice",
     );
+  });
+
+  it("forwards Push registration cancellation", async () => {
+    const signal = { aborted: false } as AbortSignal;
+    mockResponses.push({ registerFoPushDevice: true });
+
+    await registerFoPushDevice(
+      {
+        expoPushToken: "ExponentPushToken[token-1]",
+        platform: "IOS",
+      },
+      signal,
+    );
+
+    expect(mockRequests.at(-1)?.signal).toBe(signal);
   });
 
   it("binds identity verification requests to the local device", async () => {
