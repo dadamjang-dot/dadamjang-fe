@@ -854,6 +854,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                 type="submit"
                 data-action="save"
                 loading={mutation.isPending}
+                disabled={mutation.isPending}
               >
                 저장
               </ActionButton>
