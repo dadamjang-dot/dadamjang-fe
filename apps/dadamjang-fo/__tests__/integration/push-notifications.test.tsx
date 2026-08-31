@@ -302,6 +302,50 @@ describe("Expo Push lifecycle", () => {
     mockLastSessionResetHandler = undefined;
   });
 
+  it("keeps the foreground handler while another provider remains mounted", async () => {
+    jest.mocked(getAccessToken).mockResolvedValue(null);
+    const providers = (includeFirst: boolean) => (
+      <>
+        {includeFirst ? (
+          <AppProviders key="first">
+            <Text>first</Text>
+          </AppProviders>
+        ) : null}
+        <AppProviders key="second">
+          <Text>second</Text>
+        </AppProviders>
+      </>
+    );
+    const rendered = render(providers(true));
+    await waitFor(() =>
+      expect(
+        Notifications.addNotificationResponseReceivedListener,
+      ).toHaveBeenCalledTimes(2),
+    );
+    expect(
+      jest
+        .mocked(Notifications.setNotificationHandler)
+        .mock.calls.filter(([handler]) => handler !== null),
+    ).toHaveLength(1);
+
+    rendered.rerender(providers(false));
+
+    expect(
+      jest
+        .mocked(Notifications.setNotificationHandler)
+        .mock.calls.filter(([handler]) => handler === null),
+    ).toHaveLength(0);
+
+    rendered.unmount();
+
+    expect(
+      jest
+        .mocked(Notifications.setNotificationHandler)
+        .mock.calls.filter(([handler]) => handler === null),
+    ).toHaveLength(1);
+    mockLastSessionResetHandler = undefined;
+  });
+
   it.each([2, 3, 4])(
     "accepts iOS authorization status %s without prompting",
     async (iosStatus) => {
@@ -491,6 +535,72 @@ describe("Expo Push lifecycle", () => {
     expect(screen.getByTestId("push-ready")).toBeOnTheScreen();
   });
 
+  it("serializes Push registration across auth session replacements", async () => {
+    let resolveSessionA: ((result: boolean) => void) | undefined;
+    const sessionARegistration = new Promise<boolean>((resolve) => {
+      resolveSessionA = resolve;
+    });
+    let activeRegistrations = 0;
+    let maxActiveRegistrations = 0;
+
+    jest
+      .mocked(Notifications.getExpoPushTokenAsync)
+      .mockResolvedValueOnce({
+        type: "expo",
+        data: "ExponentPushToken[session-a]",
+      })
+      .mockResolvedValueOnce({
+        type: "expo",
+        data: "ExponentPushToken[session-b]",
+      });
+    registerFoPushDevice
+      .mockImplementationOnce(async () => {
+        activeRegistrations += 1;
+        maxActiveRegistrations = Math.max(
+          maxActiveRegistrations,
+          activeRegistrations,
+        );
+        const result = await sessionARegistration;
+        activeRegistrations -= 1;
+        return result;
+      })
+      .mockImplementationOnce(async () => {
+        activeRegistrations += 1;
+        maxActiveRegistrations = Math.max(
+          maxActiveRegistrations,
+          activeRegistrations,
+        );
+        activeRegistrations -= 1;
+        return true;
+      });
+
+    renderApp();
+    await waitFor(() => expect(registerFoPushDevice).toHaveBeenCalledTimes(1));
+
+    await setSession("replacement-access");
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(registerFoPushDevice).toHaveBeenCalledTimes(1);
+    expect(maxActiveRegistrations).toBe(1);
+
+    resolveSessionA?.(true);
+    await act(async () => sessionARegistration);
+
+    await waitFor(() => expect(registerFoPushDevice).toHaveBeenCalledTimes(2));
+    expect(maxActiveRegistrations).toBe(1);
+    expect(registerFoPushDevice).toHaveBeenNthCalledWith(1, {
+      expoPushToken: "ExponentPushToken[session-a]",
+      platform: "IOS",
+    });
+    expect(registerFoPushDevice).toHaveBeenLastCalledWith({
+      expoPushToken: "ExponentPushToken[session-b]",
+      platform: "IOS",
+    });
+  });
+
   it("suppresses a rejected token until the token or auth session changes", async () => {
     registerFoPushDevice.mockResolvedValue(false);
     jest
@@ -594,6 +704,73 @@ describe("Expo Push lifecycle", () => {
       "20000000-0000-4000-8000-000000000001",
       expect.any(AbortSignal),
     );
+  });
+
+  it("keeps a canceled tap pending across logout and the next login", async () => {
+    let observedAbort = false;
+    jest
+      .mocked(getFoNotification)
+      .mockImplementationOnce(
+        (_notificationId, signal) =>
+          new Promise<FoNotification>(() => {
+            signal?.addEventListener(
+              "abort",
+              () => {
+                observedAbort = true;
+              },
+              { once: true },
+            );
+          }),
+      )
+      .mockResolvedValueOnce(notification());
+    renderApp();
+    expect(await screen.findByTestId("push-ready")).toBeOnTheScreen();
+    await waitFor(() => expect(responseListener).toBeDefined());
+
+    act(() => responseListener?.(response("canceled-response")));
+    await waitFor(() => expect(getFoNotification).toHaveBeenCalledTimes(1));
+
+    await setSession(null);
+
+    expect(observedAbort).toBe(true);
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+
+    await setSession("replacement-access");
+
+    await waitFor(() =>
+      expect(mockRouter.push).toHaveBeenCalledWith(
+        "/order/30000000-0000-4000-8000-000000000001",
+      ),
+    );
+    expect(getFoNotification).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a 401 tap under a replacement authenticated session", async () => {
+    jest
+      .mocked(getFoNotification)
+      .mockRejectedValueOnce(new GraphqlError("Unauthorized", 401))
+      .mockResolvedValueOnce(notification());
+    renderApp();
+    expect(await screen.findByTestId("push-ready")).toBeOnTheScreen();
+    await waitFor(() => expect(responseListener).toBeDefined());
+
+    act(() => responseListener?.(response("expired-session-response")));
+    await waitFor(() => expect(getFoNotification).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+
+    await setSession("replacement-access");
+
+    await waitFor(() =>
+      expect(mockRouter.push).toHaveBeenCalledWith(
+        "/order/30000000-0000-4000-8000-000000000001",
+      ),
+    );
+    expect(getFoNotification).toHaveBeenCalledTimes(2);
   });
 
   it("falls back for a server notification with a forbidden route", async () => {

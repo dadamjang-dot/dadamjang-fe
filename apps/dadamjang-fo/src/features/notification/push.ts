@@ -1,5 +1,6 @@
 import {
   focusManager,
+  isCancelledError,
   onlineManager,
   useQueryClient,
 } from "@tanstack/react-query";
@@ -7,6 +8,8 @@ import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+import { GraphqlError } from "@dadamjang/graphql-client";
 
 import { getCurrentUser } from "@/features/auth/api";
 
@@ -30,6 +33,21 @@ const notificationHandler: Notifications.NotificationHandler = {
     shouldShowBanner: true,
     shouldShowList: true,
   }),
+};
+
+let notificationHandlerOwners = 0;
+
+const acquireNotificationHandler = () => {
+  if (notificationHandlerOwners === 0) {
+    Notifications.setNotificationHandler(notificationHandler);
+  }
+  notificationHandlerOwners += 1;
+  return () => {
+    notificationHandlerOwners -= 1;
+    if (notificationHandlerOwners === 0) {
+      Notifications.setNotificationHandler(null);
+    }
+  };
 };
 
 const isNotificationType = (value: unknown): value is FoNotificationType =>
@@ -113,13 +131,16 @@ export const useFoPushNotifications = (
     undefined,
   );
   const registrationFlight = useRef<RegistrationFlight | undefined>(undefined);
+  const registerForPushRef = useRef<(session: PushSession) => void>(() => {});
   const handledResponseIds = useRef(new Set<string>());
   const resolvingNotificationId = useRef<string | undefined>(undefined);
 
   const registerForPush = useCallback(
     (session: PushSession) => {
       if (!onlineManager.isOnline()) return;
-      if (registrationFlight.current?.revision === session.revision) return;
+      if (registrationFlight.current) return;
+      const flight = { revision: session.revision };
+      registrationFlight.current = flight;
       const promise = (async () => {
         try {
           await getCurrentUser();
@@ -157,15 +178,21 @@ export const useFoPushNotifications = (
           return;
         }
       })();
-      const flight = { revision: session.revision };
-      registrationFlight.current = flight;
       void promise.finally(() => {
-        if (registrationFlight.current === flight)
-          registrationFlight.current = undefined;
+        if (registrationFlight.current !== flight) return;
+        registrationFlight.current = undefined;
+        const latestSession = activeSession.current;
+        if (latestSession && latestSession.revision !== flight.revision) {
+          registerForPushRef.current(latestSession);
+        }
       });
     },
     [registerDevice],
   );
+
+  useEffect(() => {
+    registerForPushRef.current = registerForPush;
+  }, [registerForPush]);
 
   useEffect(() => {
     settledRegistration.current = undefined;
@@ -209,7 +236,7 @@ export const useFoPushNotifications = (
 
   useEffect(() => {
     let isMounted = true;
-    Notifications.setNotificationHandler(notificationHandler);
+    const releaseNotificationHandler = acquireNotificationHandler();
     const responseSubscription =
       Notifications.addNotificationResponseReceivedListener(handleResponse);
     const lastResponse = Notifications.getLastNotificationResponse();
@@ -221,7 +248,7 @@ export const useFoPushNotifications = (
     return () => {
       isMounted = false;
       responseSubscription.remove();
-      Notifications.setNotificationHandler(null);
+      releaseNotificationHandler();
     };
   }, [handleResponse]);
 
@@ -229,6 +256,7 @@ export const useFoPushNotifications = (
     if (!pendingNotificationId || !hasSession) return;
     if (resolvingNotificationId.current === pendingNotificationId) return;
     let isActive = true;
+    let preservePending = false;
     resolvingNotificationId.current = pendingNotificationId;
     const resolveNotification = async () => {
       try {
@@ -256,14 +284,17 @@ export const useFoPushNotifications = (
         });
         if (!isActive) return;
         router.push(route);
-      } catch {
-        if (isActive) router.replace("/notifications");
+      } catch (error) {
+        preservePending =
+          isCancelledError(error) ||
+          (error instanceof GraphqlError && error.status === 401);
+        if (isActive && !preservePending) router.replace("/notifications");
       } finally {
         if (
           isActive &&
           resolvingNotificationId.current === pendingNotificationId
         ) {
-          setPendingNotificationId(undefined);
+          if (!preservePending) setPendingNotificationId(undefined);
           resolvingNotificationId.current = undefined;
         }
       }
@@ -274,5 +305,5 @@ export const useFoPushNotifications = (
       if (resolvingNotificationId.current === pendingNotificationId)
         resolvingNotificationId.current = undefined;
     };
-  }, [hasSession, pendingNotificationId, queryClient, router]);
+  }, [hasSession, pendingNotificationId, queryClient, router, sessionRevision]);
 };
