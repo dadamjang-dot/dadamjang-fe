@@ -93,6 +93,7 @@ const viewer = {
   userid: "buyer",
   email: "buyer@example.test",
   role: "USER" as const,
+  hasPassword: true,
 };
 
 const notification = (

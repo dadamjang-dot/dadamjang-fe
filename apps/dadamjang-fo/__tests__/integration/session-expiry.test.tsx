@@ -69,6 +69,7 @@ describe("expired auth session", () => {
       userid: "buyer",
       email: "buyer@example.test",
       role: "USER",
+      hasPassword: true,
     });
     jest
       .mocked(SecureStore.getItemAsync)
