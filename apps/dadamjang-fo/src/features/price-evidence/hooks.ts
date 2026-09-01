@@ -1,9 +1,6 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
-import {
-  getProductPriceSummary,
-  getProductPriceSummaries,
-} from "./api";
+import { getProductPriceSummary, getProductPriceSummaries } from "./api";
 import { priceEvidenceQueryKeys } from "./query-keys";
 
 import type {
