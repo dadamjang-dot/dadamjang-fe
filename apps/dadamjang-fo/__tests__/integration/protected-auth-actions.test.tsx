@@ -77,7 +77,6 @@ jest.mock("@/features/order/api", () => ({
 }));
 
 jest.mock("@/features/price-evidence/api", () => ({
-  getProductPriceEvidence: jest.fn(),
   getProductPriceSummaries: jest.fn(),
   getProductPriceSummary: jest.fn(),
 }));

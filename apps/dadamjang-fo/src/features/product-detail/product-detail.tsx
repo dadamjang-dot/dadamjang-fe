@@ -9,10 +9,7 @@ import { colors } from "@dadamjang/design-tokens";
 import { useAuthActionGate } from "@/features/auth";
 import { useCartActions } from "@/features/cart";
 import { useProduct } from "@/features/catalog";
-import {
-  ProductPriceEvidenceSection,
-  useProductPriceSummary,
-} from "@/features/price-evidence";
+import { useProductPriceSummary } from "@/features/price-evidence";
 import {
   useBrandFollowActions,
   useFollowedBrands,
@@ -196,13 +193,7 @@ const ProductDetail = ({ onOpenCart, productId }: ProductDetailProps) => {
                 {data.isExpressDelivery ? (
                   <Text style={s.benefit}>빠른 배송</Text>
                 ) : null}
-                {summary.data?.lowestPriceEvidenceSummary ? (
-                  <Text style={s.benefit}>
-                    {summary.data.lowestPriceEvidenceSummary}
-                  </Text>
-                ) : null}
               </View>
-              <ProductPriceEvidenceSection productId={data.productId} />
               <Text style={s.description}>{data.description}</Text>
               <Text style={s.sectionTitle}>옵션 선택</Text>
             </View>

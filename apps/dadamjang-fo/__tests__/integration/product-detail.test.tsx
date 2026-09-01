@@ -62,16 +62,7 @@ jest.mock("@/features/auth", () => ({ useAuthActionGate: jest.fn() }));
 jest.mock("@/features/cart", () => ({ useCartActions: jest.fn() }));
 jest.mock("@/features/catalog", () => ({ useProduct: jest.fn() }));
 jest.mock("@/features/price-evidence", () => {
-  const React = jest.requireActual<typeof import("react")>("react");
-  const { Text } =
-    jest.requireActual<typeof import("react-native")>("react-native");
   return {
-    ProductPriceEvidenceSection: () =>
-      React.createElement(
-        Text,
-        { testID: "e2e.product.price-evidence" },
-        "가격 근거",
-      ),
     useProductPriceSummary: jest.fn(),
   };
 });
@@ -268,13 +259,16 @@ describe("product detail", () => {
     ).toBeDisabled();
   });
 
-  it("shows price evidence before the product description in the detail flow", () => {
-    const detail = renderDetail();
-    const renderedTree = JSON.stringify(detail.toJSON());
+  it("keeps the price and purchase flow without showing the evidence summary", () => {
+    renderDetail();
 
-    expect(renderedTree.indexOf("가격 근거")).toBeLessThan(
-      renderedTree.indexOf("편안한 데일리 재킷"),
+    expect(screen.queryByText("현재 옵션 최저가 기준")).toBeNull();
+    expect(screen.getByTestId("e2e.product.price")).toHaveTextContent(
+      "18,000원",
     );
+    expect(
+      screen.getByRole("button", { name: "옵션을 선택해 주세요" }),
+    ).toBeDisabled();
   });
 
   it("falls back to the lowest SKU price when the price summary is unavailable", () => {

@@ -23,7 +23,6 @@ jest.mock("@/features/auth", () => ({ useAuthActionGate: jest.fn() }));
 jest.mock("@/features/cart", () => ({ useCartActions: jest.fn() }));
 jest.mock("@/features/catalog", () => ({ useProduct: jest.fn() }));
 jest.mock("@/features/price-evidence", () => ({
-  ProductPriceEvidenceSection: () => null,
   useProductPriceSummary: jest.fn(),
 }));
 jest.mock("@/features/wish", () => ({

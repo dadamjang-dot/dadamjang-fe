@@ -30,9 +30,7 @@
 
 - 상품 목록/검색은 `productPriceSummaries`, 상세는 `productPriceSummary(productId)` 경량 query를 사용합니다.
 - 경량 payload의 `basePrice`와 `finalPrice`는 모두 현재 활성 옵션 최저가입니다. 비교가나 옵션 최고가, 할인 차액으로 해석하지 않습니다.
-- 옵션 최고/최저 가격 구성과 원천·확인 시각은 `productPriceEvidence(productId, priceRevision)` lazy query로만 조회합니다. 현재 서버에는 기간별 가격 이력, 쿠폰, 배송 원천 데이터가 없으므로 UI도 빈 상태로 명시합니다.
-- 가격 근거를 처음 펼칠 때 상품별 1회 `PRICE_EVIDENCE_EXPANDED` Sentry breadcrumb를 남깁니다. 별도 분석 이벤트 저장소는 아직 연결하지 않았습니다.
-- React Query key는 `products`, `product-price-summary`, `product-price-evidence`, `offers`로 분리합니다.
+- React Query key는 `products`, `product-price-summary`로 분리합니다.
 
 ## Checkout 정합성 계약
 
