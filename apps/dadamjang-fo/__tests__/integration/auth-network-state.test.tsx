@@ -27,6 +27,7 @@ let mockSessionResetHandler: (() => void | Promise<void>) | undefined;
 let mockLastSessionResetHandler: (() => void | Promise<void>) | undefined;
 
 jest.mock("expo-router", () => ({
+  useFocusEffect: (effect: () => void) => effect(),
   useRouter: () => mockRouter,
 }));
 

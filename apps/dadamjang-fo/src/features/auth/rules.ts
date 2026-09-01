@@ -60,12 +60,14 @@ export const hasCompleteSignupConsentDocuments = (
 const allowedExactPaths = new Set([
   "/",
   "/cart",
+  "/my",
   "/notifications",
   "/orders",
   "/settings",
   "/settings/password",
   "/shop",
   "/style-compose",
+  "/wish",
 ]);
 const allowedPathPrefixes = ["/product/", "/style/", "/order/"];
 

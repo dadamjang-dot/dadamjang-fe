@@ -53,6 +53,7 @@ describe("auth rules", () => {
   });
 
   it("allows only known internal return paths", () => {
+    expect(resolveAuthReturnTo("/my")).toBe("/my");
     expect(resolveAuthReturnTo("/notifications")).toBe("/notifications");
     expect(resolveAuthReturnTo("/settings")).toBe("/settings");
     expect(resolveAuthReturnTo("/settings/password")).toBe(
@@ -60,6 +61,7 @@ describe("auth rules", () => {
     );
     expect(resolveAuthReturnTo("/style-compose")).toBe("/style-compose");
     expect(resolveAuthReturnTo("/style/style-1")).toBe("/style/style-1");
+    expect(resolveAuthReturnTo("/wish")).toBe("/wish");
     expect(resolveAuthReturnTo("/compare")).toBe("/");
     expect(resolveAuthReturnTo("https://evil.example")).toBe("/");
     expect(resolveAuthReturnTo("//evil.example")).toBe("/");

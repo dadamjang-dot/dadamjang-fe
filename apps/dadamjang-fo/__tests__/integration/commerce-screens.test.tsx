@@ -25,6 +25,7 @@ const mockNavigation: { path?: string } = {};
 const mockSearchParams: { "order-id"?: string; forcePaymentFailure?: string } = {};
 
 jest.mock("expo-router", () => ({
+  useFocusEffect: (effect: () => void) => effect(),
   useLocalSearchParams: () => mockSearchParams,
   useRouter: () => ({
     push: (path: string) => {

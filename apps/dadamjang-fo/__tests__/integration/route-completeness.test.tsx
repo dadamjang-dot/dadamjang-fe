@@ -38,6 +38,7 @@ const mockActionButtons: {
 }[] = [];
 
 jest.mock("expo-router", () => ({
+  useFocusEffect: (effect: () => void) => effect(),
   usePathname: () => "/shop",
   useRouter: () => ({ push: mockPush }),
 }));
@@ -403,13 +404,6 @@ describe("FO route completeness", () => {
     const renderedMy = render(<MyScreen />);
     renderedMy.unmount();
 
-    jest.mocked(useCurrentUser).mockReturnValue({
-      authStatus: "unauthenticated",
-      data: undefined,
-    } as never);
-    const renderedUnauthenticatedMy = render(<MyScreen />);
-    renderedUnauthenticatedMy.unmount();
-
     mockPush.mockClear();
     mockProductLayouts.forEach(({ headerActions }) =>
       headerActions.forEach(({ onPress }) => onPress()),
@@ -456,17 +450,6 @@ describe("FO route completeness", () => {
       { actions: [expectedCart], iconOnly: true },
     ]);
     expect(mockActionButtonGroups).toEqual([
-      {
-        actions: [
-          {
-            accessibilityLabel: "설정",
-            icon: { md: "settings", sf: "gearshape" },
-            onPress: anyPress,
-          },
-          expectedCart,
-        ],
-        variant: "circularPair",
-      },
       {
         actions: [
           {

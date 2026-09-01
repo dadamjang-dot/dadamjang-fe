@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -9,8 +10,10 @@ import {
 import type { ReactNode } from "react";
 
 import HomeScreen from "@/app/(tabs)";
+import MyScreen from "@/app/(tabs)/my";
 import ShopScreen from "@/app/(tabs)/shop";
 import StyleScreen from "@/app/(tabs)/style";
+import WishScreen from "@/app/(tabs)/wish";
 import CartScreen from "@/app/cart";
 import OrderDetailScreen from "@/app/order/[order-id]";
 import OrdersScreen from "@/app/orders";
@@ -42,6 +45,7 @@ import {
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
 let mockPathname = "/";
+let mockFocusEffect: (() => void) | undefined;
 
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({
@@ -51,6 +55,9 @@ jest.mock("expo-router", () => ({
   }),
   usePathname: () => mockPathname,
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
+  useFocusEffect: (effect: () => void) => {
+    mockFocusEffect = effect;
+  },
 }));
 
 jest.mock("@/features/auth/api", () => ({
@@ -164,6 +171,7 @@ jest.mock("@/shared/components", () => {
   const { Pressable, Text, View } =
     jest.requireActual<typeof import("react-native")>("react-native");
   return {
+    ActionButton: () => null,
     Button: ({ label, onPress }: { label: string; onPress: () => void }) =>
       React.createElement(
         Pressable,
@@ -191,6 +199,19 @@ jest.mock("@/shared/components", () => {
             onPress: action.onPress,
           }),
         ),
+        children,
+      ),
+    TitleHeader: ({
+      children,
+      title,
+    }: {
+      children?: ReactNode;
+      title: string;
+    }) =>
+      React.createElement(
+        View,
+        null,
+        React.createElement(Text, null, title),
         children,
       ),
   };
@@ -295,6 +316,7 @@ const createWrapper = (hasSession = false) => {
 
 describe("protected FO routes and actions", () => {
   beforeEach(() => {
+    mockFocusEffect = undefined;
     jest.mocked(getCategories).mockResolvedValue([]);
     jest
       .mocked(getCart)
@@ -343,7 +365,31 @@ describe("protected FO routes and actions", () => {
           params: { returnTo: path },
         }),
       );
-      expect(query).not.toHaveBeenCalled();
+      if (query) expect(query).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["/wish", WishScreen, getWishlist],
+    ["/my", MyScreen, undefined],
+  ])(
+    "redirects %s only when its native tab gains focus",
+    async (path, Screen, query) => {
+      mockPathname = path;
+      render(<Screen />, { wrapper: createWrapper() });
+
+      expect(mockReplace).not.toHaveBeenCalled();
+      expect(mockFocusEffect).toBeDefined();
+      act(() => mockFocusEffect?.());
+
+      await waitFor(() =>
+        expect(mockReplace).toHaveBeenCalledWith({
+          pathname: "/auth",
+          params: { returnTo: path },
+        }),
+      );
+      expect(screen.queryByText("로그인이 필요해요.")).not.toBeOnTheScreen();
+      if (query) expect(query).not.toHaveBeenCalled();
     },
   );
 
