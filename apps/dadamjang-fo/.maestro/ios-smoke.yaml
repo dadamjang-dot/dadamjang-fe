@@ -11,5 +11,7 @@ name: iOS shop filter smoke
     id: e2e.filter.apply
 - tapOn:
     id: e2e.product.open.${E2E_PRODUCT_ID}
+- tapOn:
+    id: e2e.product.sku.${E2E_SKU_ID}
 - assertVisible:
-    id: e2e.cart.add
+    id: e2e.product.buy

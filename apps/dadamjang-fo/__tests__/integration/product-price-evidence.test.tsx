@@ -16,6 +16,8 @@ import {
   useBrandFollowActions,
   useFollowedBrands,
   useRecordRecentProductView,
+  useWishActions,
+  useWishlist,
 } from "@/features/wish";
 import { Sentry } from "@/shared/observability/sentry";
 
@@ -41,6 +43,8 @@ jest.mock("@/features/wish", () => ({
   useBrandFollowActions: jest.fn(),
   useFollowedBrands: jest.fn(),
   useRecordRecentProductView: jest.fn(),
+  useWishActions: jest.fn(),
+  useWishlist: jest.fn(),
 }));
 
 jest.mock("@legendapp/list/react-native", () => {
@@ -178,6 +182,11 @@ describe("product price evidence", () => {
     jest.mocked(useRecordRecentProductView).mockReturnValue({
       mutate: jest.fn(),
     } as never);
+    jest.mocked(useWishActions).mockReturnValue({
+      add: { mutate: jest.fn() },
+      remove: { mutate: jest.fn() },
+    } as never);
+    jest.mocked(useWishlist).mockReturnValue({ data: [] } as never);
     mockGetProductPriceSummary.mockResolvedValue(summary);
     mockGetProductPriceEvidence.mockResolvedValue(evidence);
   });

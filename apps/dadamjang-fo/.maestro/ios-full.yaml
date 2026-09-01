@@ -27,7 +27,7 @@ name: iOS authenticated commerce journey
 - tapOn:
     id: e2e.cart.quantity.increment
 - tapOn:
-    id: e2e.cart.add
+    id: e2e.product.buy
 - tapOn:
     id: e2e.cart.increment.${E2E_SKU_ID}
 - tapOn:

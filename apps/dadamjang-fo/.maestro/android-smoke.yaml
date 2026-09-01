@@ -7,5 +7,7 @@ name: Android shop product smoke
     id: e2e.navigation.shop
 - tapOn:
     id: e2e.product.open.${E2E_PRODUCT_ID}
+- tapOn:
+    id: e2e.product.sku.${E2E_SKU_ID}
 - assertVisible:
-    id: e2e.cart.add
+    id: e2e.product.buy

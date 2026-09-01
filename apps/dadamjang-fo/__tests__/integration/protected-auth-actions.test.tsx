@@ -361,11 +361,12 @@ describe("protected FO routes and actions", () => {
     expect(getOrder).not.toHaveBeenCalled();
   });
 
-  it("gates add-to-cart and brand follow on the original product route", async () => {
+  it("gates product purchase and brand follow on the original product route", async () => {
     mockPathname = "/product/product-1";
     render(<ProductScreen />, { wrapper: createWrapper() });
 
-    await fireEvent.press(await screen.findByTestId("e2e.cart.add"));
+    await fireEvent.press(await screen.findByTestId("e2e.product.sku.sku-1"));
+    await fireEvent.press(screen.getByTestId("e2e.product.buy"));
     await fireEvent.press(
       screen.getByTestId("e2e.product.brand.follow.brand-1"),
     );
