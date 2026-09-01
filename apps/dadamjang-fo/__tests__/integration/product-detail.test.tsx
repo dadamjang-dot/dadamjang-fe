@@ -54,10 +54,20 @@ jest.mock("@legendapp/list/react-native", () => {
 jest.mock("@/features/auth", () => ({ useAuthActionGate: jest.fn() }));
 jest.mock("@/features/cart", () => ({ useCartActions: jest.fn() }));
 jest.mock("@/features/catalog", () => ({ useProduct: jest.fn() }));
-jest.mock("@/features/price-evidence", () => ({
-  ProductPriceEvidenceSection: () => null,
-  useProductPriceSummary: jest.fn(),
-}));
+jest.mock("@/features/price-evidence", () => {
+  const React = jest.requireActual<typeof import("react")>("react");
+  const { Text } =
+    jest.requireActual<typeof import("react-native")>("react-native");
+  return {
+    ProductPriceEvidenceSection: () =>
+      React.createElement(
+        Text,
+        { testID: "e2e.product.price-evidence" },
+        "가격 근거",
+      ),
+    useProductPriceSummary: jest.fn(),
+  };
+});
 jest.mock("@/features/wish", () => ({
   useBrandFollowActions: jest.fn(),
   useFollowedBrands: jest.fn(),
@@ -230,6 +240,15 @@ describe("product detail", () => {
     ).toBeDisabled();
   });
 
+  it("shows price evidence before the product description in the detail flow", () => {
+    const detail = renderDetail();
+    const renderedTree = JSON.stringify(detail.toJSON());
+
+    expect(renderedTree.indexOf("가격 근거")).toBeLessThan(
+      renderedTree.indexOf("편안한 데일리 재킷"),
+    );
+  });
+
   it("falls back to the lowest SKU price when the price summary is unavailable", () => {
     jest.mocked(useProductPriceSummary).mockReturnValue({
       data: undefined,
@@ -241,6 +260,25 @@ describe("product detail", () => {
     expect(screen.getByTestId("e2e.product.price")).toHaveTextContent(
       "19,000원",
     );
+  });
+
+  it("shows a safe no-price state for a sold-out product with no SKUs", () => {
+    jest.mocked(useProduct).mockReturnValue({
+      data: { ...product, skus: [] },
+      isError: false,
+      isLoading: false,
+    } as never);
+    jest.mocked(useProductPriceSummary).mockReturnValue({
+      data: undefined,
+      isError: true,
+    } as never);
+
+    renderDetail();
+
+    expect(screen.getByTestId("e2e.product.price")).toHaveTextContent(
+      "가격 정보 없음",
+    );
+    expect(screen.getByRole("button", { name: "품절" })).toBeDisabled();
   });
 
   it("uses the selected SKU price and never lets quantity exceed its stock", async () => {

@@ -30,7 +30,8 @@ export type ProductDetailProps = {
   onOpenCart: () => void;
 };
 
-const formatPrice = (price: number) => `${price.toLocaleString("ko-KR")}원`;
+const formatPrice = (price?: number) =>
+  price === undefined ? "가격 정보 없음" : `${price.toLocaleString("ko-KR")}원`;
 
 const ProductDetail = ({
   onBack,
@@ -86,7 +87,9 @@ const ProductDetail = ({
   const quantity = selectedSku
     ? Math.min(Math.max(quantityDraft, 1), Math.max(selectedSku.stock, 1))
     : 1;
-  const minimumSkuPrice = Math.min(...data.skus.map(({ price }) => price));
+  const minimumSkuPrice = data.skus.length
+    ? Math.min(...data.skus.map(({ price }) => price))
+    : undefined;
   const price =
     selectedSku?.price ?? summary.data?.finalPrice ?? minimumSkuPrice;
   const canBuy = Boolean(
@@ -209,8 +212,8 @@ const ProductDetail = ({
                   </Text>
                 ) : null}
               </View>
-              <Text style={s.description}>{data.description}</Text>
               <ProductPriceEvidenceSection productId={data.productId} />
+              <Text style={s.description}>{data.description}</Text>
               <Text style={s.sectionTitle}>옵션 선택</Text>
             </View>
           </View>
