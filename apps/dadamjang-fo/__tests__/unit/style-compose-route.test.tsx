@@ -51,6 +51,14 @@ jest.mock("@/shared/observability/sentry", () => ({
 }));
 
 describe("style compose route", () => {
+  it("keeps product detail in the card stack after modal routes", () => {
+    render(<RootLayout />);
+
+    expect(mockScreenOptions["product/[product-id]"]).toEqual(
+      expect.objectContaining({ presentation: "card" }),
+    );
+  });
+
   it("disables the native dismiss gesture", () => {
     render(<RootLayout />);
 

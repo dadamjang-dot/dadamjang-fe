@@ -42,6 +42,10 @@ const RootLayout = () => (
             }}
           >
             <Stack.Screen
+              name="product/[product-id]"
+              options={{ presentation: "card" }}
+            />
+            <Stack.Screen
               name="auth"
               options={{
                 presentation: "fullScreenModal",
