@@ -25,6 +25,14 @@ const renderProductCartAction = () => (
   <ActionButton actions={[productCartAction]} iconOnly />
 );
 
+const renderProductCartItems = () => [
+  {
+    type: "custom" as const,
+    element: renderProductCartAction(),
+    hidesSharedBackground: true,
+  },
+];
+
 const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
   useEffect(() => {
     Sentry.captureException(error);
@@ -68,6 +76,7 @@ const RootLayout = () => (
                   fontWeight: "700",
                 },
                 headerRight: renderProductCartAction,
+                unstable_headerRightItems: renderProductCartItems,
                 title: "상품 상세",
               }}
             />

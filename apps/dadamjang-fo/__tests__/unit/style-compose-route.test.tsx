@@ -90,6 +90,24 @@ describe("style compose route", () => {
     expect(mockPush).toHaveBeenCalledWith("/cart");
   });
 
+  it("suppresses the native shared background behind the cart action", () => {
+    render(<RootLayout />);
+
+    const options = mockScreenOptions["product/[product-id]"] as {
+      unstable_headerRightItems?: () => {
+        hidesSharedBackground?: boolean;
+        type: string;
+      }[];
+    };
+
+    expect(options.unstable_headerRightItems?.()).toEqual([
+      expect.objectContaining({
+        hidesSharedBackground: true,
+        type: "custom",
+      }),
+    ]);
+  });
+
   it("disables the native dismiss gesture", () => {
     render(<RootLayout />);
 
