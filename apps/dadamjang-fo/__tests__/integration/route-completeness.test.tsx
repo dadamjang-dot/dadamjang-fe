@@ -1,19 +1,44 @@
-import { fireEvent, render, screen, userEvent } from "@testing-library/react-native";
+import {
+  fireEvent,
+  render,
+  screen,
+  userEvent,
+} from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
 import HomeScreen from "@/app/(tabs)";
 import MyScreen from "@/app/(tabs)/my";
-import CompareScreen from "@/app/compare";
+import ShopScreen from "@/app/(tabs)/shop";
+import StyleScreen from "@/app/(tabs)/style";
+import WishScreen from "@/app/(tabs)/wish";
 import { useAuthActionGate, useCurrentUser, useSignOut } from "@/features/auth";
 import { useProductSearch } from "@/features/catalog";
-import { useComparison, useComparisonActions } from "@/features/comparison";
-import { useComparisonPriceSummaries } from "@/features/price-evidence";
 import { SearchContent } from "@/shared/components/search-content";
 
 const mockPush = jest.fn();
 const mockWishAdd = jest.fn();
 
+interface CapturedIconAction {
+  accessibilityLabel: string;
+  icon: { md: string; sf: string };
+  onPress: () => void;
+}
+
+const mockProductLayouts: {
+  headerActions: readonly CapturedIconAction[];
+  variant: string;
+}[] = [];
+const mockActionButtonGroups: {
+  actions: readonly CapturedIconAction[];
+  variant: string;
+}[] = [];
+const mockActionButtons: {
+  actions: readonly CapturedIconAction[];
+  iconOnly?: boolean;
+}[] = [];
+
 jest.mock("expo-router", () => ({
+  useFocusEffect: (effect: () => void) => effect(),
   usePathname: () => "/shop",
   useRouter: () => ({ push: mockPush }),
 }));
@@ -25,19 +50,71 @@ jest.mock("@/features/auth", () => ({
 }));
 
 jest.mock("@/features/catalog", () => ({
+  toProductFilter: jest.fn(() => ({})),
+  useCategories: jest.fn(() => ({ data: [] })),
   useProductSearch: jest.fn(),
-}));
-
-jest.mock("@/features/comparison", () => ({
-  useComparison: jest.fn(),
-  useComparisonActions: jest.fn(),
+  useShopFilters: jest.fn(() => ({
+    filters: { categoryId: undefined, sort: "RECOMMENDED" },
+    startDraft: jest.fn(),
+    updateFilters: jest.fn(),
+  })),
 }));
 
 jest.mock("@/features/price-evidence", () => ({
-  useComparisonPriceSummaries: jest.fn(),
+  priceEvidenceQueryKeys: {
+    productPriceSummary: jest.fn(() => ["product-price-summary"]),
+  },
+  useProductPriceSummaries: jest.fn(() => ({
+    data: { pages: [] },
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isError: false,
+    isFetchingNextPage: false,
+    isLoading: false,
+    refetch: jest.fn(),
+  })),
+}));
+
+jest.mock("@/features/shop", () => ({
+  ShopCategoryBar: () => null,
+  ShopFilterBar: () => null,
+  ShopProductGrid: () => null,
+  ShopSortBar: () => null,
+}));
+
+jest.mock("@/features/style", () => ({
+  getStyleFeedFilter: jest.fn((_category, sort) => ({
+    category: undefined,
+    sort,
+  })),
+  styleQueryKeys: {
+    posts: jest.fn(() => ["style-posts"]),
+  },
+  useStylePosts: jest.fn(() => ({
+    data: { pages: [] },
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isError: false,
+    isFetchingNextPage: false,
+    isLoading: false,
+    refetch: jest.fn(),
+  })),
+  useToggleStylePostLike: jest.fn(() => ({ mutate: jest.fn() })),
+}));
+
+jest.mock("@/features/style/components", () => ({
+  StyleCategoryBar: () => null,
+  StylePostGrid: () => null,
+  StyleSortBar: () => null,
 }));
 
 jest.mock("@/features/wish", () => ({
+  WishBrandsTab: () => null,
+  WishCategoryBar: () => null,
+  WishProductsTab: () => null,
+  WishRecentProductsTab: () => null,
+  WishState: () => null,
+  WishStylesTab: () => null,
   useWishActions: () => ({
     add: { mutate: mockWishAdd },
     remove: { mutate: jest.fn() },
@@ -47,7 +124,8 @@ jest.mock("@/features/wish", () => ({
 
 jest.mock("@legendapp/list/react-native", () => {
   const React = jest.requireActual<typeof import("react")>("react");
-  const { View } = jest.requireActual<typeof import("react-native")>("react-native");
+  const { View } =
+    jest.requireActual<typeof import("react-native")>("react-native");
   return {
     LegendList: ({
       data,
@@ -79,8 +157,15 @@ jest.mock("@dadamjang/mobile", () => {
   const { Pressable, View } =
     jest.requireActual<typeof import("react-native")>("react-native");
   return {
-    ActionButtonGroup: ({ actions }: { actions: { accessibilityLabel: string; onPress: () => void }[] }) =>
-      React.createElement(
+    ActionButtonGroup: ({
+      actions,
+      variant,
+    }: {
+      actions: CapturedIconAction[];
+      variant: string;
+    }) => {
+      mockActionButtonGroups.push({ actions, variant });
+      return React.createElement(
         View,
         null,
         actions.map((action) =>
@@ -91,7 +176,8 @@ jest.mock("@dadamjang/mobile", () => {
             onPress: action.onPress,
           }),
         ),
-      ),
+      );
+    },
   };
 });
 
@@ -100,6 +186,27 @@ jest.mock("@/shared/components", () => {
   const { Pressable, Text, View } =
     jest.requireActual<typeof import("react-native")>("react-native");
   return {
+    ActionButton: ({
+      actions,
+      iconOnly,
+    }: {
+      actions: CapturedIconAction[];
+      iconOnly?: boolean;
+    }) => {
+      mockActionButtons.push({ actions, iconOnly });
+      return React.createElement(
+        View,
+        null,
+        actions.map((action) =>
+          React.createElement(Pressable, {
+            accessibilityLabel: action.accessibilityLabel,
+            accessibilityRole: "button",
+            key: action.accessibilityLabel,
+            onPress: action.onPress,
+          }),
+        ),
+      );
+    },
     Button: ({
       children,
       label,
@@ -141,11 +248,14 @@ jest.mock("@/shared/components", () => {
     ProductLayout: ({
       children,
       headerActions,
+      variant,
     }: {
       children: ReactNode;
-      headerActions: { accessibilityLabel: string; onPress: () => void }[];
-    }) =>
-      React.createElement(
+      headerActions: CapturedIconAction[];
+      variant: string;
+    }) => {
+      mockProductLayouts.push({ headerActions, variant });
+      return React.createElement(
         View,
         null,
         ...headerActions.map((action) =>
@@ -157,8 +267,15 @@ jest.mock("@/shared/components", () => {
           }),
         ),
         children,
-      ),
-    TitleHeader: ({ children, title }: { children?: ReactNode; title: string }) =>
+      );
+    },
+    TitleHeader: ({
+      children,
+      title,
+    }: {
+      children?: ReactNode;
+      title: string;
+    }) =>
       React.createElement(
         View,
         null,
@@ -194,20 +311,11 @@ const product = {
   createdAt: "2026-08-29T00:00:00.000Z",
 };
 
-const summary = {
-  productId: "product-1",
-  name: "리넨 셔츠",
-  thumbnail: "https://cdn.example.com/product-1.jpg",
-  basePrice: 25_000,
-  finalPrice: 19_000,
-  priceRevision: "revision-1",
-  lowestPriceEvidenceSummary: "최근 최저가",
-  isOnSale: true,
-  isExpressDelivery: false,
-};
-
 describe("FO route completeness", () => {
   beforeEach(() => {
+    mockActionButtonGroups.length = 0;
+    mockActionButtons.length = 0;
+    mockProductLayouts.length = 0;
     const currentUser = {
       authStatus: "authenticated",
       data: {
@@ -231,71 +339,140 @@ describe("FO route completeness", () => {
     jest.mocked(useProductSearch).mockReturnValue({
       data: {
         pages: [
-          { hasNextPage: false, nextCursor: null, nodes: [product], totalCount: 1 },
+          {
+            hasNextPage: false,
+            nextCursor: null,
+            nodes: [product],
+            totalCount: 1,
+          },
         ],
       },
       isError: false,
       isLoading: false,
       refetch: jest.fn(),
     } as never);
-    jest.mocked(useComparison).mockReturnValue({
-      data: [
-        {
-          comparisonItemId: "comparison-1",
-          productId: "product-1",
-          product,
-          createdAt: "2026-08-29T00:00:00.000Z",
-        },
-        {
-          comparisonItemId: "comparison-2",
-          productId: "product-2",
-          product: { ...product, productId: "product-2", title: "매칭 안 된 상품" },
-          createdAt: "2026-08-29T00:00:00.000Z",
-        },
-      ],
-      isError: false,
-      isLoading: false,
-      refetch: jest.fn(),
-    } as never);
-    jest.mocked(useComparisonPriceSummaries).mockReturnValue({
-      data: [summary],
-      isError: false,
-      isLoading: false,
-      refetch: jest.fn(),
-    } as never);
-    jest.mocked(useComparisonActions).mockReturnValue({
-      remove: { mutate: jest.fn() },
-    } as never);
   });
 
-  it("routes every Home action to style, shop, or cart", async () => {
+  it("routes every Home action to notifications, shop, or cart", async () => {
     const user = userEvent.setup();
     render(<HomeScreen />);
 
-    await user.press(screen.getByRole("button", { name: "스타일" }));
+    await user.press(screen.getByRole("button", { name: "알림" }));
     await user.press(screen.getByRole("button", { name: "쇼핑" }));
     await user.press(screen.getByRole("button", { name: "장바구니" }));
 
     expect(mockPush.mock.calls.map(([path]) => path)).toEqual([
-      "/(tabs)/style",
+      "/notifications",
       "/(tabs)/shop",
       "/cart",
     ]);
+    expect(useAuthActionGate).toHaveBeenCalledWith("/notifications");
   });
 
-  it("shows the authenticated account and exposes orders, cart, and logout", async () => {
-    const signOut = jest.fn();
-    jest.mocked(useSignOut).mockReturnValue(signOut);
+  it("shows the authenticated account and routes My header actions", async () => {
     const user = userEvent.setup();
     render(<MyScreen />);
 
     expect(screen.getByText("buyer")).toBeVisible();
+    expect(screen.queryByText("로그아웃")).toBeNull();
     await user.press(screen.getByRole("button", { name: "주문 내역" }));
+    await user.press(screen.getByRole("button", { name: "설정" }));
     await user.press(screen.getByRole("button", { name: "장바구니" }));
-    await user.press(screen.getByRole("button", { name: "로그아웃" }));
 
-    expect(mockPush.mock.calls.map(([path]) => path)).toEqual(["/orders", "/cart"]);
-    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(mockPush.mock.calls.map(([path]) => path)).toEqual([
+      "/orders",
+      "/settings",
+      "/cart",
+    ]);
+  });
+
+  it("renders the approved five-tab header action matrix", () => {
+    const anyPress = expect.any(Function);
+    const expectedCart = {
+      accessibilityLabel: "장바구니",
+      icon: { md: "shopping_cart", sf: "cart" },
+      onPress: anyPress,
+    };
+    const renderedHome = render(<HomeScreen />);
+    renderedHome.unmount();
+    const renderedStyle = render(<StyleScreen />);
+    renderedStyle.unmount();
+    const renderedShop = render(<ShopScreen />);
+    renderedShop.unmount();
+    const renderedWish = render(<WishScreen />);
+    renderedWish.unmount();
+    const renderedMy = render(<MyScreen />);
+    renderedMy.unmount();
+
+    mockPush.mockClear();
+    mockProductLayouts.forEach(({ headerActions }) =>
+      headerActions.forEach(({ onPress }) => onPress()),
+    );
+    mockActionButtons[0]?.actions.forEach(({ onPress }) => onPress());
+    mockActionButtonGroups[0]?.actions.forEach(({ onPress }) => onPress());
+
+    expect(mockProductLayouts).toEqual([
+      {
+        headerActions: [
+          {
+            accessibilityLabel: "알림",
+            icon: { md: "notifications", sf: "bell" },
+            onPress: anyPress,
+          },
+          expectedCart,
+        ],
+        variant: "capsule",
+      },
+      {
+        headerActions: [
+          {
+            accessibilityLabel: "스타일 등록",
+            icon: { md: "add", sf: "plus" },
+            onPress: anyPress,
+          },
+          expectedCart,
+        ],
+        variant: "circularPair",
+      },
+      {
+        headerActions: [
+          {
+            accessibilityLabel: "쇼핑 메뉴",
+            icon: { md: "menu", sf: "line.3.horizontal" },
+            onPress: anyPress,
+          },
+          expectedCart,
+        ],
+        variant: "capsule",
+      },
+    ]);
+    expect(mockActionButtons).toEqual([
+      { actions: [expectedCart], iconOnly: true },
+    ]);
+    expect(mockActionButtonGroups).toEqual([
+      {
+        actions: [
+          {
+            accessibilityLabel: "설정",
+            icon: { md: "settings", sf: "gearshape" },
+            onPress: anyPress,
+          },
+          expectedCart,
+        ],
+        variant: "circularPair",
+      },
+    ]);
+    expect(mockPush.mock.calls.map(([path]) => path)).toEqual([
+      "/notifications",
+      "/cart",
+      "/style-compose",
+      "/cart",
+      "/shop-menu-sheet",
+      "/cart",
+      "/cart",
+      "/settings",
+      "/cart",
+    ]);
   });
 
   it("renders keyword results and opens a product", async () => {
@@ -344,27 +521,16 @@ describe("FO route completeness", () => {
     expect(refetch).toHaveBeenCalledTimes(1);
 
     jest.mocked(useProductSearch).mockReturnValue({
-      data: { pages: [{ hasNextPage: false, nextCursor: null, nodes: [], totalCount: 0 }] },
+      data: {
+        pages: [
+          { hasNextPage: false, nextCursor: null, nodes: [], totalCount: 0 },
+        ],
+      },
       isError: false,
       isLoading: false,
       refetch,
     } as never);
     rendered.rerender(<SearchContent keyword="리넨" />);
     expect(screen.getByText("검색 결과가 없어요.")).toBeVisible();
-  });
-
-  it("renders only matching comparison summaries with open and remove actions", async () => {
-    const remove = jest.fn();
-    jest.mocked(useComparisonActions).mockReturnValue({ remove: { mutate: remove } } as never);
-    const user = userEvent.setup();
-    render(<CompareScreen />);
-
-    expect(screen.getByText("리넨 셔츠")).toBeVisible();
-    expect(screen.queryByText("매칭 안 된 상품")).not.toBeOnTheScreen();
-    await user.press(screen.getByRole("button", { name: "리넨 셔츠 열기" }));
-    await user.press(screen.getByRole("button", { name: "리넨 셔츠 비교에서 삭제" }));
-
-    expect(mockPush).toHaveBeenCalledWith("/product/product-1");
-    expect(remove).toHaveBeenCalledWith("product-1");
   });
 });

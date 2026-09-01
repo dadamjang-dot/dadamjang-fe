@@ -5,15 +5,19 @@ import { StyleSheet } from "react-native-unistyles";
 import { colors, spacing } from "@dadamjang/design-tokens";
 import type { IconAction } from "@dadamjang/mobile";
 
+import { useAuthActionGate } from "@/features/auth";
 import { Button, ProductLayout } from "@/shared/components";
 
 const HomeScreen = () => {
   const router = useRouter();
+  const notificationsGate = useAuthActionGate("/notifications");
+  const openNotifications = () =>
+    notificationsGate.runProtectedAction(() => router.push("/notifications"));
   const headerActions: IconAction[] = [
     {
-      accessibilityLabel: "스타일",
-      icon: { md: "add", sf: "sparkles" },
-      onPress: () => router.push("/(tabs)/style"),
+      accessibilityLabel: "알림",
+      icon: { md: "notifications", sf: "bell" },
+      onPress: openNotifications,
     },
     {
       accessibilityLabel: "장바구니",

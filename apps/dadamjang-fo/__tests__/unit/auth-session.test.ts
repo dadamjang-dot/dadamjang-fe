@@ -50,7 +50,9 @@ describe("auth browser sessions", () => {
       url: "dadamjang://auth/identity-callback?sessionId=identity-session&status=verified&callbackToken=callback-token",
     });
 
-    await expect(runIdentityVerificationSession("SIGNUP", "TOSS")).resolves.toBe("identity-proof");
+    await expect(
+      runIdentityVerificationSession("SIGNUP", "TOSS"),
+    ).resolves.toBe("identity-proof");
     expect(startIdentityVerification).toHaveBeenCalledWith("SIGNUP", "TOSS");
     expect(completeIdentityVerification).toHaveBeenCalledWith(
       "identity-session",
@@ -64,9 +66,9 @@ describe("auth browser sessions", () => {
       url: "dadamjang://auth/identity-callback?sessionId=identity-session&status=verified",
     });
 
-    await expect(runIdentityVerificationSession("SIGNUP", "TOSS")).rejects.toThrow(
-      "본인 인증에 실패했어요. 다시 시도해 주세요.",
-    );
+    await expect(
+      runIdentityVerificationSession("SIGNUP", "TOSS"),
+    ).rejects.toThrow("본인 인증에 실패했어요. 다시 시도해 주세요.");
     expect(completeIdentityVerification).not.toHaveBeenCalled();
   });
 
@@ -74,9 +76,9 @@ describe("auth browser sessions", () => {
     jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValueOnce({
       type: WebBrowser.WebBrowserResultType.CANCEL,
     });
-    await expect(runIdentityVerificationSession("SIGNUP", "KAKAO")).rejects.toBeInstanceOf(
-      AuthSessionCancelledError,
-    );
+    await expect(
+      runIdentityVerificationSession("SIGNUP", "KAKAO"),
+    ).rejects.toBeInstanceOf(AuthSessionCancelledError);
 
     jest.mocked(WebBrowser.openAuthSessionAsync).mockResolvedValueOnce({
       type: "success",
@@ -87,9 +89,9 @@ describe("auth browser sessions", () => {
       status: "EXPIRED",
       expiresAt: "2026-08-13T00:00:00.000Z",
     });
-    await expect(runIdentityVerificationSession("SIGNUP", "NAVER")).rejects.toThrow(
-      "본인 인증 시간이 만료되었습니다. 다시 시도해 주세요.",
-    );
+    await expect(
+      runIdentityVerificationSession("SIGNUP", "NAVER"),
+    ).rejects.toThrow("본인 인증 시간이 만료되었습니다. 다시 시도해 주세요.");
   });
 
   it("exchanges only the matching one-time Kakao flow", async () => {
@@ -104,13 +106,20 @@ describe("auth browser sessions", () => {
     });
     jest.mocked(completeKakaoLogin).mockResolvedValue({
       status: "SIGNED_IN",
-      tokenPayload: { accessToken: "access", refreshToken: "refresh", role: "USER" },
+      tokenPayload: {
+        accessToken: "access",
+        refreshToken: "refresh",
+        role: "USER",
+      },
       kakaoSignupToken: null,
       email: null,
       emailVerificationRequired: false,
+      reactivationToken: null,
     });
 
-    await expect(runKakaoLoginSession()).resolves.toMatchObject({ status: "SIGNED_IN" });
+    await expect(runKakaoLoginSession()).resolves.toMatchObject({
+      status: "SIGNED_IN",
+    });
     expect(completeKakaoLogin).toHaveBeenCalledWith("flow-1", "callback-token");
   });
 

@@ -1,7 +1,9 @@
 import { useLocalSearchParams } from "expo-router";
+import { useEffect } from "react";
 import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
+import { colors } from "@dadamjang/design-tokens";
 import {
   ORDER_STATUS_LABEL,
   PAYMENT_STATUS_LABEL,
@@ -9,7 +11,9 @@ import {
   type PaymentStatus,
 } from "@dadamjang/domain";
 
+import { useAuthActionGate } from "@/features/auth";
 import { useOrder } from "@/features/order";
+import { Button } from "@/shared/components";
 
 const checkoutState = (status: OrderStatus, paymentStatus: PaymentStatus) => {
   if (paymentStatus === "CANCELLED")
@@ -38,11 +42,42 @@ const OrderDetailScreen = () => {
   const { "order-id": orderId } = useLocalSearchParams<{
     "order-id": string;
   }>();
-  const order = useOrder(orderId);
+  const { authStatus, isAuthenticated, redirectToSignIn, retryAuth } =
+    useAuthActionGate(`/order/${orderId}`);
+  const order = useOrder(orderId, isAuthenticated);
 
-  if (order.isLoading) return <Text>주문을 불러오는 중이에요.</Text>;
+  useEffect(() => {
+    if (authStatus === "unauthenticated") redirectToSignIn(true);
+  }, [authStatus, redirectToSignIn]);
+
+  if (authStatus === "loading" || authStatus === "offline")
+    return (
+      <Text style={s.state}>
+        {authStatus === "offline"
+          ? "연결을 기다리고 있어요."
+          : "로그인 상태를 확인하고 있어요."}
+      </Text>
+    );
+  if (authStatus === "error")
+    return (
+      <View style={s.stateGroup}>
+        <Text style={s.state}>로그인 상태를 확인하지 못했어요.</Text>
+        <Button
+          accessibilityLabel="다시 시도"
+          onPress={() => void retryAuth()}
+          variant="bare"
+        >
+          <Text style={s.link}>다시 시도</Text>
+        </Button>
+      </View>
+    );
+  if (!isAuthenticated)
+    return <Text style={s.state}>인증 화면으로 이동하고 있어요.</Text>;
+
+  if (order.isLoading)
+    return <Text style={s.state}>주문을 불러오는 중이에요.</Text>;
   if (order.isError || !order.data)
-    return <Text>주문을 불러오지 못했어요.</Text>;
+    return <Text style={s.state}>주문을 불러오지 못했어요.</Text>;
   const state = checkoutState(order.data.status, order.data.paymentStatus);
 
   return (
@@ -55,6 +90,16 @@ const OrderDetailScreen = () => {
   );
 };
 
-const s = StyleSheet.create({ container: { flex: 1 } });
+const s = StyleSheet.create({
+  container: { flex: 1 },
+  stateGroup: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  state: { padding: 24, color: colors.muted, textAlign: "center" },
+  link: { color: colors.primary, fontWeight: "700" },
+});
 
 export default OrderDetailScreen;

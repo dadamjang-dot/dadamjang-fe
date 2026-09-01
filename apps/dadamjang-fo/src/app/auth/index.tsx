@@ -21,7 +21,8 @@ const AuthScreenRoute = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
-  const { setKakaoSignup } = useAuthFlow();
+  const sanitizedReturnTo = resolveAuthReturnTo(returnTo);
+  const { setKakaoSignup, setPendingReactivation } = useAuthFlow();
   const [isKakaoPending, setIsKakaoPending] = useState(false);
   const [message, setMessage] = useState<string>();
 
@@ -33,11 +34,14 @@ const AuthScreenRoute = () => {
       const result = await runKakaoLoginSession();
       if (result.status === "SIGNED_IN") {
         await queryClient.invalidateQueries({ queryKey: authQueryKeys.viewer });
-        router.replace(resolveAuthReturnTo(returnTo) as Href);
+        router.replace(sanitizedReturnTo as Href);
         return;
       }
-      if (!result.kakaoSignupToken)
-        throw new Error("카카오 가입 정보를 확인하지 못했어요.");
+      if (result.status === "REACTIVATION_REQUIRED") {
+        setPendingReactivation(result.reactivationToken, sanitizedReturnTo);
+        router.push("/auth/reactivate");
+        return;
+      }
       setKakaoSignup({
         kakaoSignupToken: result.kakaoSignupToken,
         email: result.email ?? undefined,
@@ -45,7 +49,10 @@ const AuthScreenRoute = () => {
       });
       router.push({
         pathname: "/auth/signup",
-        params: { mode: "kakao", ...(returnTo ? { returnTo } : {}) },
+        params: {
+          mode: "kakao",
+          ...(returnTo ? { returnTo: sanitizedReturnTo } : {}),
+        },
       });
     } catch (error) {
       setMessage(

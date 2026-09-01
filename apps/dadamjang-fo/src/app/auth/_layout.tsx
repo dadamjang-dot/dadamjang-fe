@@ -99,6 +99,7 @@ const AuthLayout = () => {
         name="find-password"
         options={childOptions("비밀번호 찾기")}
       />
+      <Stack.Screen name="reactivate" options={childOptions("계정 복구")} />
       <Stack.Screen
         name="terms/[document-id]"
         options={childOptions("약관 상세")}

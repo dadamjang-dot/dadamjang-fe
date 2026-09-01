@@ -1,17 +1,37 @@
-import { type ErrorBoundaryProps, Stack } from "expo-router";
+import { type ErrorBoundaryProps, router, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { Text, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StyleSheet } from "react-native-unistyles";
 
+import { colors } from "@dadamjang/design-tokens";
+import { ActionButton, type Action } from "@dadamjang/mobile";
+
 import { AppProviders } from "@/providers/app-providers";
 import { ShopFiltersProvider } from "@/features/catalog";
 import { Button } from "@/shared/components/button";
 import { initSentry, Sentry } from "@/shared/observability/sentry";
-import { colors } from "@dadamjang/design-tokens";
 
 initSentry();
+
+const productCartAction: Action = {
+  accessibilityLabel: "장바구니",
+  icon: { md: "shopping_cart", sf: "cart" },
+  onPress: () => router.push("/cart"),
+};
+
+const renderProductCartAction = () => (
+  <ActionButton actions={[productCartAction]} iconOnly />
+);
+
+const renderProductCartItems = () => [
+  {
+    type: "custom" as const,
+    element: renderProductCartAction(),
+    hidesSharedBackground: true,
+  },
+];
 
 const ErrorBoundary = ({ error, retry }: ErrorBoundaryProps) => {
   useEffect(() => {
@@ -41,6 +61,25 @@ const RootLayout = () => (
               contentStyle: { backgroundColor: colors.surface },
             }}
           >
+            <Stack.Screen
+              name="product/[product-id]"
+              options={{
+                presentation: "card",
+                headerShown: true,
+                headerBackButtonDisplayMode: "minimal",
+                headerShadowVisible: false,
+                headerStyle: { backgroundColor: colors.surface },
+                headerTintColor: colors.ink,
+                headerTitleStyle: {
+                  color: colors.ink,
+                  fontSize: 17,
+                  fontWeight: "700",
+                },
+                headerRight: renderProductCartAction,
+                unstable_headerRightItems: renderProductCartItems,
+                title: "상품 상세",
+              }}
+            />
             <Stack.Screen
               name="auth"
               options={{
@@ -72,6 +111,17 @@ const RootLayout = () => (
             />
             <Stack.Screen
               name="shop-sort-sheet"
+              options={{
+                presentation:
+                  process.env.EXPO_OS === "ios" ? "formSheet" : "modal",
+                sheetAllowedDetents: [0.5],
+                sheetExpandsWhenScrolledToEdge: false,
+                sheetGrabberVisible: true,
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="shop-menu-sheet"
               options={{
                 presentation:
                   process.env.EXPO_OS === "ios" ? "formSheet" : "modal",

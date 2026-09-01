@@ -25,6 +25,7 @@ import {
   getProduct,
   publishProduct,
   saveProduct,
+  savePublishedProductSkus,
   submitProduct,
   ProductInput,
   uploadFile,
@@ -38,7 +39,10 @@ type ImageItem = {
   progress: number;
   order: number;
 };
-type Sku = ProductInput["skus"][number] & { identity: string };
+type Sku = ProductInput["skus"][number] & {
+  identity: string;
+  skuId?: string;
+};
 type SkuPatch = Partial<Omit<Sku, "identity">>;
 const UNSAVED_CHANGES_MESSAGE =
   "저장하지 않은 변경사항이 있습니다. 이동할까요?";
@@ -142,6 +146,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     setSkus(
       p.skus.map((s) => ({
         identity: s.skuId,
+        skuId: s.skuId,
         code: s.code,
         colorId: s.colorId ?? "",
         sizeId: s.sizeId ?? "",
@@ -262,6 +267,10 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       previous?.focus();
     };
   }, [confirm]);
+  const p = existing.data?.myPartnerProduct;
+  const effectiveState = p ? effectiveProductState(p) : undefined;
+  const isPublished =
+    p?.status === "PUBLISHED" && p.approvalStatus === "APPROVED";
   const editable =
     !productId ||
     (!!existing.data &&
@@ -421,6 +430,23 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     });
   const mutation = useMutation({
     mutationFn: async ({ submit }: { submit: boolean }) => {
+      if (isPublished) {
+        if (!productId) throw new Error("게시 상품 정보가 올바르지 않습니다.");
+        const inventory = skus.map(({ skuId, price, stock }) => {
+          if (!skuId)
+            throw new Error("게시 상품 SKU 정보가 올바르지 않습니다.");
+          if (
+            !Number.isInteger(price) ||
+            price < 0 ||
+            !Number.isInteger(stock) ||
+            stock < 0
+          )
+            throw new Error("가격/재고는 0 이상의 정수로 입력하세요.");
+          return { skuId, price, stock };
+        });
+        const saved = await savePublishedProductSkus(productId, inventory);
+        return saved.updatePublishedProductSkus;
+      }
       if (images.some((image) => image.progress < 100))
         throw new Error("이미지 업로드가 끝난 뒤 저장해 주세요.");
       if (!title.trim() || !description.trim() || !categoryId)
@@ -529,8 +555,6 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
         </ActionButton>
       </section>
     );
-  const p = existing.data?.myPartnerProduct;
-  const effectiveState = p ? effectiveProductState(p) : undefined;
   return (
     <section>
       <header>
@@ -544,10 +568,13 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       )}
       <form className="editor-grid" onSubmit={onSubmit} onChange={markDirty}>
         <div className="editor-main">
-          <fieldset disabled={!editable || mutation.isPending}>
+          <fieldset
+            disabled={(!editable && !isPublished) || mutation.isPending}
+          >
             <label>
               카테고리
               <select
+                disabled={isPublished}
                 value={categoryId}
                 onChange={(e) => setCategory(e.target.value)}
                 required
@@ -561,6 +588,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
               </select>
             </label>
             <PartnerTextField
+              disabled={isPublished}
               label="상품명"
               value={title}
               onChange={(e) => {
@@ -580,6 +608,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
               readOnly
             />
             <PartnerTextarea
+              disabled={isPublished}
               label="설명"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -588,15 +617,20 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
             />
             <div
               className="drop"
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e: DragEvent) => {
-                e.preventDefault();
-                void addFiles(e.dataTransfer.files);
-              }}
+              onDragOver={isPublished ? undefined : (e) => e.preventDefault()}
+              onDrop={
+                isPublished
+                  ? undefined
+                  : (e: DragEvent) => {
+                      e.preventDefault();
+                      void addFiles(e.dataTransfer.files);
+                    }
+              }
             >
               <label>
                 이미지 선택
                 <input
+                  disabled={isPublished}
                   type="file"
                   multiple
                   accept="image/jpeg,image/png,image/webp"
@@ -630,20 +664,21 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   <span aria-live="polite">{x.progress}%</span>
                   <ActionButton
                     type="button"
-                    disabled={i === 0}
+                    disabled={isPublished || i === 0}
                     onClick={() => moveImage(x.key, -1)}
                   >
                     앞으로
                   </ActionButton>
                   <ActionButton
                     type="button"
-                    disabled={i === images.length - 1}
+                    disabled={isPublished || i === images.length - 1}
                     onClick={() => moveImage(x.key, 1)}
                   >
                     뒤로
                   </ActionButton>
                   <ActionButton
                     type="button"
+                    disabled={isPublished}
                     onClick={() => removeImage(x.key)}
                   >
                     삭제
@@ -655,6 +690,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
             {skus.map((s, i) => (
               <div className="sku" key={s.identity}>
                 <input
+                  disabled={isPublished}
                   aria-label={`SKU ${i + 1} 코드`}
                   placeholder="코드"
                   value={s.code}
@@ -664,6 +700,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   }}
                 />
                 <input
+                  disabled={isPublished}
                   aria-label={`SKU ${i + 1} 옵션명`}
                   placeholder="옵션명"
                   value={s.optionName}
@@ -673,6 +710,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   }}
                 />
                 <select
+                  disabled={isPublished}
                   aria-label={`SKU ${i + 1} 색상`}
                   value={s.colorId}
                   onChange={(event) => {
@@ -688,6 +726,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   ))}
                 </select>
                 <select
+                  disabled={isPublished}
                   aria-label={`SKU ${i + 1} 사이즈`}
                   value={s.sizeId}
                   onChange={(event) => {
@@ -727,7 +766,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                 <ActionButton
                   aria-label={`SKU ${i + 1} 위로 이동`}
                   type="button"
-                  disabled={i === 0}
+                  disabled={isPublished || i === 0}
                   onClick={() => moveSku(s.identity, -1)}
                 >
                   위로
@@ -735,14 +774,14 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                 <ActionButton
                   aria-label={`SKU ${i + 1} 아래로 이동`}
                   type="button"
-                  disabled={i === skus.length - 1}
+                  disabled={isPublished || i === skus.length - 1}
                   onClick={() => moveSku(s.identity, 1)}
                 >
                   아래로
                 </ActionButton>
                 <ActionButton
                   type="button"
-                  disabled={skus.length === 1}
+                  disabled={isPublished || skus.length === 1}
                   onClick={() => removeSku(s.identity)}
                 >
                   행 삭제
@@ -752,6 +791,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
             <ActionButton
               type="button"
               variant="neutralOutline"
+              disabled={isPublished}
               onClick={() => {
                 setSkus((v) => [...v, emptySku()]);
                 markDirty();
@@ -761,6 +801,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
             </ActionButton>
             <label>
               <input
+                disabled={isPublished}
                 type="checkbox"
                 checked={sale}
                 onChange={(e) => setSale(e.target.checked)}
@@ -769,6 +810,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
             </label>
             <label>
               <input
+                disabled={isPublished}
                 type="checkbox"
                 checked={express}
                 onChange={(e) => setExpress(e.target.checked)}
@@ -803,6 +845,18 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                 disabled={images.some((image) => image.progress < 100)}
               >
                 심사 요청
+              </ActionButton>
+            </div>
+          )}
+          {isPublished && (
+            <div className="actions">
+              <ActionButton
+                type="submit"
+                data-action="save"
+                loading={mutation.isPending}
+                disabled={mutation.isPending}
+              >
+                저장
               </ActionButton>
             </div>
           )}

@@ -3,11 +3,14 @@ import { render, screen, userEvent } from "@testing-library/react-native";
 import ProductScreen from "@/app/product/[product-id]";
 import { useAuthActionGate } from "@/features/auth";
 import { useCartActions } from "@/features/cart";
-import { useProduct } from "@/features/catalog";
+import { useCatalogFilterOptions, useProduct } from "@/features/catalog";
+import { useProductPriceSummary } from "@/features/price-evidence";
 import {
   useBrandFollowActions,
   useFollowedBrands,
   useRecordRecentProductView,
+  useWishActions,
+  useWishlist,
 } from "@/features/wish";
 import { layoutLegendList } from "../helpers/layout-legend-list";
 
@@ -18,14 +21,19 @@ jest.mock("expo-router", () => ({
 
 jest.mock("@/features/auth", () => ({ useAuthActionGate: jest.fn() }));
 jest.mock("@/features/cart", () => ({ useCartActions: jest.fn() }));
-jest.mock("@/features/catalog", () => ({ useProduct: jest.fn() }));
+jest.mock("@/features/catalog", () => ({
+  useCatalogFilterOptions: jest.fn(),
+  useProduct: jest.fn(),
+}));
 jest.mock("@/features/price-evidence", () => ({
-  ProductPriceEvidenceSection: () => null,
+  useProductPriceSummary: jest.fn(),
 }));
 jest.mock("@/features/wish", () => ({
   useBrandFollowActions: jest.fn(),
   useFollowedBrands: jest.fn(),
   useRecordRecentProductView: jest.fn(),
+  useWishActions: jest.fn(),
+  useWishlist: jest.fn(),
 }));
 
 const mockUpsert = jest.fn();
@@ -70,8 +78,16 @@ const renderProduct = () => {
   layoutLegendList("상품 옵션 목록");
 };
 
+const selectFirstSku = async (user: ReturnType<typeof userEvent.setup>) =>
+  user.press(screen.getByRole("radio", { name: "블랙 / M" }));
+
 describe("product quantity controls", () => {
   beforeEach(() => {
+    jest.mocked(useCatalogFilterOptions).mockReturnValue({
+      data: undefined,
+      isError: false,
+      isLoading: false,
+    } as never);
     jest.mocked(useProduct).mockReturnValue({
       data: product,
       isError: false,
@@ -97,11 +113,22 @@ describe("product quantity controls", () => {
     jest.mocked(useRecordRecentProductView).mockReturnValue({
       mutate: jest.fn(),
     } as never);
+    jest.mocked(useProductPriceSummary).mockReturnValue({
+      data: undefined,
+      isError: false,
+    } as never);
+    jest.mocked(useWishActions).mockReturnValue({
+      add: { mutate: jest.fn() },
+      remove: { mutate: jest.fn() },
+    } as never);
+    jest.mocked(useWishlist).mockReturnValue({ data: [] } as never);
   });
 
   it("exposes disabled boundaries and never exceeds selected stock", async () => {
     const user = userEvent.setup();
     renderProduct();
+
+    await selectFirstSku(user);
 
     expect(screen.getByRole("button", { name: "수량 줄이기" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "수량 늘리기" })).toBeEnabled();
@@ -119,6 +146,7 @@ describe("product quantity controls", () => {
     const user = userEvent.setup();
     renderProduct();
 
+    await selectFirstSku(user);
     await user.press(screen.getByRole("button", { name: "수량 늘리기" }));
     await user.press(screen.getByRole("radio", { name: "화이트 / S" }));
 
@@ -131,6 +159,7 @@ describe("product quantity controls", () => {
   it("clamps quantity when refreshed inventory decreases", async () => {
     const user = userEvent.setup();
     renderProduct();
+    await selectFirstSku(user);
     await user.press(screen.getByRole("button", { name: "수량 늘리기" }));
     expect(screen.getByTestId("e2e.cart.quantity.value")).toHaveTextContent(
       "2",
@@ -154,7 +183,7 @@ describe("product quantity controls", () => {
     expect(screen.getByRole("button", { name: "수량 늘리기" })).toBeDisabled();
   });
 
-  it("announces and disables an out-of-stock option", async () => {
+  it("disables a sold-out option before it can become the purchase selection", () => {
     jest.mocked(useProduct).mockReturnValue({
       data: {
         ...product,
@@ -165,15 +194,12 @@ describe("product quantity controls", () => {
       isError: false,
       isLoading: false,
     } as never);
-    const user = userEvent.setup();
     renderProduct();
 
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "선택한 옵션은 품절이에요.",
-    );
-    const addButton = screen.getByRole("button", { name: "품절" });
-    expect(addButton).toBeDisabled();
-    await user.press(addButton);
+    expect(screen.getByRole("radio", { name: "블랙 / M" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "옵션을 선택해 주세요" }),
+    ).toBeDisabled();
     expect(mockUpsert).not.toHaveBeenCalled();
   });
 
@@ -208,9 +234,7 @@ describe("product quantity controls", () => {
       isLoading: false,
     } as never);
     jest.mocked(useFollowedBrands).mockReturnValue({
-      data: [
-        { brandId: "brand-1", name: "테스트 브랜드", slug: "test-brand" },
-      ],
+      data: [{ brandId: "brand-1", name: "테스트 브랜드", slug: "test-brand" }],
     } as never);
     renderProduct();
 

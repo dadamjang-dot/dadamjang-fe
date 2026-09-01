@@ -19,32 +19,4 @@ export type ProductPriceSummaryConnection = {
   hasNextPage: boolean;
 };
 
-export type ProductPriceHistoryItem = {
-  label: string;
-  price: number;
-  recordedAt: string;
-};
-
-export type ProductCouponCondition = {
-  title: string;
-  discountAmount: number;
-  condition: string;
-};
-
-export type ProductShippingPolicy = {
-  title: string;
-  shippingFee: number;
-  condition: string;
-};
-
-export type ProductPriceEvidence = {
-  productId: string;
-  priceRevision: string;
-  priceHistory: ProductPriceHistoryItem[];
-  couponConditions: ProductCouponCondition[];
-  shippingPolicy: ProductShippingPolicy | null;
-  offerSource: string;
-  calculatedAt: string;
-};
-
 export type ProductPriceSummaryFilter = ProductFilter;

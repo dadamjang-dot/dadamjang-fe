@@ -14,6 +14,7 @@ import {
   useAuthFlow,
   useSignOut,
 } from "@/features/auth";
+import * as authApi from "@/features/auth/api";
 import { useOrders } from "@/features/order";
 import { AppProviders } from "@/providers/app-providers";
 
@@ -63,6 +64,13 @@ describe("expired auth session", () => {
 
   beforeEach(() => {
     storage.clear();
+    jest.spyOn(authApi, "getCurrentUser").mockResolvedValue({
+      userId: "user-1",
+      userid: "buyer",
+      email: "buyer@example.test",
+      role: "USER",
+      hasPassword: true,
+    });
     jest
       .mocked(SecureStore.getItemAsync)
       .mockImplementation(async (key) => storage.get(key) ?? null);

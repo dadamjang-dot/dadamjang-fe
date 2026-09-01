@@ -10,6 +10,15 @@ const readWorkflow = () =>
     resolve(__dirname, "../../../../.github/workflows/mobile-e2e-full.yml"),
     "utf8",
   );
+const readSmokeFlow = (name: "android" | "ios") =>
+  readFileSync(resolve(__dirname, `../../.maestro/${name}-smoke.yaml`), "utf8");
+const readSmokeJob = (name: "ios-smoke" | "android-smoke") =>
+  readFileSync(
+    resolve(__dirname, "../../../../.github/workflows/mobile-e2e-smoke.yml"),
+    "utf8",
+  )
+    .split(`  ${name}:`)[1]
+    ?.split(/\n  [a-z-]+:\n/u)[0] ?? "";
 
 const parseCommands = (flow: string) => {
   const documents = flow.split(/^---\s*$/mu);
@@ -29,8 +38,7 @@ const parseCommands = (flow: string) => {
     }
     const value = /^\s{4}(?:id|clearState):\s*(.*)$/u.exec(line)?.[1];
     const lastCommand = commands.at(-1);
-    if (value && lastCommand)
-      lastCommand[1] = value === "true" ? true : value;
+    if (value && lastCommand) lastCommand[1] = value === "true" ? true : value;
   });
 
   return { commands, config };
@@ -47,9 +55,9 @@ describe("iOS Maestro contract", () => {
   });
 
   it("receives every flow variable from the full workflow", () => {
-    const flowVariables = [
-      ...readFlow().matchAll(/\$\{(E2E_[A-Z_]+)\}/gu),
-    ].map((match) => match[1]);
+    const flowVariables = [...readFlow().matchAll(/\$\{(E2E_[A-Z_]+)\}/gu)].map(
+      (match) => match[1],
+    );
     const workflowVariables = [
       ...readWorkflow().matchAll(/^\s+(E2E_[A-Z_]+):/gmu),
     ].map((match) => match[1]);
@@ -82,12 +90,23 @@ describe("iOS Maestro contract", () => {
       ["openLink", "dadamjang://product/${E2E_PRODUCT_ID}"],
       ["tapOn", "e2e.product.sku.${E2E_SKU_ID}"],
       ["tapOn", "e2e.cart.quantity.increment"],
-      ["tapOn", "e2e.cart.add"],
+      ["tapOn", "e2e.product.buy"],
       ["tapOn", "e2e.cart.increment.${E2E_SKU_ID}"],
       ["tapOn", "e2e.checkout.submit"],
       ["assertVisible", "e2e.checkout.pending"],
       ["openLink", "dadamjang://orders"],
       ["assertVisible", "e2e.order.history"],
     ]);
+  });
+
+  it("supplies the SKU selector variable to both smoke Maestro jobs", () => {
+    expect(readSmokeFlow("ios")).toContain("${E2E_SKU_ID}");
+    expect(readSmokeFlow("android")).toContain("${E2E_SKU_ID}");
+    expect(readSmokeJob("ios-smoke")).toContain(
+      "E2E_SKU_ID: ${{ vars.E2E_SKU_ID }}",
+    );
+    expect(readSmokeJob("android-smoke")).toContain(
+      "E2E_SKU_ID: ${{ vars.E2E_SKU_ID }}",
+    );
   });
 });

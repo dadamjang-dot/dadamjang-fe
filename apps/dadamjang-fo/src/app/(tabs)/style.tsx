@@ -80,7 +80,7 @@ const StyleScreen = () => {
 
   const headerActions: [IconAction, IconAction] = [
     {
-      accessibilityLabel: "스타일 작성",
+      accessibilityLabel: "스타일 등록",
       icon: { md: "add", sf: "plus" },
       onPress: handleCreatePress,
     },

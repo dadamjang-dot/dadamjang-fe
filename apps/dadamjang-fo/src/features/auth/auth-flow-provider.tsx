@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import type { IdentityVerificationPurpose, KakaoSignupContext } from "./types";
+import { resolveAuthReturnTo } from "./rules";
 
 export class IdentitySheetDismissedError extends Error {
   constructor() {
@@ -23,6 +24,10 @@ type PendingIdentity = {
   resolve: (token: string) => void;
   reject: (error: Error) => void;
 };
+type PendingReactivation = {
+  reactivationToken: string;
+  returnTo: string;
+};
 
 type AuthFlowContextValue = {
   identityRequest?: IdentityRequest;
@@ -34,6 +39,12 @@ type AuthFlowContextValue = {
   kakaoSignup?: KakaoSignupContext;
   setKakaoSignup: (signup: KakaoSignupContext) => void;
   clearKakaoSignup: () => void;
+  pendingReactivation?: PendingReactivation;
+  setPendingReactivation: (
+    reactivationToken: string,
+    returnTo?: string,
+  ) => void;
+  clearPendingReactivation: () => void;
   resetAuthFlow: () => void;
 };
 
@@ -44,6 +55,8 @@ export const AuthFlowProvider = ({ children }: { children: ReactNode }) => {
   const pendingIdentity = useRef<PendingIdentity | undefined>(undefined);
   const [identityRequest, setIdentityRequest] = useState<IdentityRequest>();
   const [kakaoSignup, setKakaoSignupState] = useState<KakaoSignupContext>();
+  const [pendingReactivation, setPendingReactivationState] =
+    useState<PendingReactivation>();
 
   const cancelIdentityRequest = useCallback(() => {
     pendingIdentity.current?.reject(new IdentitySheetDismissedError());
@@ -74,9 +87,22 @@ export const AuthFlowProvider = ({ children }: { children: ReactNode }) => {
     () => setKakaoSignupState(undefined),
     [],
   );
+  const setPendingReactivation = useCallback(
+    (reactivationToken: string, returnTo?: string) =>
+      setPendingReactivationState({
+        reactivationToken,
+        returnTo: resolveAuthReturnTo(returnTo),
+      }),
+    [],
+  );
+  const clearPendingReactivation = useCallback(
+    () => setPendingReactivationState(undefined),
+    [],
+  );
   const resetAuthFlow = useCallback(() => {
     cancelIdentityRequest();
     setKakaoSignupState(undefined);
+    setPendingReactivationState(undefined);
   }, [cancelIdentityRequest]);
   const value = useMemo<AuthFlowContextValue>(
     () => ({
@@ -87,16 +113,22 @@ export const AuthFlowProvider = ({ children }: { children: ReactNode }) => {
       kakaoSignup,
       setKakaoSignup: setKakaoSignupState,
       clearKakaoSignup,
+      pendingReactivation,
+      setPendingReactivation,
+      clearPendingReactivation,
       resetAuthFlow,
     }),
     [
       cancelIdentityRequest,
+      clearPendingReactivation,
       clearKakaoSignup,
       completeIdentityRequest,
       identityRequest,
       kakaoSignup,
       openIdentityProviderSheet,
+      pendingReactivation,
       resetAuthFlow,
+      setPendingReactivation,
     ],
   );
 

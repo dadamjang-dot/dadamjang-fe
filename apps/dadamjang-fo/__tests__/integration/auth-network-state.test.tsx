@@ -27,6 +27,7 @@ let mockSessionResetHandler: (() => void | Promise<void>) | undefined;
 let mockLastSessionResetHandler: (() => void | Promise<void>) | undefined;
 
 jest.mock("expo-router", () => ({
+  useFocusEffect: (effect: () => void) => effect(),
   useRouter: () => mockRouter,
 }));
 
@@ -150,6 +151,7 @@ describe("native auth network lifecycle", () => {
       userid: "buyer",
       email: "buyer@example.com",
       role: "USER",
+      hasPassword: true,
     });
     jest.mocked(getAccessToken).mockResolvedValue(null);
     jest.mocked(NetInfo.fetch).mockResolvedValue(onlineState);
@@ -224,7 +226,7 @@ describe("native auth network lifecycle", () => {
     );
 
     expect(await screen.findByText("authenticated")).toBeOnTheScreen();
-    expect(getCurrentUser).toHaveBeenCalledTimes(1);
+    expect(getCurrentUser).toHaveBeenCalledTimes(2);
   });
 
   it("updates query focus from AppState and removes native listeners", async () => {

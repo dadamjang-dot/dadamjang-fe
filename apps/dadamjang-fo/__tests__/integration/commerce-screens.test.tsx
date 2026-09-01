@@ -25,6 +25,7 @@ const mockNavigation: { path?: string } = {};
 const mockSearchParams: { "order-id"?: string; forcePaymentFailure?: string } = {};
 
 jest.mock("expo-router", () => ({
+  useFocusEffect: (effect: () => void) => effect(),
   useLocalSearchParams: () => mockSearchParams,
   useRouter: () => ({
     push: (path: string) => {
@@ -189,6 +190,7 @@ describe("cart and wish screens", () => {
       userid: "buyer",
       email: "buyer@example.com",
       role: "USER",
+      hasPassword: true,
     });
     jest.mocked(getCart).mockResolvedValue(cart);
     jest.mocked(getWishlist).mockResolvedValue(wishlist);

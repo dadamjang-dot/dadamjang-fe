@@ -1,11 +1,11 @@
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors } from "@dadamjang/design-tokens";
 
-import { useCurrentUser } from "@/features/auth";
+import { useAuthActionGate } from "@/features/auth";
 import {
   WishBrandsTab,
   WishCategoryBar,
@@ -19,8 +19,15 @@ import { ActionButton, TitleHeader } from "@/shared/components";
 
 const WishScreen = () => {
   const router = useRouter();
-  const currentUser = useCurrentUser();
+  const currentUser = useAuthActionGate("/wish");
+  const { authStatus, redirectToSignIn } = currentUser;
   const [selectedTab, setSelectedTab] = useState<WishTab>("PRODUCTS");
+
+  useFocusEffect(
+    useCallback(() => {
+      if (authStatus === "unauthenticated") redirectToSignIn(true);
+    }, [authStatus, redirectToSignIn]),
+  );
 
   const content =
     currentUser.authStatus === "loading" ||
@@ -39,16 +46,7 @@ const WishScreen = () => {
         title="로그인 상태를 확인하지 못했어요."
       />
     ) : currentUser.authStatus === "unauthenticated" ? (
-      <WishState
-        action={{
-          label: "로그인",
-          onPress: () => router.push("/auth"),
-          testID: "e2e.wish.login",
-        }}
-        alignment="top"
-        description="로그인하면 위시한 상품과 스타일을 한곳에서 확인할 수 있어요."
-        title="로그인이 필요해요."
-      />
+      <WishState title="로그인 화면으로 이동하고 있어요." />
     ) : selectedTab === "PRODUCTS" ? (
       <WishProductsTab />
     ) : selectedTab === "STYLES" ? (

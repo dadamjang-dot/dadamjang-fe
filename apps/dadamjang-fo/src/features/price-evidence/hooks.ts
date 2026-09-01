@@ -1,15 +1,6 @@
-import {
-  useInfiniteQuery,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
-import {
-  getComparisonPriceSummaries,
-  getProductPriceEvidence,
-  getProductPriceSummary,
-  getProductPriceSummaries,
-} from "./api";
+import { getProductPriceSummary, getProductPriceSummaries } from "./api";
 import { priceEvidenceQueryKeys } from "./query-keys";
 
 import type {
@@ -42,22 +33,6 @@ export const useProductPriceSummaries = (filter: ProductPriceSummaryFilter) =>
     getNextPageParam: getNextProductPriceSummaryCursor,
   });
 
-export const useProductPriceEvidence = (
-  productId: string,
-  priceRevision: string,
-  enabled: boolean,
-) =>
-  useQuery({
-    queryKey: priceEvidenceQueryKeys.productPriceEvidence(
-      productId,
-      priceRevision,
-    ),
-    queryFn: ({ signal }) =>
-      getProductPriceEvidence(productId, priceRevision, signal),
-    enabled,
-    staleTime: 60_000,
-  });
-
 export const useProductPriceSummary = (productId: string) =>
   useQuery({
     queryKey: priceEvidenceQueryKeys.productPriceSummaryById(productId),
@@ -65,34 +40,3 @@ export const useProductPriceSummary = (productId: string) =>
     enabled: Boolean(productId),
     staleTime: 60_000,
   });
-
-export const useComparisonPriceSummaries = (enabled = true) =>
-  useQuery({
-    enabled,
-    queryKey: priceEvidenceQueryKeys.productPriceSummary({
-      query: "comparison",
-    }),
-    queryFn: ({ signal }) => getComparisonPriceSummaries(signal),
-  });
-
-export const usePriceEvidenceInvalidation = () => {
-  const queryClient = useQueryClient();
-
-  return {
-    invalidateProductPriceEvidence: (
-      productId: string,
-      priceRevision: string,
-    ) =>
-      Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: priceEvidenceQueryKeys.productPriceEvidence(
-            productId,
-            priceRevision,
-          ),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: priceEvidenceQueryKeys.offers(productId),
-        }),
-      ]),
-  };
-};

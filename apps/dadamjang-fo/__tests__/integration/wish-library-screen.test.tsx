@@ -26,12 +26,15 @@ import { layoutLegendList } from "../helpers/layout-legend-list";
 
 const navigation: { path?: string } = {};
 const actionButtonCalls: { actions: Action[] }[] = [];
+const mockReplace = jest.fn();
 
 jest.mock("expo-router", () => ({
+  useFocusEffect: (effect: () => void) => effect(),
   useRouter: () => ({
     push: (path: string) => {
       navigation.path = path;
     },
+    replace: mockReplace,
   }),
 }));
 
@@ -180,12 +183,14 @@ const savedStylePost: StylePost = {
 describe("WISH library screen", () => {
   beforeEach(() => {
     navigation.path = undefined;
+    mockReplace.mockClear();
     actionButtonCalls.length = 0;
     jest.mocked(getCurrentUser).mockResolvedValue({
       userId: "user-1",
       userid: "buyer",
       email: "buyer@example.com",
       role: "USER",
+      hasPassword: true,
     });
     jest
       .mocked(getWishlist)
@@ -279,14 +284,18 @@ describe("WISH library screen", () => {
     expect(navigation.path).toBe("/product/product-1");
   });
 
-  it("shows a sign-in CTA for signed-out users", async () => {
+  it("redirects signed-out users to sign-in with the Wish return target", async () => {
     jest
       .mocked(getCurrentUser)
       .mockRejectedValueOnce(new GraphqlError("not authenticated", 401));
     render(<WishScreen />, { wrapper: createWrapper() });
 
-    await fireEvent.press(await screen.findByTestId("e2e.wish.login"));
-
-    expect(navigation.path).toBe("/auth");
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith({
+        pathname: "/auth",
+        params: { returnTo: "/wish" },
+      }),
+    );
+    expect(screen.queryByText("로그인이 필요해요.")).not.toBeOnTheScreen();
   });
 });

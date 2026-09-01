@@ -1,47 +1,56 @@
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
 import { colors, spacing } from "@dadamjang/design-tokens";
 import { ActionButtonGroup } from "@dadamjang/mobile";
 
-import { useCurrentUser, useSignOut } from "@/features/auth";
+import { useAuthActionGate } from "@/features/auth";
 import { Button, TitleHeader } from "@/shared/components";
 
 const MyScreen = () => {
   const router = useRouter();
-  const currentUser = useCurrentUser();
-  const signOut = useSignOut();
+  const currentUser = useAuthActionGate("/my");
+  const { authStatus, redirectToSignIn } = currentUser;
   const isWaiting =
     currentUser.authStatus === "loading" ||
     currentUser.authStatus === "offline";
 
+  useFocusEffect(
+    useCallback(() => {
+      if (authStatus === "unauthenticated") redirectToSignIn(true);
+    }, [authStatus, redirectToSignIn]),
+  );
+
   return (
     <View style={s.container}>
       <TitleHeader title="마이">
-        {currentUser.authStatus === "authenticated" ? (
-          <ActionButtonGroup
-            actions={[
-              {
-                accessibilityLabel: "주문 내역",
-                icon: { md: "menu", sf: "list.bullet.rectangle" },
-                onPress: () => router.push("/orders"),
-              },
-              {
-                accessibilityLabel: "장바구니",
-                icon: { md: "shopping_cart", sf: "cart" },
-                onPress: () => router.push("/cart"),
-              },
-            ]}
-            variant="circularPair"
-          />
-        ) : null}
+        <ActionButtonGroup
+          actions={[
+            {
+              accessibilityLabel: "설정",
+              icon: { md: "settings", sf: "gearshape" },
+              onPress: () => router.push("/settings"),
+            },
+            {
+              accessibilityLabel: "장바구니",
+              icon: { md: "shopping_cart", sf: "cart" },
+              onPress: () => router.push("/cart"),
+            },
+          ]}
+          variant="circularPair"
+        />
       </TitleHeader>
       {currentUser.authStatus === "authenticated" && currentUser.data ? (
         <View style={s.account}>
           <Text style={s.accountId}>{currentUser.data.userid}</Text>
           <Text style={s.stateDescription}>{currentUser.data.email}</Text>
-          <Button label="로그아웃" onPress={() => void signOut()} />
+          <Button
+            label="주문 내역"
+            onPress={() => router.push("/orders")}
+            variant="secondary"
+          />
         </View>
       ) : isWaiting ? (
         <View style={s.state}>
@@ -64,11 +73,7 @@ const MyScreen = () => {
         </View>
       ) : currentUser.authStatus === "unauthenticated" ? (
         <View style={s.state}>
-          <Text style={s.stateTitle}>로그인이 필요해요.</Text>
-          <Text style={s.stateDescription}>
-            로그인하면 주문과 계정 정보를 확인할 수 있어요.
-          </Text>
-          <Button label="로그인" onPress={() => router.push("/auth")} />
+          <Text style={s.stateTitle}>로그인 화면으로 이동하고 있어요.</Text>
         </View>
       ) : null}
     </View>

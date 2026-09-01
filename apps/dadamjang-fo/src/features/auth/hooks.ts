@@ -6,9 +6,11 @@ import { GraphqlError, logoutAuthSession } from "@dadamjang/graphql-client";
 
 import {
   completeKakaoSignupFo,
+  deactivateFoAccount,
   findFoEmail,
   getActiveSignupConsentDocuments,
   getCurrentUser,
+  reactivateFoAccount,
   requestPasswordResetCode,
   requestSignupEmailCode,
   resetPassword,
@@ -89,7 +91,7 @@ export const useAuthActionGate = (returnTo: string) => {
   const redirectToSignIn = useCallback(
     (replace = false, returnToOverride?: string) => {
       const href = {
-        pathname: "/auth/signin" as const,
+        pathname: "/auth" as const,
         params: {
           returnTo: resolveAuthReturnTo(returnToOverride ?? sanitizedReturnTo),
         },
@@ -120,8 +122,8 @@ export const useAuthActionGate = (returnTo: string) => {
   };
 };
 
-const useViewerMutation = <TVariables>(
-  mutationFn: (variables: TVariables) => Promise<unknown>,
+const useViewerMutation = <TVariables, TResult>(
+  mutationFn: (variables: TVariables) => Promise<TResult>,
 ) => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -136,6 +138,16 @@ export const useSignIn = () =>
     ({ email, password }: { email: string; password: string }) =>
       signInFo(email, password),
   );
+
+export const useReactivateFoAccount = () =>
+  useViewerMutation((reactivationToken: string) =>
+    reactivateFoAccount(reactivationToken),
+  );
+
+export const useDeactivateFoAccount = () =>
+  useMutation<Awaited<ReturnType<typeof deactivateFoAccount>>, Error, void>({
+    mutationFn: deactivateFoAccount,
+  });
 
 export const useSignUpFo = () => useViewerMutation(signUpFo);
 

@@ -449,6 +449,238 @@ test("review states control editability and rejected reason", async ({
   await expect(page.getByRole("button", { name: "판매 게시" })).toHaveCount(0);
 });
 
+test("published product edits only price and stock with the inventory mutation", async ({
+  page,
+}) => {
+  const published = {
+    ...productWithReorderableItems(),
+    approvalStatus: "APPROVED",
+    status: "PUBLISHED",
+  };
+  const calls = await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => ({ myPartnerProduct: published }),
+      UpdatePublishedProductSkus: () => ({
+        updatePublishedProductSkus: published,
+      }),
+      PartnerProducts: () => list([published]),
+    }),
+  );
+
+  await page.goto("/products/product-1/edit");
+
+  await expect(page.getByLabel("카테고리")).toBeDisabled();
+  await expect(page.getByLabel("상품명")).toBeDisabled();
+  await expect(page.getByLabel("설명")).toBeDisabled();
+  await expect(page.getByLabel("이미지 선택")).toBeDisabled();
+  const imageDeletes = page.getByRole("button", {
+    name: "삭제",
+    exact: true,
+  });
+  await expect(imageDeletes).toHaveCount(2);
+  await expect(imageDeletes.first()).toBeDisabled();
+  await expect(imageDeletes.last()).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "뒤로", exact: true }).first(),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "앞으로", exact: true }).last(),
+  ).toBeDisabled();
+  await expect(page.getByLabel("SKU 1 코드")).toBeDisabled();
+  await expect(page.getByLabel("SKU 1 옵션명")).toBeDisabled();
+  await expect(page.getByLabel("SKU 1 색상")).toBeDisabled();
+  await expect(page.getByLabel("SKU 1 사이즈")).toBeDisabled();
+  await expect(page.getByLabel("SKU 1 위로 이동")).toBeDisabled();
+  await expect(page.getByLabel("SKU 1 아래로 이동")).toBeDisabled();
+  const skuDeletes = page.getByRole("button", { name: "행 삭제" });
+  await expect(skuDeletes).toHaveCount(3);
+  for (const skuDelete of await skuDeletes.all())
+    await expect(skuDelete).toBeDisabled();
+  await expect(page.getByRole("button", { name: "SKU 추가" })).toBeDisabled();
+  await expect(page.getByLabel("판매 상품")).toBeDisabled();
+  await expect(page.getByLabel("빠른 배송")).toBeDisabled();
+  for (const index of [1, 2, 3]) {
+    await expect(page.getByLabel(`SKU ${index} 가격`)).toBeEnabled();
+    await expect(page.getByLabel(`SKU ${index} 재고`)).toBeEnabled();
+  }
+  await expect(page.getByRole("button", { name: "임시 저장" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "심사 요청" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "판매 게시" })).toHaveCount(0);
+
+  await page.getByLabel("SKU 1 가격").fill("900");
+  await page.getByLabel("SKU 1 재고").fill("7");
+  await page.getByRole("button", { name: "저장", exact: true }).click();
+
+  await expect
+    .poll(() => calls.filter(({ query }) => query.includes("mutation ")))
+    .toHaveLength(1);
+  const mutation = calls.find(({ query }) => query.includes("mutation "));
+  expect(mutation?.query).toContain("mutation UpdatePublishedProductSkus");
+  expect(mutation?.query).toContain(
+    "updatePublishedProductSkus(input: $input)",
+  );
+  expect(mutation?.query).not.toContain("updatePartnerProductDraft");
+  expect(mutation?.variables).toEqual({
+    input: {
+      productId: "product-1",
+      skus: [
+        { skuId: "sku-1", price: 900, stock: 7 },
+        { skuId: "sku-2", price: 1000, stock: 2 },
+        { skuId: "sku-3", price: 1000, stock: 2 },
+      ],
+    },
+  });
+});
+
+test("published inventory save stays disabled while its mutation is pending", async ({
+  page,
+}) => {
+  const published = product("APPROVED", "PUBLISHED");
+  const update = Promise.withResolvers<void>();
+  const calls = await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => ({ myPartnerProduct: published }),
+      UpdatePublishedProductSkus: async () => {
+        await update.promise;
+        return { updatePublishedProductSkus: published };
+      },
+      PartnerProducts: () => list([published]),
+    }),
+  );
+
+  await page.goto("/products/product-1/edit");
+  const save = page.getByRole("button", { name: "저장", exact: true });
+  await save.evaluate((button) => {
+    if (!(button instanceof HTMLButtonElement))
+      throw new Error("Expected button");
+    button.click();
+  });
+  try {
+    await expect
+      .poll(() => calls.filter(({ query }) => query.includes("mutation ")))
+      .toHaveLength(1);
+    await expect(save).toBeDisabled();
+    await save.evaluate((button) => {
+      if (!(button instanceof HTMLButtonElement))
+        throw new Error("Expected button");
+      button.click();
+    });
+    expect(
+      calls.filter(({ query }) => query.includes("mutation ")),
+    ).toHaveLength(1);
+  } finally {
+    update.resolve();
+  }
+  await expect(page).toHaveURL(/\/products$/);
+  expect(calls.filter(({ query }) => query.includes("mutation "))).toHaveLength(
+    1,
+  );
+});
+
+test("published product rejects a missing SKU id", async ({ page }) => {
+  const invalid = {
+    ...product("APPROVED", "PUBLISHED"),
+    skus: [{ ...sku, skuId: "" }],
+  };
+  const calls = await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => ({ myPartnerProduct: invalid }),
+    }),
+  );
+
+  await page.goto("/products/product-1/edit");
+  await page.getByRole("button", { name: "저장", exact: true }).click();
+
+  await expect(page.locator(".error[role=alert]")).toContainText(
+    "게시 상품 SKU 정보가 올바르지 않습니다.",
+  );
+  expect(calls.some(({ query }) => query.includes("mutation "))).toBe(false);
+});
+
+test("published product rejects non-integer inventory before the API call", async ({
+  page,
+}) => {
+  const published = product("APPROVED", "PUBLISHED");
+  const calls = await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => ({ myPartnerProduct: published }),
+    }),
+  );
+
+  await page.goto("/products/product-1/edit");
+  await page.getByLabel("SKU 1 가격").fill("1.5");
+  await page.locator("form").evaluate((form) => {
+    if (!(form instanceof HTMLFormElement)) throw new Error("Expected form");
+    form.noValidate = true;
+  });
+  await page.getByRole("button", { name: "저장", exact: true }).click();
+
+  await expect(page.locator(".error[role=alert]")).toContainText(
+    "가격/재고는 0 이상의 정수로 입력하세요.",
+  );
+
+  await page.reload();
+  await page.getByLabel("SKU 1 재고").fill("-1");
+  await page.locator("form").evaluate((form) => {
+    if (!(form instanceof HTMLFormElement)) throw new Error("Expected form");
+    form.noValidate = true;
+  });
+  await page.getByRole("button", { name: "저장", exact: true }).click();
+  await expect(page.locator(".error[role=alert]")).toContainText(
+    "가격/재고는 0 이상의 정수로 입력하세요.",
+  );
+  expect(calls.some(({ query }) => query.includes("mutation "))).toBe(false);
+});
+
+test("rejected draft keeps the full draft update flow", async ({ page }) => {
+  const rejected = product("REJECTED");
+  const calls = await routeGraphQl(
+    page,
+    protectedHandlers({
+      CatalogOptions: () => options,
+      PartnerProduct: () => ({ myPartnerProduct: rejected }),
+      UpdateProduct: () => ({ updatePartnerProductDraft: rejected }),
+      PartnerProducts: () => list([rejected]),
+    }),
+  );
+
+  await page.goto("/products/product-1/edit");
+  await expect(page.getByLabel("카테고리")).toBeEnabled();
+  await expect(page.getByLabel("상품명")).toBeEnabled();
+  await expect(page.getByLabel("설명")).toBeEnabled();
+  await expect(page.getByLabel("이미지 선택")).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "삭제", exact: true }),
+  ).toBeEnabled();
+  await expect(page.getByLabel("SKU 1 코드")).toBeEnabled();
+  await expect(page.getByLabel("SKU 1 옵션명")).toBeEnabled();
+  await expect(page.getByLabel("SKU 1 색상")).toBeEnabled();
+  await expect(page.getByLabel("SKU 1 사이즈")).toBeEnabled();
+  await expect(page.getByLabel("SKU 1 가격")).toBeEnabled();
+  await expect(page.getByLabel("SKU 1 재고")).toBeEnabled();
+  await expect(page.getByRole("button", { name: "행 삭제" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "SKU 추가" })).toBeEnabled();
+  await expect(page.getByLabel("판매 상품")).toBeEnabled();
+  await expect(page.getByLabel("빠른 배송")).toBeEnabled();
+
+  await page.getByRole("button", { name: "임시 저장" }).click();
+
+  await expect
+    .poll(() => calls.filter(({ query }) => query.includes("mutation ")))
+    .toHaveLength(1);
+  const mutation = calls.find(({ query }) => query.includes("mutation "));
+  expect(mutation?.query).toContain("mutation UpdateProduct");
+  expect(mutation?.query).not.toContain("updatePublishedProductSkus");
+});
+
 test("approved product publishes only after confirmation", async ({ page }) => {
   let published = false;
   const calls = await routeGraphQl(

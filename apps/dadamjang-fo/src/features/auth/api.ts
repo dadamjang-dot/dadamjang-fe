@@ -7,30 +7,61 @@ import {
 import type {
   ConsentAcceptance,
   CurrentUser,
+  FoAccountDeactivation,
+  SignInFoResult,
   SignupConsentDocument,
   TokenPayload,
 } from "./types";
 
 export const getCurrentUser = async (signal?: AbortSignal) => {
   const data = await graphqlRequest<{ me: CurrentUser }>(
-    "query Me { me { userId userid email role } }",
+    "query Me { me { userId userid email role hasPassword } }",
     undefined,
     { signal },
   );
   return data.me;
 };
 
+export const deactivateFoAccount = async () => {
+  const data = await graphqlRequest<{
+    deactivateFoAccount: FoAccountDeactivation;
+  }>(
+    `mutation DeactivateFoAccount {
+      deactivateFoAccount { ok scheduledAnonymizationAt }
+    }`,
+  );
+  return data.deactivateFoAccount;
+};
+
 export const signInFo = async (email: string, password: string) => {
   const deviceId = await getDeviceId();
-  const data = await graphqlRequest<{ signinFo: TokenPayload }>(
+  const data = await graphqlRequest<{ signinFo: SignInFoResult }>(
     `mutation SigninFo($input: SigninFoInput!) {
-      signinFo(input: $input) { accessToken refreshToken role }
+      signinFo(input: $input) {
+        status
+        tokenPayload { accessToken refreshToken role }
+        reactivationToken
+      }
     }`,
     { input: { email, password } },
     { requestHeaders: { "x-device-id": deviceId } },
   );
-  await setAuthTokens(data.signinFo);
+  if (data.signinFo.status === "SIGNED_IN")
+    await setAuthTokens(data.signinFo.tokenPayload);
   return data.signinFo;
+};
+
+export const reactivateFoAccount = async (reactivationToken: string) => {
+  const deviceId = await getDeviceId();
+  const data = await graphqlRequest<{ reactivateFoAccount: TokenPayload }>(
+    `mutation ReactivateFoAccount($token: String!) {
+      reactivateFoAccount(reactivationToken: $token) { accessToken refreshToken role }
+    }`,
+    { token: reactivationToken },
+    { requestHeaders: { "x-device-id": deviceId } },
+  );
+  await setAuthTokens(data.reactivateFoAccount);
+  return data.reactivateFoAccount;
 };
 
 export const requestSignupEmailCode = async (email: string) => {

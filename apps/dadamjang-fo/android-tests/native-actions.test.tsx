@@ -1,15 +1,9 @@
-import {
-  renderAsync,
-  screen,
-  userEvent,
-} from "@testing-library/react-native";
-import type { ComponentType } from "react";
+import { renderAsync, screen, userEvent } from "@testing-library/react-native";
+import type { ComponentType, ReactNode } from "react";
 import { View } from "react-native";
 
-import {
-  ActionButton,
-  type IconAction,
-} from "@dadamjang/mobile";
+import { ActionButton, type IconAction } from "@dadamjang/mobile";
+import HomeScreen from "../src/app/(tabs)";
 import TabLayout from "../src/app/(tabs)/_layout";
 import { defaultShopFilters } from "../src/features/catalog/shop-filters";
 import ShopFilterBar from "../src/features/shop/components/shop-filter-bar";
@@ -20,6 +14,47 @@ import WishProductCard from "../src/features/wish/components/wish-product-card";
 import { ProductLayout } from "../src/shared/components/product-layout";
 
 jest.mock("expo-image", () => ({ Image: "ExpoImage" }));
+
+const mockPush = jest.fn();
+const mockRunProtectedAction = jest.fn((action: () => void) => {
+  action();
+  return true;
+});
+
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
+jest.mock("@/features/auth", () => ({
+  useAuthActionGate: () => ({ runProtectedAction: mockRunProtectedAction }),
+}));
+
+jest.mock("@/shared/components", () => ({
+  ...jest.requireActual("./mocks/shared-components"),
+  ProductLayout: ({
+    children,
+    headerActions,
+    variant,
+  }: {
+    children: ReactNode;
+    headerActions: readonly IconAction[];
+    variant: "capsule" | "circularPair";
+  }) => {
+    const React = jest.requireActual<typeof import("react")>("react");
+    const { View } =
+      jest.requireActual<typeof import("react-native")>("react-native");
+    const { ActionButtonGroup } = jest.requireActual("@dadamjang/mobile");
+    return React.createElement(
+      View,
+      null,
+      React.createElement(ActionButtonGroup, {
+        actions: headerActions,
+        variant,
+      }),
+      children,
+    );
+  },
+}));
 
 jest.useFakeTimers();
 
@@ -86,6 +121,32 @@ const stylePost: StylePost = {
 };
 
 describe("Android native actions", () => {
+  it("renders the approved Home notification and cart actions", async () => {
+    const user = createUser();
+
+    await renderAsync(<HomeScreen />);
+
+    const notificationButton = screen.getByRole("button", { name: "알림" });
+    const cartButton = screen.getByRole("button", { name: "장바구니" });
+    expect(screen.getByRole("img", { name: "알림" })).toHaveProp(
+      "source",
+      materialIconSource,
+    );
+    expect(screen.getByRole("img", { name: "장바구니" })).toHaveProp(
+      "source",
+      materialIconSource,
+    );
+
+    await user.press(notificationButton);
+    await user.press(cartButton);
+
+    expect(mockRunProtectedAction).toHaveBeenCalledTimes(1);
+    expect(mockPush.mock.calls.map(([path]) => path)).toEqual([
+      "/notifications",
+      "/cart",
+    ]);
+  });
+
   it("passes synchronous accessible icon props and invokes each action", async () => {
     const onNotificationPress = jest.fn();
     const onCartPress = jest.fn();
@@ -167,9 +228,7 @@ describe("Android native actions", () => {
     const onPress = jest.fn();
     const user = createUser();
 
-    await renderAsync(
-      <ActionButton actions={[{ label: "취소", onPress }]} />,
-    );
+    await renderAsync(<ActionButton actions={[{ label: "취소", onPress }]} />);
 
     const button = screen.getByRole("button", { name: "취소" });
     await user.press(button);

@@ -5,13 +5,20 @@ import { StyleSheet } from "react-native-unistyles";
 
 import { colors, spacing } from "@dadamjang/design-tokens";
 
-import { resolveAuthReturnTo, useSignIn, validateEmail } from "@/features/auth";
+import {
+  resolveAuthReturnTo,
+  useAuthFlow,
+  useSignIn,
+  validateEmail,
+} from "@/features/auth";
 import { AuthField, AuthLinks, AuthScreen } from "@/features/auth/components";
 import { Button } from "@/shared/components/button";
 
 const SigninScreen = () => {
   const router = useRouter();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const sanitizedReturnTo = resolveAuthReturnTo(returnTo);
+  const { setPendingReactivation } = useAuthFlow();
   const signIn = useSignIn();
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
@@ -36,7 +43,14 @@ const SigninScreen = () => {
       { email: normalizedEmail, password },
       {
         onError: () => setMessage("이메일 또는 비밀번호가 올바르지 않습니다."),
-        onSuccess: () => router.replace(resolveAuthReturnTo(returnTo) as Href),
+        onSuccess: (result) => {
+          if (result.status === "REACTIVATION_REQUIRED") {
+            setPendingReactivation(result.reactivationToken, sanitizedReturnTo);
+            router.push("/auth/reactivate");
+            return;
+          }
+          router.replace(sanitizedReturnTo as Href);
+        },
       },
     );
   };

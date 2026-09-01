@@ -1,8 +1,14 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { getDeviceId } from "@dadamjang/graphql-client";
 
 import {
   completeIdentityVerification,
   completeKakaoLogin,
+  deactivateFoAccount,
+  getCurrentUser,
+  reactivateFoAccount,
   signInFo,
   startIdentityVerification,
 } from "@/features/auth/api";
@@ -10,16 +16,33 @@ import { checkoutCart, upsertCartItem } from "@/features/cart/api";
 import { getProducts } from "@/features/catalog/api";
 import { getOrder } from "@/features/order/api";
 import {
+  getFoNotification,
+  getFoNotificationPreferences,
+  getFoNotifications,
+  markAllFoNotificationsRead,
+  markFoNotificationRead,
+  registerFoPushDevice,
+  updateFoNotificationPreferences,
+} from "@/features/notification/api";
+import {
   createStylePost,
   getStylePosts,
   uploadStylePostImage,
 } from "@/features/style/api";
 import { addWish } from "@/features/wish/api";
 
+jest.mock("../../plugins/with-ios-build-settings.cjs", () => jest.fn());
+
+const packageJson = JSON.parse(
+  readFileSync(resolve(__dirname, "../../package.json"), "utf8"),
+) as { dependencies?: Record<string, string> };
+const appConfig = require("../../app.config.js")({ config: {} });
+
 type CapturedRequest = {
   query: string;
   variables: Record<string, unknown> | undefined;
   headers: Record<string, string> | undefined;
+  signal: AbortSignal | undefined;
 };
 
 const mockRequests: CapturedRequest[] = [];
@@ -42,12 +65,16 @@ jest.mock("@dadamjang/graphql-client", () => ({
     (
       query: string,
       variables?: Record<string, unknown>,
-      options?: { requestHeaders?: Record<string, string> },
+      options?: {
+        requestHeaders?: Record<string, string>;
+        signal?: AbortSignal;
+      },
     ) => {
       mockRequests.push({
         query,
         variables,
         headers: options?.requestHeaders,
+        signal: options?.signal,
       });
       return Promise.resolve(mockResponses.shift());
     },
@@ -58,6 +85,19 @@ jest.mock("@dadamjang/graphql-client", () => ({
 }));
 
 describe("feature API contracts", () => {
+  it("declares Expo notification dependencies and preserves the EAS project", () => {
+    expect(packageJson.dependencies).toEqual(
+      expect.objectContaining({
+        "expo-constants": expect.any(String),
+        "expo-notifications": expect.any(String),
+      }),
+    );
+    expect(appConfig.plugins).toContain("expo-notifications");
+    expect(appConfig.extra.eas.projectId).toBe(
+      "095bcf9d-2bf8-4274-bb83-838d70c4f608",
+    );
+  });
+
   beforeEach(() => {
     mockRequests.length = 0;
     mockResponses.length = 0;
@@ -67,16 +107,21 @@ describe("feature API contracts", () => {
     jest.mocked(getDeviceId).mockResolvedValue("device-1");
   });
 
-  it("sends FO credentials and persists returned sign-in tokens", async () => {
+  it("persists FO credentials only when sign-in returns SIGNED_IN", async () => {
     const tokens = {
       accessToken: "access",
       refreshToken: "refresh",
       role: "USER" as const,
     };
-    mockResponses.push({ signinFo: tokens });
+    const result = {
+      status: "SIGNED_IN" as const,
+      tokenPayload: tokens,
+      reactivationToken: null,
+    };
+    mockResponses.push({ signinFo: result });
 
     await expect(signInFo("buyer@example.com", "password")).resolves.toEqual(
-      tokens,
+      result,
     );
     expect(mockRequests[0]?.query).toContain("mutation SigninFo");
     expect(mockRequests[0]?.variables).toEqual({
@@ -84,6 +129,84 @@ describe("feature API contracts", () => {
     });
     expect(mockRequests[0]?.headers).toEqual({ "x-device-id": "device-1" });
     expect(mockStoredTokens).toEqual([tokens]);
+  });
+
+  it("returns FO reactivation without creating a local session", async () => {
+    const result = {
+      status: "REACTIVATION_REQUIRED" as const,
+      tokenPayload: null,
+      reactivationToken: "reactivation-token",
+    };
+    mockResponses.push({ signinFo: result });
+
+    await expect(signInFo("buyer@example.com", "password")).resolves.toEqual(
+      result,
+    );
+
+    expect(mockRequests[0]?.query).toContain("reactivationToken");
+    expect(mockStoredTokens).toEqual([]);
+  });
+
+  it("reactivates on the issuing device and persists the new session", async () => {
+    const tokens = {
+      accessToken: "reactivated-access",
+      refreshToken: "reactivated-refresh",
+      role: "USER" as const,
+    };
+    mockResponses.push({ reactivateFoAccount: tokens });
+
+    await expect(reactivateFoAccount("reactivation-token")).resolves.toEqual(
+      tokens,
+    );
+
+    expect(mockRequests[0]?.query).toContain("mutation ReactivateFoAccount");
+    expect(mockRequests[0]?.query).toContain(
+      "reactivateFoAccount(reactivationToken: $token)",
+    );
+    expect(mockRequests[0]?.variables).toEqual({
+      token: "reactivation-token",
+    });
+    expect(mockRequests[0]?.headers).toEqual({ "x-device-id": "device-1" });
+    expect(mockStoredTokens).toEqual([tokens]);
+  });
+
+  it("binds Push registration to the stable local device", async () => {
+    mockResponses.push({ registerFoPushDevice: true });
+
+    await expect(
+      registerFoPushDevice({
+        expoPushToken: "ExponentPushToken[token-1]",
+        platform: "IOS",
+      }),
+    ).resolves.toBe(true);
+
+    expect(mockRequests.at(-1)).toMatchObject({
+      variables: {
+        input: {
+          expoPushToken: "ExponentPushToken[token-1]",
+          platform: "IOS",
+        },
+      },
+      headers: { "x-device-id": "device-1" },
+    });
+    expect(mockRequests.at(-1)?.query).toContain(
+      "mutation RegisterFoPushDevice",
+    );
+  });
+
+  it("forwards Push registration cancellation", async () => {
+    const signal = { aborted: false } as AbortSignal;
+    mockResponses.push({ registerFoPushDevice: true });
+
+    await registerFoPushDevice(
+      {
+        expoPushToken: "ExponentPushToken[token-1]",
+        platform: "IOS",
+      },
+      signal,
+    );
+
+    expect(mockRequests.at(-1)?.signal).toBe(signal);
   });
 
   it("binds identity verification requests to the local device", async () => {
@@ -106,10 +229,15 @@ describe("feature API contracts", () => {
   it("forwards one-time callback tokens through auth completion requests", async () => {
     const kakaoResult = {
       status: "SIGNED_IN" as const,
-      tokenPayload: null,
+      tokenPayload: {
+        accessToken: "kakao-access",
+        refreshToken: "kakao-refresh",
+        role: "USER" as const,
+      },
       kakaoSignupToken: null,
       email: null,
       emailVerificationRequired: false,
+      reactivationToken: null,
     };
     const identityResult = { identityVerificationToken: "identity-proof" };
     mockResponses.push(
@@ -128,6 +256,26 @@ describe("feature API contracts", () => {
       { input: { callbackToken: "callback-token", flowId: "flow-1" } },
       { callbackToken: "callback-token", sessionId: "identity-session" },
     ]);
+    expect(mockRequests[0]?.query).toContain("reactivationToken");
+  });
+
+  it("does not persist a Kakao reactivation response", async () => {
+    const result = {
+      status: "REACTIVATION_REQUIRED" as const,
+      tokenPayload: null,
+      kakaoSignupToken: null,
+      email: null,
+      emailVerificationRequired: false,
+      reactivationToken: "reactivation-token",
+    };
+    mockResponses.push({ completeKakaoLogin: result });
+
+    await expect(
+      completeKakaoLogin("flow-1", "callback-token"),
+    ).resolves.toEqual(result);
+
+    expect(mockStoredTokens).toEqual([]);
+    expect(mockRequests[0]?.query).toContain("reactivationToken");
   });
 
   it("passes catalog filters without changing the public GraphQL shape", async () => {
@@ -164,7 +312,9 @@ describe("feature API contracts", () => {
 
     await upsertCartItem("sku-1", 3);
     await addWish("product-1");
-    await expect(checkoutCart({ idempotencyKey: "checkout-1" })).resolves.toEqual(checkout);
+    await expect(
+      checkoutCart({ idempotencyKey: "checkout-1" }),
+    ).resolves.toEqual(checkout);
     await expect(getOrder("order-1")).resolves.toEqual(order);
 
     expect(mockRequests.map(({ variables }) => variables)).toEqual([
@@ -173,6 +323,118 @@ describe("feature API contracts", () => {
       { input: { idempotencyKey: "checkout-1" } },
       { orderId: "order-1" },
     ]);
+  });
+
+  it("uses the authorized FO notification inbox contract", async () => {
+    const notification = {
+      notificationId: "notification-1",
+      type: "ORDER_STATUS" as const,
+      title: "상품을 준비하고 있어요",
+      body: "준비가 끝나면 다시 알려드릴게요.",
+      route: "/order/order-1",
+      entityId: "order-1",
+      readAt: null,
+      createdAt: "2026-08-31T12:00:00.000Z",
+    };
+    const connection = {
+      nodes: [notification],
+      nextCursor: "cursor-2",
+      hasNextPage: true,
+      unreadCount: 1,
+    };
+    mockResponses.push(
+      { foNotifications: connection },
+      { foNotification: notification },
+      {
+        markFoNotificationRead: {
+          ...notification,
+          readAt: "2026-08-31T12:01:00.000Z",
+        },
+      },
+      { markAllFoNotificationsRead: true },
+    );
+
+    await expect(
+      getFoNotifications({ after: "cursor-1", first: 20 }),
+    ).resolves.toEqual(connection);
+    await expect(getFoNotification("notification-1")).resolves.toEqual(
+      notification,
+    );
+    await expect(markFoNotificationRead("notification-1")).resolves.toEqual(
+      expect.objectContaining({ readAt: "2026-08-31T12:01:00.000Z" }),
+    );
+    await expect(markAllFoNotificationsRead()).resolves.toBe(true);
+
+    expect(mockRequests.map(({ variables }) => variables)).toEqual([
+      { after: "cursor-1", first: 20 },
+      { notificationId: "notification-1" },
+      { notificationId: "notification-1" },
+      undefined,
+    ]);
+    expect(mockRequests.map(({ query }) => query)).toEqual([
+      expect.stringContaining("query FoNotifications"),
+      expect.stringContaining("query FoNotification"),
+      expect.stringContaining("mutation MarkFoNotificationRead"),
+      expect.stringContaining("mutation MarkAllFoNotificationsRead"),
+    ]);
+    expect(mockRequests[0]?.query).toContain(
+      "notificationId type title body route entityId readAt createdAt",
+    );
+    expect(mockRequests[0]?.query).toContain(
+      "nextCursor hasNextPage unreadCount",
+    );
+  });
+
+  it("uses viewer password state, deactivation, and preference contracts", async () => {
+    const viewer = {
+      userId: "user-1",
+      userid: "buyer",
+      email: "buyer@example.test",
+      role: "USER" as const,
+      hasPassword: true,
+    };
+    const preferences = {
+      pushEnabled: true,
+      orderPushEnabled: true,
+      wishPushEnabled: false,
+      stylePushEnabled: true,
+      updatedAt: "2026-08-31T00:00:00.000Z",
+    };
+    const deactivation = {
+      ok: true,
+      scheduledAnonymizationAt: "2026-09-30T00:00:00.000Z",
+    };
+    mockResponses.push(
+      { me: viewer },
+      { foNotificationPreferences: preferences },
+      {
+        updateFoNotificationPreferences: {
+          ...preferences,
+          orderPushEnabled: false,
+        },
+      },
+      { deactivateFoAccount: deactivation },
+    );
+
+    await expect(getCurrentUser()).resolves.toEqual(viewer);
+    await expect(getFoNotificationPreferences()).resolves.toEqual(preferences);
+    await expect(
+      updateFoNotificationPreferences({ orderPushEnabled: false }),
+    ).resolves.toEqual({ ...preferences, orderPushEnabled: false });
+    await expect(deactivateFoAccount()).resolves.toEqual(deactivation);
+
+    expect(mockRequests[0]?.query).toContain(
+      "me { userId userid email role hasPassword }",
+    );
+    expect(mockRequests[1]?.query).toContain(
+      "foNotificationPreferences { pushEnabled orderPushEnabled wishPushEnabled stylePushEnabled updatedAt }",
+    );
+    expect(mockRequests[2]?.variables).toEqual({
+      input: { orderPushEnabled: false },
+    });
+    expect(mockRequests[3]?.query).toContain(
+      "deactivateFoAccount { ok scheduledAnonymizationAt }",
+    );
   });
 
   it("sends style feed filters and structured style post input", async () => {

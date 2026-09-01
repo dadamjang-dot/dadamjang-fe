@@ -1,7 +1,6 @@
 import { graphqlRequest } from "@dadamjang/graphql-client";
 
 import type {
-  ProductPriceEvidence,
   ProductPriceSummaryConnection,
   ProductPriceSummaryFilter,
 } from "./types";
@@ -16,16 +15,6 @@ const productPriceSummaryFields = `
   finalPrice
   priceRevision
   lowestPriceEvidenceSummary
-`;
-
-const productPriceEvidenceFields = `
-  productId
-  priceRevision
-  calculatedAt
-  offerSource
-  priceHistory { label price recordedAt }
-  couponConditions { title discountAmount condition }
-  shippingPolicy { title shippingFee condition }
 `;
 
 export const getProductPriceSummaries = async (
@@ -50,20 +39,6 @@ export const getProductPriceSummaries = async (
   return data.productPriceSummaries;
 };
 
-export const getComparisonPriceSummaries = async (signal?: AbortSignal) => {
-  const data = await graphqlRequest<{
-    comparisonPriceSummaries: ProductPriceSummaryConnection["nodes"];
-  }>(
-    `query ComparisonPriceSummaries {
-      comparisonPriceSummaries { ${productPriceSummaryFields} }
-    }`,
-    undefined,
-    { signal },
-  );
-
-  return data.comparisonPriceSummaries;
-};
-
 export const getProductPriceSummary = async (
   productId: string,
   signal?: AbortSignal,
@@ -81,24 +56,4 @@ export const getProductPriceSummary = async (
   );
 
   return data.productPriceSummary;
-};
-
-export const getProductPriceEvidence = async (
-  productId: string,
-  priceRevision: string,
-  signal?: AbortSignal,
-) => {
-  const data = await graphqlRequest<{
-    productPriceEvidence: ProductPriceEvidence;
-  }>(
-    `query ProductPriceEvidence($productId: String!, $priceRevision: String) {
-      productPriceEvidence(productId: $productId, priceRevision: $priceRevision) {
-        ${productPriceEvidenceFields}
-      }
-    }`,
-    { productId, priceRevision },
-    { signal },
-  );
-
-  return data.productPriceEvidence;
 };

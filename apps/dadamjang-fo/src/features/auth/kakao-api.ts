@@ -37,12 +37,13 @@ export const completeKakaoLogin = async (
         kakaoSignupToken
         email
         emailVerificationRequired
+        reactivationToken
       }
     }`,
     { input: { flowId, callbackToken } },
     { requestHeaders: { "x-device-id": deviceId } },
   );
-  if (data.completeKakaoLogin.tokenPayload)
+  if (data.completeKakaoLogin.status === "SIGNED_IN")
     await setAuthTokens(data.completeKakaoLogin.tokenPayload);
   return data.completeKakaoLogin;
 };
