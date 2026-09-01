@@ -10,7 +10,6 @@ const ProductScreen = () => {
 
   return (
     <ProductDetail
-      onBack={() => router.back()}
       onOpenCart={() => router.push("/cart")}
       productId={productId}
     />

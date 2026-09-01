@@ -125,13 +125,7 @@ const mockUpsert = jest.fn();
 const mockOpenCart = jest.fn();
 
 const renderDetail = () =>
-  render(
-    <ProductDetail
-      onBack={jest.fn()}
-      onOpenCart={mockOpenCart}
-      productId="product-1"
-    />,
-  );
+  render(<ProductDetail onOpenCart={mockOpenCart} productId="product-1" />);
 
 describe("product detail", () => {
   beforeEach(() => {
@@ -180,6 +174,13 @@ describe("product detail", () => {
     } as never);
   });
 
+  it("leaves back and cart navigation to the native stack header", () => {
+    renderDetail();
+
+    expect(screen.queryByRole("button", { name: "뒤로 가기" })).toBeNull();
+    expect(screen.queryByTestId("e2e.product.cart")).toBeNull();
+  });
+
   it("shows every product image with a page counter and stable recycling keys", () => {
     renderDetail();
 
@@ -223,35 +224,19 @@ describe("product detail", () => {
     expect(placeholder).toHaveProp("accessibilityRole", "image");
   });
 
-  it("keeps the top bar available while product data is loading", async () => {
-    const onBack = jest.fn();
-    const onOpenCart = jest.fn();
-    const user = userEvent.setup();
+  it("shows a readable loading state", () => {
     jest.mocked(useProduct).mockReturnValue({
       data: undefined,
       isError: false,
       isLoading: true,
     } as never);
 
-    render(
-      <ProductDetail
-        onBack={onBack}
-        onOpenCart={onOpenCart}
-        productId="product-1"
-      />,
-    );
+    render(<ProductDetail onOpenCart={mockOpenCart} productId="product-1" />);
 
     expect(screen.getByText("상품을 불러오는 중이에요.")).toBeVisible();
-    await user.press(screen.getByRole("button", { name: "뒤로 가기" }));
-    await user.press(screen.getByTestId("e2e.product.cart"));
-
-    expect(onBack).toHaveBeenCalledTimes(1);
-    expect(onOpenCart).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps the top bar and retry action available after a product error", async () => {
-    const onBack = jest.fn();
-    const onOpenCart = jest.fn();
+  it("keeps the retry action available after a product error", async () => {
     const refetch = jest.fn();
     const user = userEvent.setup();
     jest.mocked(useProduct).mockReturnValue({
@@ -261,20 +246,10 @@ describe("product detail", () => {
       refetch,
     } as never);
 
-    render(
-      <ProductDetail
-        onBack={onBack}
-        onOpenCart={onOpenCart}
-        productId="product-1"
-      />,
-    );
+    render(<ProductDetail onOpenCart={mockOpenCart} productId="product-1" />);
 
-    await user.press(screen.getByRole("button", { name: "뒤로 가기" }));
-    await user.press(screen.getByTestId("e2e.product.cart"));
     await user.press(screen.getByTestId("e2e.product.retry"));
 
-    expect(onBack).toHaveBeenCalledTimes(1);
-    expect(onOpenCart).toHaveBeenCalledTimes(1);
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
@@ -376,11 +351,7 @@ describe("product detail", () => {
       isLoading: false,
     } as never);
     detail.rerender(
-      <ProductDetail
-        onBack={jest.fn()}
-        onOpenCart={mockOpenCart}
-        productId="product-1"
-      />,
+      <ProductDetail onOpenCart={mockOpenCart} productId="product-1" />,
     );
 
     expect(screen.getByRole("radio", { name: "블랙 / M" })).toHaveProp(
@@ -459,24 +430,6 @@ describe("product detail", () => {
       { quantity: 2, skuId: "sku-black" },
       expect.objectContaining({ onSuccess: expect.any(Function) }),
     );
-    expect(mockOpenCart).toHaveBeenCalledTimes(1);
-  });
-
-  it("keeps back and cart navigation available in the persistent top bar", async () => {
-    const onBack = jest.fn();
-    const user = userEvent.setup();
-    render(
-      <ProductDetail
-        onBack={onBack}
-        onOpenCart={mockOpenCart}
-        productId="product-1"
-      />,
-    );
-
-    await user.press(screen.getByRole("button", { name: "뒤로 가기" }));
-    await user.press(screen.getByTestId("e2e.product.cart"));
-
-    expect(onBack).toHaveBeenCalledTimes(1);
     expect(mockOpenCart).toHaveBeenCalledTimes(1);
   });
 });

@@ -26,18 +26,13 @@ import { ProductImageGallery } from "./product-image-gallery";
 
 export type ProductDetailProps = {
   productId: string;
-  onBack: () => void;
   onOpenCart: () => void;
 };
 
 const formatPrice = (price?: number) =>
   price === undefined ? "가격 정보 없음" : `${price.toLocaleString("ko-KR")}원`;
 
-const ProductDetail = ({
-  onBack,
-  onOpenCart,
-  productId,
-}: ProductDetailProps) => {
+const ProductDetail = ({ onOpenCart, productId }: ProductDetailProps) => {
   const product = useProduct(productId);
   const summary = useProductPriceSummary(productId);
   const cart = useCartActions();
@@ -51,22 +46,6 @@ const ProductDetail = ({
   const { mutate: recordRecentProductView } = useRecordRecentProductView();
   const [selectedSkuId, setSelectedSkuId] = useState<string>();
   const [quantityDraft, setQuantityDraft] = useState(1);
-  const topBar = (
-    <View style={s.topBar}>
-      <Button accessibilityLabel="뒤로 가기" onPress={onBack} variant="bare">
-        <Text style={s.topBarIcon}>‹</Text>
-      </Button>
-      <Text style={s.topBarTitle}>상품 상세</Text>
-      <Button
-        accessibilityLabel="장바구니"
-        onPress={onOpenCart}
-        testID="e2e.product.cart"
-        variant="bare"
-      >
-        <Text style={s.topBarIcon}>장바구니</Text>
-      </Button>
-    </View>
-  );
 
   useEffect(() => {
     const viewedProductId = product.data?.productId;
@@ -81,14 +60,12 @@ const ProductDetail = ({
   if (product.isLoading)
     return (
       <View style={s.container}>
-        {topBar}
         <Text style={s.state}>상품을 불러오는 중이에요.</Text>
       </View>
     );
   if (product.isError || !product.data) {
     return (
       <View style={s.container}>
-        {topBar}
         <View style={s.stateGroup}>
           <Text style={s.state}>상품을 불러오지 못했어요.</Text>
           <Button
@@ -152,7 +129,6 @@ const ProductDetail = ({
 
   return (
     <View style={s.container}>
-      {topBar}
       <LegendList
         accessibilityLabel="상품 옵션 목록"
         contentContainerStyle={s.content}
@@ -312,17 +288,6 @@ const ProductDetail = ({
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.surface },
-  topBar: {
-    minHeight: 52,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line,
-  },
-  topBarTitle: { color: colors.ink, fontSize: 16, fontWeight: "700" },
-  topBarIcon: { color: colors.ink, fontSize: 14, fontWeight: "700" },
   list: { flex: 1 },
   content: { paddingBottom: 20 },
   header: { gap: 20 },
