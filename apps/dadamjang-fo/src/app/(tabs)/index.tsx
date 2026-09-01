@@ -1,23 +1,98 @@
+import { hashKey } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Text, View } from "react-native";
+import {
+  startTransition,
+  useLayoutEffect,
+  useMemo,
+  useOptimistic,
+  useRef,
+} from "react";
+import { Alert, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
-import { colors, spacing } from "@dadamjang/design-tokens";
 import type { IconAction } from "@dadamjang/mobile";
 
 import { useAuthActionGate } from "@/features/auth";
-import { Button, ProductLayout } from "@/shared/components";
+import {
+  toProductFilter,
+  useCategories,
+  useShopFilters,
+} from "@/features/catalog";
+import {
+  priceEvidenceQueryKeys,
+  useProductPriceSummaries,
+} from "@/features/price-evidence";
+import {
+  ShopCategoryBar,
+  ShopFilterBar,
+  ShopProductGrid,
+  ShopSortBar,
+} from "@/features/shop";
+import { useWishActions, useWishlist } from "@/features/wish";
+import { ProductLayout } from "@/shared/components";
+import { fetchUntilRowsGrow, uniqueBy } from "@/shared/lib";
+import { Sentry } from "@/shared/observability/sentry";
 
-const HomeScreen = () => {
+const ShopScreen = () => {
   const router = useRouter();
-  const notificationsGate = useAuthActionGate("/notifications");
-  const openNotifications = () =>
-    notificationsGate.runProtectedAction(() => router.push("/notifications"));
+  const { filters, updateFilters, startDraft } = useShopFilters();
+  const { data: categories = [] } = useCategories();
+  const currentUser = useAuthActionGate("/");
+  const { data: wishlist = [] } = useWishlist(currentUser.isAuthenticated);
+  const { add: addWish, remove: removeWish } = useWishActions();
+  const likedProductIds = useMemo(
+    () => new Set(wishlist.map((item) => item.productId)),
+    [wishlist],
+  );
+  const [optimisticLikedProductIds, updateOptimisticLike] = useOptimistic(
+    likedProductIds,
+    (current, { productId, liked }: { productId: string; liked: boolean }) => {
+      const next = new Set(current);
+      if (liked) next.add(productId);
+      else next.delete(productId);
+      return next;
+    },
+  );
+  const productFilter = useMemo(() => toProductFilter(filters), [filters]);
+  const productQueryIdentity = hashKey(
+    priceEvidenceQueryKeys.productPriceSummary(productFilter),
+  );
+  const productsQuery = useProductPriceSummaries(productFilter);
+  const currentProductQueryIdentity = useRef(productQueryIdentity);
+  const loadingProductQueryIdentity = useRef<string | undefined>(undefined);
+  const products = useMemo(
+    () =>
+      uniqueBy(
+        productsQuery.data?.pages.flatMap((page) => page.nodes) ?? [],
+        (product) => product.productId,
+      ),
+    [productsQuery.data?.pages],
+  );
+  const totalCount = productsQuery.data?.pages[0]?.totalCount ?? 0;
+
+  useLayoutEffect(() => {
+    currentProductQueryIdentity.current = productQueryIdentity;
+  }, [productQueryIdentity]);
+
+  const openFilter = (
+    mode: "category" | "brand" | "color" | "size" | "price",
+  ) => {
+    startDraft();
+    router.push({
+      pathname: "/shop-filter-sheet",
+      params: { mode },
+    });
+  };
+
   const headerActions: IconAction[] = [
     {
       accessibilityLabel: "알림",
       icon: { md: "notifications", sf: "bell" },
-      onPress: openNotifications,
+      onPress: () =>
+        currentUser.runProtectedAction(
+          () => router.push("/notifications"),
+          "/notifications",
+        ),
     },
     {
       accessibilityLabel: "장바구니",
@@ -26,28 +101,95 @@ const HomeScreen = () => {
     },
   ];
 
+  const handleToggleLike = (productId: string, nextLiked: boolean) => {
+    currentUser.runProtectedAction(() => {
+      const mutation = nextLiked ? addWish : removeWish;
+      startTransition(async () => {
+        updateOptimisticLike({ productId, liked: nextLiked });
+        try {
+          await mutation.mutateAsync(productId);
+        } catch (error) {
+          Sentry.captureException(error);
+          Alert.alert("찜을 저장하지 못했어요.", "잠시 후 다시 시도해 주세요.");
+        }
+      });
+    });
+  };
+
+  const handleLoadMore = async () => {
+    if (
+      loadingProductQueryIdentity.current === productQueryIdentity ||
+      productsQuery.isFetchingNextPage ||
+      !productsQuery.hasNextPage
+    )
+      return;
+
+    loadingProductQueryIdentity.current = productQueryIdentity;
+    try {
+      await fetchUntilRowsGrow(
+        productsQuery.data,
+        productsQuery.fetchNextPage,
+        (product) => product.productId,
+        2,
+        () => currentProductQueryIdentity.current === productQueryIdentity,
+      );
+    } finally {
+      if (loadingProductQueryIdentity.current === productQueryIdentity) {
+        loadingProductQueryIdentity.current = undefined;
+      }
+    }
+  };
+
   return (
     <ProductLayout headerActions={headerActions} variant="capsule">
       <View style={s.content}>
-        <Text style={s.title}>오늘의 다담장</Text>
-        <Text style={s.description}>
-          스타일을 발견하고 마음에 드는 상품을 둘러보세요.
-        </Text>
-        <Button label="쇼핑" onPress={() => router.push("/(tabs)/shop")} />
+        <ShopProductGrid
+          categoryBar={
+            <ShopCategoryBar
+              categories={categories}
+              selectedCategoryId={filters.categoryId}
+              onSelectCategory={(categoryId) =>
+                updateFilters({
+                  categoryId,
+                  categoryIds: [],
+                  categorySource: categoryId ? "navigation" : undefined,
+                })
+              }
+            />
+          }
+          filterBar={
+            <ShopFilterBar
+              filters={filters}
+              onOpenFilter={openFilter}
+              onToggleExpress={(expressOnly) => updateFilters({ expressOnly })}
+              onToggleSale={(saleOnly) => updateFilters({ saleOnly })}
+            />
+          }
+          hasNextPage={Boolean(productsQuery.hasNextPage)}
+          isError={productsQuery.isError}
+          isFetchingNextPage={productsQuery.isFetchingNextPage}
+          isLoading={productsQuery.isLoading}
+          likedProductIds={optimisticLikedProductIds}
+          onLoadMore={handleLoadMore}
+          onProductPress={(productId) => router.push(`/product/${productId}`)}
+          onRetry={() => productsQuery.refetch()}
+          onToggleLike={handleToggleLike}
+          products={products}
+          sortBar={
+            <ShopSortBar
+              sort={filters.sort}
+              totalCount={totalCount}
+              onOpenSort={() => router.push("/shop-sort-sheet")}
+            />
+          }
+        />
       </View>
     </ProductLayout>
   );
 };
 
 const s = StyleSheet.create({
-  content: {
-    flex: 1,
-    gap: spacing.md,
-    padding: spacing.xl,
-    backgroundColor: colors.surface,
-  },
-  title: { color: colors.ink, fontSize: 24, fontWeight: "700" },
-  description: { color: colors.muted, fontSize: 15, lineHeight: 22 },
+  content: { flex: 1 },
 });
 
-export default HomeScreen;
+export default ShopScreen;

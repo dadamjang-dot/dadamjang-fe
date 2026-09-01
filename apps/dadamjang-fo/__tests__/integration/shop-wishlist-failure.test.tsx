@@ -7,7 +7,7 @@ import {
 import type { ReactNode } from "react";
 import { Alert } from "react-native";
 
-import ShopScreen from "@/app/(tabs)/shop";
+import ShopScreen from "@/app/(tabs)";
 import { Sentry } from "@/shared/observability/sentry";
 
 const mockAddWish = jest.fn();

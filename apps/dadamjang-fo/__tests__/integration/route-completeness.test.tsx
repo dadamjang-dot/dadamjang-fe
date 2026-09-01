@@ -8,7 +8,6 @@ import type { ReactNode } from "react";
 
 import HomeScreen from "@/app/(tabs)";
 import MyScreen from "@/app/(tabs)/my";
-import ShopScreen from "@/app/(tabs)/shop";
 import StyleScreen from "@/app/(tabs)/style";
 import WishScreen from "@/app/(tabs)/wish";
 import { useAuthActionGate, useCurrentUser, useSignOut } from "@/features/auth";
@@ -353,20 +352,18 @@ describe("FO route completeness", () => {
     } as never);
   });
 
-  it("routes every Home action to notifications, shop, or cart", async () => {
+  it("routes every Shopping header action to notifications or cart", async () => {
     const user = userEvent.setup();
     render(<HomeScreen />);
 
     await user.press(screen.getByRole("button", { name: "알림" }));
-    await user.press(screen.getByRole("button", { name: "쇼핑" }));
     await user.press(screen.getByRole("button", { name: "장바구니" }));
 
     expect(mockPush.mock.calls.map(([path]) => path)).toEqual([
       "/notifications",
-      "/(tabs)/shop",
       "/cart",
     ]);
-    expect(useAuthActionGate).toHaveBeenCalledWith("/notifications");
+    expect(useAuthActionGate).toHaveBeenCalledWith("/");
   });
 
   it("shows the authenticated account and routes My header actions", async () => {
@@ -386,7 +383,7 @@ describe("FO route completeness", () => {
     ]);
   });
 
-  it("renders the approved five-tab header action matrix", () => {
+  it("renders the approved four-tab header action matrix", () => {
     const anyPress = expect.any(Function);
     const expectedCart = {
       accessibilityLabel: "장바구니",
@@ -397,8 +394,6 @@ describe("FO route completeness", () => {
     renderedHome.unmount();
     const renderedStyle = render(<StyleScreen />);
     renderedStyle.unmount();
-    const renderedShop = render(<ShopScreen />);
-    renderedShop.unmount();
     const renderedWish = render(<WishScreen />);
     renderedWish.unmount();
     const renderedMy = render(<MyScreen />);
@@ -434,17 +429,6 @@ describe("FO route completeness", () => {
         ],
         variant: "circularPair",
       },
-      {
-        headerActions: [
-          {
-            accessibilityLabel: "쇼핑 메뉴",
-            icon: { md: "menu", sf: "line.3.horizontal" },
-            onPress: anyPress,
-          },
-          expectedCart,
-        ],
-        variant: "capsule",
-      },
     ]);
     expect(mockActionButtons).toEqual([
       { actions: [expectedCart], iconOnly: true },
@@ -466,8 +450,6 @@ describe("FO route completeness", () => {
       "/notifications",
       "/cart",
       "/style-compose",
-      "/cart",
-      "/shop-menu-sheet",
       "/cart",
       "/cart",
       "/settings",
