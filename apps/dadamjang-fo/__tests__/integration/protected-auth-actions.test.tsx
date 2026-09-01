@@ -11,7 +11,6 @@ import type { ReactNode } from "react";
 
 import HomeScreen from "@/app/(tabs)";
 import MyScreen from "@/app/(tabs)/my";
-import ShopScreen from "@/app/(tabs)/shop";
 import StyleScreen from "@/app/(tabs)/style";
 import WishScreen from "@/app/(tabs)/wish";
 import CartScreen from "@/app/cart";
@@ -425,16 +424,16 @@ describe("protected FO routes and actions", () => {
     });
   });
 
-  it("gates Shop wish mutations on the original Shop route", () => {
-    mockPathname = "/shop";
-    render(<ShopScreen />, { wrapper: createWrapper() });
+  it("gates Shopping wish mutations on the root route", () => {
+    mockPathname = "/";
+    render(<HomeScreen />, { wrapper: createWrapper() });
 
     fireEvent.press(screen.getByTestId("shop.toggle-wish"));
 
     expect(addWish).not.toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/auth",
-      params: { returnTo: "/shop" },
+      params: { returnTo: "/" },
     });
   });
 

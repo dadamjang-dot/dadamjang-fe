@@ -193,6 +193,7 @@ const s = StyleSheet.create({
     color: colors.muted,
     fontSize: 14,
     lineHeight: 16,
+    transform: [{ translateY: -2 }],
   },
   activeChip: {
     borderColor: colors.primary,

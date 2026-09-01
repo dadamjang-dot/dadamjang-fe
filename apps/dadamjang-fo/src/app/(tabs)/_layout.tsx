@@ -24,7 +24,7 @@ const TabLayout = () => (
     minimizeBehavior="never"
     shadowColor={colors.line}
   >
-    <NativeTabs.Trigger name="index">
+    <NativeTabs.Trigger name="index" testID="e2e.navigation.shop">
       <NativeTabs.Trigger.Label>홈</NativeTabs.Trigger.Label>
       <NativeTabs.Trigger.Icon
         md="home"
@@ -37,10 +37,6 @@ const TabLayout = () => (
         md="add_box"
         sf={{ default: "plus.square", selected: "plus.square.fill" }}
       />
-    </NativeTabs.Trigger>
-    <NativeTabs.Trigger name="shop" testID="e2e.navigation.shop">
-      <NativeTabs.Trigger.Label>쇼핑</NativeTabs.Trigger.Label>
-      <NativeTabs.Trigger.Icon md="search" sf="magnifyingglass" />
     </NativeTabs.Trigger>
     <NativeTabs.Trigger name="wish" testID="e2e.navigation.wish">
       <NativeTabs.Trigger.Label>위시</NativeTabs.Trigger.Label>

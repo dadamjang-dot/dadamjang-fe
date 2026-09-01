@@ -6,11 +6,13 @@ import type { ReactNode } from "react";
 import { Text } from "react-native";
 
 import AuthScreen from "@/app/auth";
+import LegacyShopRedirect from "@/app/shop";
 import { AuthFlowProvider } from "@/features/auth/auth-flow-provider";
 
 const Home = () => <Link href="/auth/signin">Sign in</Link>;
-const SignIn = () => <Link href="/(tabs)/shop">Shop</Link>;
+const SignIn = () => <Link href="/">Shop</Link>;
 const Product = () => <Text>Product detail</Text>;
+const ShoppingRoot = () => <Text>Shopping root</Text>;
 
 const AuthWrapper = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider client={new QueryClient()}>
@@ -34,7 +36,6 @@ describe("Expo Router paths", () => {
       {
         index: Home,
         "auth/signin": SignIn,
-        "(tabs)/shop": () => <Text>Shop</Text>,
       },
       { initialUrl: "/" },
     );
@@ -42,7 +43,7 @@ describe("Expo Router paths", () => {
     await fireEvent.press(await screen.findByText("Sign in"));
     expect(router.getPathname()).toBe("/auth/signin");
     await fireEvent.press(screen.getByText("Shop"));
-    expect(router.getPathname()).toBe("/shop");
+    expect(router.getPathname()).toBe("/");
   });
 
   it("resolves a product deep link with route params", async () => {
@@ -54,5 +55,15 @@ describe("Expo Router paths", () => {
     await screen.findByText("Product detail");
     expect(router.getPathname()).toBe("/product/product-42");
     expect(router.getSearchParams()).toEqual({ "product-id": "product-42" });
+  });
+
+  it("redirects the legacy Shop deep link to the shopping root", async () => {
+    const router = renderRouter(
+      { index: ShoppingRoot, shop: LegacyShopRedirect },
+      { initialUrl: "/shop" },
+    );
+
+    await screen.findByText("Shopping root");
+    expect(router.getPathname()).toBe("/");
   });
 });

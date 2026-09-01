@@ -62,6 +62,7 @@ const s = StyleSheet.create({
     color: colors.muted,
     fontSize: 18,
     lineHeight: 16,
+    transform: [{ translateY: -2 }],
   },
 });
 

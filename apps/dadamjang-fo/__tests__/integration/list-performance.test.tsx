@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
-import ShopScreen from "@/app/(tabs)/shop";
+import ShopScreen from "@/app/(tabs)";
 import StyleScreen from "@/app/(tabs)/style";
 import OrdersScreen from "@/app/orders";
 import { AuthSessionStateProvider, authQueryKeys } from "@/features/auth";

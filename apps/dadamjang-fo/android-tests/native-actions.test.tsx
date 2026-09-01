@@ -3,10 +3,10 @@ import type { ComponentType, ReactNode } from "react";
 import { View } from "react-native";
 
 import { ActionButton, type IconAction } from "@dadamjang/mobile";
-import HomeScreen from "../src/app/(tabs)";
 import TabLayout from "../src/app/(tabs)/_layout";
 import { defaultShopFilters } from "../src/features/catalog/shop-filters";
 import ShopFilterBar from "../src/features/shop/components/shop-filter-bar";
+import ShopSortBar from "../src/features/shop/components/shop-sort-bar";
 import StylePostCard from "../src/features/style/components/style-post-card";
 import StylePostDetail from "../src/features/style/components/style-post-detail";
 import type { StylePost } from "../src/features/style/types";
@@ -14,20 +14,6 @@ import WishProductCard from "../src/features/wish/components/wish-product-card";
 import { ProductLayout } from "../src/shared/components/product-layout";
 
 jest.mock("expo-image", () => ({ Image: "ExpoImage" }));
-
-const mockPush = jest.fn();
-const mockRunProtectedAction = jest.fn((action: () => void) => {
-  action();
-  return true;
-});
-
-jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: mockPush }),
-}));
-
-jest.mock("@/features/auth", () => ({
-  useAuthActionGate: () => ({ runProtectedAction: mockRunProtectedAction }),
-}));
 
 jest.mock("@/shared/components", () => ({
   ...jest.requireActual("./mocks/shared-components"),
@@ -121,32 +107,6 @@ const stylePost: StylePost = {
 };
 
 describe("Android native actions", () => {
-  it("renders the approved Home notification and cart actions", async () => {
-    const user = createUser();
-
-    await renderAsync(<HomeScreen />);
-
-    const notificationButton = screen.getByRole("button", { name: "알림" });
-    const cartButton = screen.getByRole("button", { name: "장바구니" });
-    expect(screen.getByRole("img", { name: "알림" })).toHaveProp(
-      "source",
-      materialIconSource,
-    );
-    expect(screen.getByRole("img", { name: "장바구니" })).toHaveProp(
-      "source",
-      materialIconSource,
-    );
-
-    await user.press(notificationButton);
-    await user.press(cartButton);
-
-    expect(mockRunProtectedAction).toHaveBeenCalledTimes(1);
-    expect(mockPush.mock.calls.map(([path]) => path)).toEqual([
-      "/notifications",
-      "/cart",
-    ]);
-  });
-
   it("passes synchronous accessible icon props and invokes each action", async () => {
     const onNotificationPress = jest.fn();
     const onCartPress = jest.fn();
@@ -236,12 +196,43 @@ describe("Android native actions", () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it("provides a Material icon for every native tab", async () => {
+  it("centers the filter and sort disclosure glyphs", async () => {
+    await renderAsync(
+      <View>
+        <ShopFilterBar
+          filters={defaultShopFilters}
+          onOpenFilter={jest.fn()}
+          onToggleExpress={jest.fn()}
+          onToggleSale={jest.fn()}
+        />
+        <ShopSortBar
+          onOpenSort={jest.fn()}
+          sort="RECOMMENDED"
+          totalCount={4}
+        />
+      </View>,
+    );
+
+    const disclosureGlyphs = screen.getAllByText("⌄");
+    expect(disclosureGlyphs).toHaveLength(6);
+    disclosureGlyphs.forEach((glyph) =>
+      expect(glyph).toHaveStyle({ transform: [{ translateY: -2 }] }),
+    );
+  });
+
+  it("keeps the Home tab label while using it as the shopping root", async () => {
     await renderAsync(<TabLayout />);
 
+    expect(screen.getAllByText("홈")).toHaveLength(1);
+    expect(screen.queryByText("쇼핑")).toBeNull();
+    expect(screen.getByTestId("e2e.navigation.shop")).toHaveProp(
+      "nativeID",
+      "index",
+    );
     expect(screen.getByRole("img", { name: "home" })).toBeOnTheScreen();
+    expect(screen.queryByRole("img", { name: "search" })).toBeNull();
+    expect(screen.getAllByRole("img")).toHaveLength(4);
     expect(screen.getByRole("img", { name: "add_box" })).toBeOnTheScreen();
-    expect(screen.getByRole("img", { name: "search" })).toBeOnTheScreen();
     expect(screen.getByRole("img", { name: "favorite" })).toBeOnTheScreen();
     expect(screen.getByRole("img", { name: "person" })).toBeOnTheScreen();
   });
