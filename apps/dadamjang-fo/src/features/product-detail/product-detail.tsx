@@ -8,7 +8,7 @@ import { colors } from "@dadamjang/design-tokens";
 
 import { useAuthActionGate } from "@/features/auth";
 import { useCartActions } from "@/features/cart";
-import { useProduct } from "@/features/catalog";
+import { useCatalogFilterOptions, useProduct } from "@/features/catalog";
 import { useProductPriceSummary } from "@/features/price-evidence";
 import {
   useBrandFollowActions,
@@ -31,6 +31,7 @@ const formatPrice = (price?: number) =>
 
 const ProductDetail = ({ onOpenCart, productId }: ProductDetailProps) => {
   const product = useProduct(productId);
+  const catalogFilterOptions = useCatalogFilterOptions();
   const summary = useProductPriceSummary(productId);
   const cart = useCartActions();
   const currentUser = useAuthActionGate(`/product/${productId}`);
@@ -42,6 +43,8 @@ const ProductDetail = ({ onOpenCart, productId }: ProductDetailProps) => {
   const brandActions = useBrandFollowActions();
   const { mutate: recordRecentProductView } = useRecordRecentProductView();
   const [selectedSkuId, setSelectedSkuId] = useState<string>();
+  const [selectedColorId, setSelectedColorId] = useState<string>();
+  const [selectedSizeId, setSelectedSizeId] = useState<string>();
   const [quantityDraft, setQuantityDraft] = useState(1);
 
   useEffect(() => {
@@ -79,6 +82,39 @@ const ProductDetail = ({ onOpenCart, productId }: ProductDetailProps) => {
   }
 
   const { data } = product;
+  const hasColorDimension = data.skus.some(({ colorId }) => colorId !== null);
+  const hasSizeDimension = data.skus.some(({ sizeId }) => sizeId !== null);
+  const colorsById = new Map(
+    catalogFilterOptions.data?.colors.map((color) => [color.colorId, color]),
+  );
+  const sizesById = new Map(
+    catalogFilterOptions.data?.sizes.map((size) => [size.sizeId, size]),
+  );
+  const hasResolvedStructuredOptions =
+    Boolean(catalogFilterOptions.data) &&
+    (!hasColorDimension ||
+      data.skus.every(
+        ({ colorId }) =>
+          colorId !== null && colorId !== "" && colorsById.has(colorId),
+      )) &&
+    (!hasSizeDimension ||
+      data.skus.every(
+        ({ sizeId }) => sizeId !== null && sizeId !== "" && sizesById.has(sizeId),
+      ));
+  const optionKeys = data.skus.map(
+    ({ colorId, sizeId }) =>
+      `${hasColorDimension ? colorId : ""}:${hasSizeDimension ? sizeId : ""}`,
+  );
+  const showsSeparatedOptions =
+    hasResolvedStructuredOptions &&
+    new Set(optionKeys).size === optionKeys.length &&
+    (hasColorDimension || hasSizeDimension);
+  const colorOptions = catalogFilterOptions.data?.colors.filter((color) =>
+    data.skus.some(({ colorId }) => colorId === color.colorId),
+  );
+  const sizeOptions = catalogFilterOptions.data?.sizes.filter((size) =>
+    data.skus.some(({ sizeId }) => sizeId === size.sizeId),
+  );
   const selectedSku = data.skus.find(({ skuId }) => skuId === selectedSkuId);
   const hasPurchasableSku = data.skus.some(({ stock }) => stock > 0);
   const isSelectedSkuSoldOut = Boolean(selectedSku && selectedSku.stock <= 0);
@@ -124,12 +160,43 @@ const ProductDetail = ({ onOpenCart, productId }: ProductDetailProps) => {
     );
   };
 
+  const selectStructuredOption = (dimension: "color" | "size", id: string) => {
+    const nextColorId = dimension === "color" ? id : selectedColorId;
+    const nextSizeId = dimension === "size" ? id : selectedSizeId;
+    const hasPurchasableCombination = data.skus.some(
+      (sku) =>
+        sku.stock > 0 &&
+        (!hasColorDimension || sku.colorId === nextColorId) &&
+        (!hasSizeDimension || sku.sizeId === nextSizeId),
+    );
+    const resolvedColorId =
+      dimension === "size" && !hasPurchasableCombination
+        ? undefined
+        : nextColorId;
+    const resolvedSizeId =
+      dimension === "color" && !hasPurchasableCombination
+        ? undefined
+        : nextSizeId;
+    const matchingSkus = data.skus.filter(
+      (sku) =>
+        (!hasColorDimension || sku.colorId === resolvedColorId) &&
+        (!hasSizeDimension || sku.sizeId === resolvedSizeId),
+    );
+
+    setSelectedColorId(resolvedColorId);
+    setSelectedSizeId(resolvedSizeId);
+    setSelectedSkuId(
+      matchingSkus.length === 1 ? matchingSkus.at(0)?.skuId : undefined,
+    );
+    setQuantityDraft(1);
+  };
+
   return (
     <View style={s.container}>
       <LegendList
         accessibilityLabel="상품 옵션 목록"
         contentContainerStyle={s.content}
-        data={data.skus}
+        data={showsSeparatedOptions ? [] : data.skus}
         extraData={selectedSkuId}
         keyExtractor={(sku) => sku.skuId}
         ListHeaderComponent={
@@ -196,6 +263,90 @@ const ProductDetail = ({ onOpenCart, productId }: ProductDetailProps) => {
               </View>
               <Text style={s.description}>{data.description}</Text>
               <Text style={s.sectionTitle}>옵션 선택</Text>
+              {showsSeparatedOptions && hasColorDimension ? (
+                <View
+                  accessibilityLabel="컬러"
+                  accessibilityRole="radiogroup"
+                  style={s.optionGroup}
+                >
+                  <Text style={s.optionGroupTitle}>컬러</Text>
+                  <View style={s.optionChoices}>
+                    {colorOptions?.map((color) => {
+                      const isDisabled = !data.skus.some(
+                        (sku) =>
+                          sku.colorId === color.colorId && sku.stock > 0,
+                      );
+                      return (
+                        <Pressable
+                          key={color.colorId}
+                          accessibilityLabel={color.name}
+                          accessibilityRole="radio"
+                          accessibilityState={{
+                            disabled: isDisabled,
+                            selected: selectedColorId === color.colorId,
+                          }}
+                          disabled={isDisabled}
+                          onPress={() =>
+                            selectStructuredOption("color", color.colorId)
+                          }
+                          style={[
+                            s.structuredOption,
+                            selectedColorId === color.colorId &&
+                              s.selectedOption,
+                            isDisabled && s.soldOutOption,
+                          ]}
+                          testID={`e2e.product.color.${color.colorId}`}
+                        >
+                          <Text style={s.optionLabel}>{color.name}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
+              {showsSeparatedOptions && hasSizeDimension ? (
+                <View
+                  accessibilityLabel="사이즈"
+                  accessibilityRole="radiogroup"
+                  style={s.optionGroup}
+                >
+                  <Text style={s.optionGroupTitle}>사이즈</Text>
+                  <View style={s.optionChoices}>
+                    {sizeOptions?.map((size) => {
+                      const isDisabled = !data.skus.some(
+                        (sku) =>
+                          sku.sizeId === size.sizeId &&
+                          sku.stock > 0 &&
+                          (!selectedColorId ||
+                            sku.colorId === selectedColorId),
+                      );
+                      return (
+                        <Pressable
+                          key={size.sizeId}
+                          accessibilityLabel={size.name}
+                          accessibilityRole="radio"
+                          accessibilityState={{
+                            disabled: isDisabled,
+                            selected: selectedSizeId === size.sizeId,
+                          }}
+                          disabled={isDisabled}
+                          onPress={() =>
+                            selectStructuredOption("size", size.sizeId)
+                          }
+                          style={[
+                            s.structuredOption,
+                            selectedSizeId === size.sizeId && s.selectedOption,
+                            isDisabled && s.soldOutOption,
+                          ]}
+                          testID={`e2e.product.size.${size.sizeId}`}
+                        >
+                          <Text style={s.optionLabel}>{size.name}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
             </View>
           </View>
         }
@@ -305,6 +456,17 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     marginHorizontal: 20,
     marginBottom: 8,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 8,
+  },
+  optionGroup: { gap: 8 },
+  optionGroupTitle: { color: colors.ink, fontSize: 14, fontWeight: "700" },
+  optionChoices: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  structuredOption: {
+    minHeight: 44,
+    justifyContent: "center",
     paddingHorizontal: 16,
     borderWidth: 1,
     borderColor: colors.line,

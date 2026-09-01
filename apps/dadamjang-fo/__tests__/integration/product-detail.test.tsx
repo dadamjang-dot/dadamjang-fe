@@ -9,7 +9,7 @@ import { ScrollView } from "react-native";
 import { ProductDetail } from "@/features/product-detail";
 import { useAuthActionGate } from "@/features/auth";
 import { useCartActions } from "@/features/cart";
-import { useProduct } from "@/features/catalog";
+import { useCatalogFilterOptions, useProduct } from "@/features/catalog";
 import { useProductPriceSummary } from "@/features/price-evidence";
 import {
   useBrandFollowActions,
@@ -60,7 +60,10 @@ jest.mock("@legendapp/list/react-native", () => {
 });
 jest.mock("@/features/auth", () => ({ useAuthActionGate: jest.fn() }));
 jest.mock("@/features/cart", () => ({ useCartActions: jest.fn() }));
-jest.mock("@/features/catalog", () => ({ useProduct: jest.fn() }));
+jest.mock("@/features/catalog", () => ({
+  useCatalogFilterOptions: jest.fn(),
+  useProduct: jest.fn(),
+}));
 jest.mock("@/features/price-evidence", () => {
   return {
     useProductPriceSummary: jest.fn(),
@@ -108,6 +111,33 @@ const product = {
       price: 21_000,
       stock: 0,
     },
+    {
+      skuId: "sku-black-s",
+      code: "BLACK-S",
+      colorId: "black",
+      sizeId: "s",
+      optionName: "블랙 / S",
+      price: 20_000,
+      stock: 3,
+    },
+    {
+      skuId: "sku-white-m",
+      code: "WHITE-M",
+      colorId: "white",
+      sizeId: "m",
+      optionName: "화이트 / M",
+      price: 22_000,
+      stock: 1,
+    },
+    {
+      skuId: "sku-gray-s",
+      code: "GRAY-S",
+      colorId: "gray",
+      sizeId: "s",
+      optionName: "그레이 / S",
+      price: 20_000,
+      stock: 0,
+    },
   ],
   createdAt: "2026-08-31T00:00:00.000Z",
 };
@@ -120,6 +150,11 @@ const renderDetail = () =>
 
 describe("product detail", () => {
   beforeEach(() => {
+    jest.mocked(useCatalogFilterOptions).mockReturnValue({
+      data: undefined,
+      isError: false,
+      isLoading: false,
+    } as never);
     jest.mocked(useProduct).mockReturnValue({
       data: product,
       isError: false,
@@ -301,6 +336,61 @@ describe("product detail", () => {
       "가격 정보 없음",
     );
     expect(screen.getByRole("button", { name: "품절" })).toBeDisabled();
+  });
+
+  it("resolves catalog color and size selections to a purchasable SKU", async () => {
+    const user = userEvent.setup();
+    jest.mocked(useCatalogFilterOptions).mockReturnValue({
+      data: {
+        categories: [],
+        brands: [],
+        colors: [
+          { colorId: "black", name: "블랙", slug: "black", hexCode: "#000000" },
+          { colorId: "white", name: "화이트", slug: "white", hexCode: "#FFFFFF" },
+          { colorId: "gray", name: "그레이", slug: "gray", hexCode: "#808080" },
+        ],
+        sizes: [
+          { sizeId: "s", name: "S", slug: "s", sortOrder: 1 },
+          { sizeId: "m", name: "M", slug: "m", sortOrder: 2 },
+        ],
+      },
+      isError: false,
+      isLoading: false,
+    } as never);
+    renderDetail();
+
+    expect(screen.getByLabelText("컬러")).toBeVisible();
+    expect(screen.getByLabelText("사이즈")).toBeVisible();
+    expect(screen.getByRole("radio", { name: "그레이" })).toBeDisabled();
+
+    await user.press(screen.getByRole("radio", { name: "블랙" }));
+    expect(screen.getByRole("radio", { name: "S" })).toBeEnabled();
+    await user.press(screen.getByRole("radio", { name: "M" }));
+    await user.press(screen.getByRole("button", { name: "수량 늘리기" }));
+    expect(screen.getByTestId("e2e.cart.quantity.value")).toHaveTextContent(
+      "2",
+    );
+
+    await user.press(screen.getByRole("radio", { name: "S" }));
+    expect(screen.getByTestId("e2e.product.price")).toHaveTextContent(
+      "20,000원",
+    );
+    expect(screen.getByTestId("e2e.cart.quantity.value")).toHaveTextContent(
+      "1",
+    );
+    await user.press(screen.getByTestId("e2e.product.buy"));
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      { quantity: 1, skuId: "sku-black-s" },
+      expect.objectContaining({ onSuccess: expect.any(Function) }),
+    );
+
+    await user.press(screen.getByRole("radio", { name: "화이트" }));
+    expect(screen.getByRole("radio", { name: "S" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "S" })).toHaveProp(
+      "accessibilityState",
+      expect.objectContaining({ selected: false }),
+    );
   });
 
   it("uses the selected SKU price and never lets quantity exceed its stock", async () => {
