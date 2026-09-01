@@ -21,7 +21,12 @@ const ProductImageGallery = ({
 
   if (imageUrls.length === 0) {
     return (
-      <View accessibilityLabel={`${title} 이미지 없음`} style={s.placeholder}>
+      <View
+        accessible
+        accessibilityLabel={`${title} 이미지 없음`}
+        accessibilityRole="image"
+        style={s.placeholder}
+      >
         <Text style={s.placeholderLabel}>상품 이미지가 없어요.</Text>
       </View>
     );
@@ -51,7 +56,7 @@ const ProductImageGallery = ({
             key={`${productId}:${index}:${imageUrl}`}
             recyclingKey={`${productId}:${index}:${imageUrl}`}
             source={imageUrl}
-            style={[s.image, { width, height: (width * 5) / 4 }]}
+            style={s.image(width)}
           />
         ))}
       </ScrollView>
@@ -63,7 +68,11 @@ const ProductImageGallery = ({
 };
 
 const s = StyleSheet.create({
-  image: { backgroundColor: colors.primarySoft },
+  image: (width: number) => ({
+    width,
+    height: (width * 5) / 4,
+    backgroundColor: colors.primarySoft,
+  }),
   placeholder: {
     aspectRatio: 4 / 5,
     alignItems: "center",

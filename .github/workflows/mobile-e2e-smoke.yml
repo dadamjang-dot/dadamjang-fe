@@ -140,6 +140,7 @@ jobs:
           maestro test --format junit --output .maestro-artifacts/junit.xml --test-output-dir .maestro-artifacts/screenshots --debug-output .maestro-artifacts/debug .maestro/ios-smoke.yaml
         env:
           E2E_PRODUCT_ID: ${{ vars.E2E_PRODUCT_ID }}
+          E2E_SKU_ID: ${{ vars.E2E_SKU_ID }}
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -217,6 +218,7 @@ jobs:
             maestro test --format junit --output .maestro-artifacts/junit.xml --test-output-dir .maestro-artifacts/screenshots --debug-output .maestro-artifacts/debug .maestro/android-smoke.yaml
         env:
           E2E_PRODUCT_ID: ${{ vars.E2E_PRODUCT_ID }}
+          E2E_SKU_ID: ${{ vars.E2E_SKU_ID }}
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

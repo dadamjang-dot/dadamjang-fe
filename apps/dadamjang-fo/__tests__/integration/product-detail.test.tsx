@@ -22,23 +22,30 @@ import {
 jest.mock("expo-image", () => ({ Image: "ExpoImage" }));
 jest.mock("@legendapp/list/react-native", () => {
   const React = jest.requireActual<typeof import("react")>("react");
-  const { View } =
+  const { Text, View } =
     jest.requireActual<typeof import("react-native")>("react-native");
   return {
     LegendList: ({
       data,
+      extraData,
       ListFooterComponent,
       ListHeaderComponent,
       renderItem,
     }: {
       data: unknown[];
+      extraData?: unknown;
       ListFooterComponent?: React.ReactNode;
       ListHeaderComponent?: React.ReactNode;
       renderItem: ({ item }: { item: unknown }) => React.ReactNode;
     }) =>
       React.createElement(
         View,
-        null,
+        { testID: "e2e.product.options-list" },
+        React.createElement(
+          Text,
+          { testID: "e2e.product.options-list.extra-data" },
+          typeof extraData === "string" ? extraData : "",
+        ),
         ListHeaderComponent,
         ...data.map((item, index) =>
           React.createElement(
@@ -210,19 +217,65 @@ describe("product detail", () => {
 
     renderDetail();
 
-    expect(screen.getByLabelText("테스트 재킷 이미지 없음")).toBeVisible();
+    const placeholder = screen.getByLabelText("테스트 재킷 이미지 없음");
+    expect(placeholder).toBeVisible();
+    expect(placeholder).toHaveProp("accessible", true);
+    expect(placeholder).toHaveProp("accessibilityRole", "image");
   });
 
-  it("keeps product loading separate from the price summary state", () => {
+  it("keeps the top bar available while product data is loading", async () => {
+    const onBack = jest.fn();
+    const onOpenCart = jest.fn();
+    const user = userEvent.setup();
     jest.mocked(useProduct).mockReturnValue({
       data: undefined,
       isError: false,
       isLoading: true,
     } as never);
 
-    renderDetail();
+    render(
+      <ProductDetail
+        onBack={onBack}
+        onOpenCart={onOpenCart}
+        productId="product-1"
+      />,
+    );
 
     expect(screen.getByText("상품을 불러오는 중이에요.")).toBeVisible();
+    await user.press(screen.getByRole("button", { name: "뒤로 가기" }));
+    await user.press(screen.getByTestId("e2e.product.cart"));
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onOpenCart).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the top bar and retry action available after a product error", async () => {
+    const onBack = jest.fn();
+    const onOpenCart = jest.fn();
+    const refetch = jest.fn();
+    const user = userEvent.setup();
+    jest.mocked(useProduct).mockReturnValue({
+      data: undefined,
+      isError: true,
+      isLoading: false,
+      refetch,
+    } as never);
+
+    render(
+      <ProductDetail
+        onBack={onBack}
+        onOpenCart={onOpenCart}
+        productId="product-1"
+      />,
+    );
+
+    await user.press(screen.getByRole("button", { name: "뒤로 가기" }));
+    await user.press(screen.getByTestId("e2e.product.cart"));
+    await user.press(screen.getByTestId("e2e.product.retry"));
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onOpenCart).toHaveBeenCalledTimes(1);
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it("keeps product metadata and the summary price visible before an option is selected", () => {
@@ -296,6 +349,17 @@ describe("product detail", () => {
     expect(screen.getByRole("button", { name: "수량 늘리기" })).toBeDisabled();
   });
 
+  it("passes the selected SKU to the virtualized option list rerender contract", async () => {
+    const user = userEvent.setup();
+    renderDetail();
+
+    await user.press(screen.getByRole("radio", { name: "블랙 / M" }));
+
+    expect(
+      screen.getByTestId("e2e.product.options-list.extra-data"),
+    ).toHaveTextContent("sku-black");
+  });
+
   it("keeps a selected option visible but blocks purchase after its stock is refreshed to zero", async () => {
     const user = userEvent.setup();
     const detail = renderDetail();
@@ -324,6 +388,11 @@ describe("product detail", () => {
       expect.objectContaining({ selected: true }),
     );
     expect(screen.getByRole("button", { name: "품절" })).toBeDisabled();
+    expect(screen.getByTestId("e2e.cart.quantity.value")).toHaveTextContent(
+      "0",
+    );
+    expect(screen.getByRole("button", { name: "수량 줄이기" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "수량 늘리기" })).toBeDisabled();
   });
 
   it("labels the purchase action sold out when no SKU can be purchased", () => {
