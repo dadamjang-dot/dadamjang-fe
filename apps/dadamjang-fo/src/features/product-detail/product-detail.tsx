@@ -393,6 +393,8 @@ const ProductDetail = ({ onOpenCart, productId }: ProductDetailProps) => {
               disabled={isSoldOut}
               onPress={() => {
                 setSelectedSkuId(sku.skuId);
+                setSelectedColorId(sku.colorId ?? undefined);
+                setSelectedSizeId(sku.sizeId ?? undefined);
                 setQuantityDraft(1);
               }}
               style={[

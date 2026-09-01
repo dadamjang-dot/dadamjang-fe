@@ -142,6 +142,20 @@ const product = {
   createdAt: "2026-08-31T00:00:00.000Z",
 };
 
+const catalogFilterOptions = {
+  categories: [],
+  brands: [],
+  colors: [
+    { colorId: "black", name: "블랙", slug: "black", hexCode: "#000000" },
+    { colorId: "white", name: "화이트", slug: "white", hexCode: "#FFFFFF" },
+    { colorId: "gray", name: "그레이", slug: "gray", hexCode: "#808080" },
+  ],
+  sizes: [
+    { sizeId: "s", name: "S", slug: "s", sortOrder: 1 },
+    { sizeId: "m", name: "M", slug: "m", sortOrder: 2 },
+  ],
+};
+
 const mockUpsert = jest.fn();
 const mockOpenCart = jest.fn();
 
@@ -341,19 +355,7 @@ describe("product detail", () => {
   it("resolves catalog color and size selections to a purchasable SKU", async () => {
     const user = userEvent.setup();
     jest.mocked(useCatalogFilterOptions).mockReturnValue({
-      data: {
-        categories: [],
-        brands: [],
-        colors: [
-          { colorId: "black", name: "블랙", slug: "black", hexCode: "#000000" },
-          { colorId: "white", name: "화이트", slug: "white", hexCode: "#FFFFFF" },
-          { colorId: "gray", name: "그레이", slug: "gray", hexCode: "#808080" },
-        ],
-        sizes: [
-          { sizeId: "s", name: "S", slug: "s", sortOrder: 1 },
-          { sizeId: "m", name: "M", slug: "m", sortOrder: 2 },
-        ],
-      },
+      data: catalogFilterOptions,
       isError: false,
       isLoading: false,
     } as never);
@@ -391,6 +393,98 @@ describe("product detail", () => {
       "accessibilityState",
       expect.objectContaining({ selected: false }),
     );
+  });
+
+  it("keeps a flat selected SKU represented when catalog options arrive", async () => {
+    const user = userEvent.setup();
+    const detail = renderDetail();
+
+    await user.press(screen.getByTestId("e2e.product.sku.sku-black"));
+    jest.mocked(useCatalogFilterOptions).mockReturnValue({
+      data: catalogFilterOptions,
+      isError: false,
+      isLoading: false,
+    } as never);
+    detail.rerender(
+      <ProductDetail onOpenCart={mockOpenCart} productId="product-1" />,
+    );
+
+    expect(screen.queryByTestId("e2e.product.sku.sku-black")).toBeNull();
+    expect(screen.getByRole("radio", { name: "블랙" })).toHaveProp(
+      "accessibilityState",
+      expect.objectContaining({ selected: true }),
+    );
+    expect(screen.getByRole("radio", { name: "M" })).toHaveProp(
+      "accessibilityState",
+      expect.objectContaining({ selected: true }),
+    );
+    expect(screen.getByRole("button", { name: "구매하기" })).toBeEnabled();
+  });
+
+  it("resolves a color-only SKU from its catalog selector", async () => {
+    const user = userEvent.setup();
+    jest.mocked(useProduct).mockReturnValue({
+      data: { ...product, skus: [{ ...product.skus[0], sizeId: null }] },
+      isError: false,
+      isLoading: false,
+    } as never);
+    jest.mocked(useCatalogFilterOptions).mockReturnValue({
+      data: catalogFilterOptions,
+      isError: false,
+      isLoading: false,
+    } as never);
+    renderDetail();
+
+    expect(screen.getByLabelText("컬러")).toBeVisible();
+    expect(screen.queryByLabelText("사이즈")).toBeNull();
+    await user.press(screen.getByRole("radio", { name: "블랙" }));
+
+    expect(screen.getByTestId("e2e.product.price")).toHaveTextContent(
+      "19,000원",
+    );
+    expect(screen.getByRole("button", { name: "구매하기" })).toBeEnabled();
+  });
+
+  it("keeps flat SKU IDs when structured metadata is incomplete", () => {
+    jest.mocked(useProduct).mockReturnValue({
+      data: {
+        ...product,
+        skus: [
+          { ...product.skus[0], sizeId: null },
+          { ...product.skus[2] },
+        ],
+      },
+      isError: false,
+      isLoading: false,
+    } as never);
+    jest.mocked(useCatalogFilterOptions).mockReturnValue({
+      data: catalogFilterOptions,
+      isError: false,
+      isLoading: false,
+    } as never);
+    renderDetail();
+
+    expect(screen.queryByLabelText("컬러")).toBeNull();
+    expect(screen.getByTestId("e2e.product.sku.sku-black")).toBeVisible();
+    expect(screen.getByTestId("e2e.product.sku.sku-black-s")).toBeVisible();
+  });
+
+  it("keeps flat SKU IDs when catalog metadata cannot resolve an SKU", () => {
+    jest.mocked(useCatalogFilterOptions).mockReturnValue({
+      data: {
+        ...catalogFilterOptions,
+        colors: catalogFilterOptions.colors.filter(
+          ({ colorId }) => colorId !== "black",
+        ),
+      },
+      isError: false,
+      isLoading: false,
+    } as never);
+    renderDetail();
+
+    expect(screen.queryByLabelText("컬러")).toBeNull();
+    expect(screen.getByTestId("e2e.product.sku.sku-black")).toBeVisible();
+    expect(screen.getByTestId("e2e.product.sku.sku-black-s")).toBeVisible();
   });
 
   it("uses the selected SKU price and never lets quantity exceed its stock", async () => {
