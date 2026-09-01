@@ -3,7 +3,7 @@ import { render, screen, userEvent } from "@testing-library/react-native";
 import ProductScreen from "@/app/product/[product-id]";
 import { useAuthActionGate } from "@/features/auth";
 import { useCartActions } from "@/features/cart";
-import { useProduct } from "@/features/catalog";
+import { useCatalogFilterOptions, useProduct } from "@/features/catalog";
 import { useProductPriceSummary } from "@/features/price-evidence";
 import {
   useBrandFollowActions,
@@ -21,7 +21,10 @@ jest.mock("expo-router", () => ({
 
 jest.mock("@/features/auth", () => ({ useAuthActionGate: jest.fn() }));
 jest.mock("@/features/cart", () => ({ useCartActions: jest.fn() }));
-jest.mock("@/features/catalog", () => ({ useProduct: jest.fn() }));
+jest.mock("@/features/catalog", () => ({
+  useCatalogFilterOptions: jest.fn(),
+  useProduct: jest.fn(),
+}));
 jest.mock("@/features/price-evidence", () => ({
   useProductPriceSummary: jest.fn(),
 }));
@@ -80,6 +83,11 @@ const selectFirstSku = async (user: ReturnType<typeof userEvent.setup>) =>
 
 describe("product quantity controls", () => {
   beforeEach(() => {
+    jest.mocked(useCatalogFilterOptions).mockReturnValue({
+      data: undefined,
+      isError: false,
+      isLoading: false,
+    } as never);
     jest.mocked(useProduct).mockReturnValue({
       data: product,
       isError: false,

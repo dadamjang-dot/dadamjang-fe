@@ -99,7 +99,8 @@ const ProductDetail = ({ onOpenCart, productId }: ProductDetailProps) => {
       )) &&
     (!hasSizeDimension ||
       data.skus.every(
-        ({ sizeId }) => sizeId !== null && sizeId !== "" && sizesById.has(sizeId),
+        ({ sizeId }) =>
+          sizeId !== null && sizeId !== "" && sizesById.has(sizeId),
       ));
   const optionKeys = data.skus.map(
     ({ colorId, sizeId }) =>
@@ -273,8 +274,7 @@ const ProductDetail = ({ onOpenCart, productId }: ProductDetailProps) => {
                   <View style={s.optionChoices}>
                     {colorOptions?.map((color) => {
                       const isDisabled = !data.skus.some(
-                        (sku) =>
-                          sku.colorId === color.colorId && sku.stock > 0,
+                        (sku) => sku.colorId === color.colorId && sku.stock > 0,
                       );
                       return (
                         <Pressable
@@ -317,8 +317,7 @@ const ProductDetail = ({ onOpenCart, productId }: ProductDetailProps) => {
                         (sku) =>
                           sku.sizeId === size.sizeId &&
                           sku.stock > 0 &&
-                          (!selectedColorId ||
-                            sku.colorId === selectedColorId),
+                          (!selectedColorId || sku.colorId === selectedColorId),
                       );
                       return (
                         <Pressable
