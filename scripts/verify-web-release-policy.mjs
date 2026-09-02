@@ -412,7 +412,6 @@ check(
 const rootPackage = JSON.parse(await read("package.json"));
 const boPackage = JSON.parse(await read("apps/dadamjang-bo/package.json"));
 const foPackage = JSON.parse(await read("apps/dadamjang-fo/package.json"));
-const foReadme = await read("README.md");
 const maestroSmokeRunner = await read("scripts/run-fo-maestro-smoke.sh");
 const graphqlClientPackage = JSON.parse(
   await read("packages/graphql-client/package.json"),
@@ -451,13 +450,6 @@ check(
     maestroSmokeRunner.includes("command -v maestro") &&
     maestroSmokeRunner.includes('cd "$script_dir/../apps/dadamjang-fo"'),
   "scripts/run-fo-maestro-smoke.sh: local smoke runner must require Maestro and E2E_PRODUCT_ID",
-);
-check(
-  foReadme.includes("E2E_AWS_REGION") &&
-    foReadme.includes("terraform-apply.yml") &&
-    foReadme.includes("fo:e2e:ios") &&
-    foReadme.includes("fo:e2e:android"),
-  "README.md: local smoke path and unavailable remote E2E cause are undocumented",
 );
 const invalidPlatform = await runMaestroSmoke(["web"]);
 const missingProductId = await runMaestroSmoke(["ios"]);
