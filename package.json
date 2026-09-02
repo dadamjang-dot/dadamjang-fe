@@ -26,8 +26,6 @@
     "fo:test:integration": "pnpm --dir apps/dadamjang-fo test:integration",
     "fo:verify:android-export": "pnpm --dir apps/dadamjang-fo verify:android-export",
     "fo:verify:autolinking": "node scripts/verify-fo-autolinking.mjs",
-    "fo:e2e:ios": "bash scripts/run-fo-maestro-smoke.sh ios",
-    "fo:e2e:android": "bash scripts/run-fo-maestro-smoke.sh android",
     "fo:ios": "pnpm --dir apps/dadamjang-fo ios",
     "fo:build:development": "pnpm --dir apps/dadamjang-fo build:development",
     "fo:build:preview": "pnpm --dir apps/dadamjang-fo build:preview",

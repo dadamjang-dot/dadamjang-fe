@@ -1,11 +1,4 @@
-import {
-  chmod,
-  mkdtemp,
-  readFile,
-  readdir,
-  rm,
-  writeFile,
-} from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -105,34 +98,6 @@ const runHandoffValidation = async (script, values) => {
   await rm(directory, { force: true, recursive: true });
   return { ...result, output };
 };
-const runMaestroSmoke = async (args, env = {}) => {
-  const directory = await mkdtemp(join(tmpdir(), "dadamjang-maestro-"));
-  const capturePath = join(directory, "capture");
-  const maestroPath = join(directory, "maestro");
-  await writeFile(
-    maestroPath,
-    '#!/usr/bin/env bash\nprintf "%s\\n" "$PWD" "$@" > "$MAESTRO_CAPTURE"\n',
-  );
-  await chmod(maestroPath, 0o755);
-  const result = spawnSync(
-    "/bin/bash",
-    [join(rootPath, "scripts/run-fo-maestro-smoke.sh"), ...args],
-    {
-      cwd: rootPath,
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        ...env,
-        MAESTRO_CAPTURE: capturePath,
-        PATH: `${directory}:${process.env.PATH ?? ""}`,
-      },
-    },
-  );
-  const capture = await readFile(capturePath, "utf8").catch(() => "");
-  await rm(directory, { force: true, recursive: true });
-  return { ...result, capture };
-};
-
 const expectedActions = new Map([
   ["actions/checkout", "11d5960a326750d5838078e36cf38b85af677262"],
   ["pnpm/action-setup", "b906affcce14559ad1aafd4ab0e942779e9f58b1"],
@@ -143,14 +108,9 @@ const expectedActions = new Map([
     "aws-actions/configure-aws-credentials",
     "7474bc4690e29a8392af63c5b98e7449536d5c3a",
   ],
-  [
-    "ReactiveCircus/android-emulator-runner",
-    "a421e43855164a8197daf9d8d40fe71c6996bb0d",
-  ],
 ]);
 const workflowPaths = [
   ".github/workflows/frontend-static.yml",
-  ".github/workflows/mobile-e2e-smoke.yml",
   ".github/workflows/mobile-e2e-full.yml",
 ];
 const workflows = await Promise.all(
@@ -192,9 +152,7 @@ for (const [path, workflow] of mobileWorkflows) {
     ["AWS_PRIVATE_SUBNET_IDS", "MOBILE_PRIVATE_SUBNET_IDS"],
     ["AWS_API_SECURITY_GROUP_ID", "MOBILE_API_SECURITY_GROUP_ID"],
   ];
-  const buildJobNames = path.endsWith("mobile-e2e-smoke.yml")
-    ? ["ios-smoke", "android-smoke"]
-    : ["ios-full"];
+  const buildJobNames = ["ios-full"];
   const concurrency =
     workflow.match(/\nconcurrency:\n(?<body>(?: {2}.+\n)+)/u)?.groups?.body ??
     "";
@@ -227,21 +185,10 @@ for (const [path, workflow] of mobileWorkflows) {
     concurrency.includes("queue: max"),
     `${path}: trusted E2E runs must retain the full concurrency queue`,
   );
-  if (path.endsWith("mobile-e2e-smoke.yml")) {
-    check(
-      concurrency.includes(
-        "github.event.pull_request.head.repo.full_name == github.repository",
-      ) &&
-        concurrency.includes("'mobile-e2e'") &&
-        concurrency.includes("format('mobile-e2e-fork-{0}', github.run_id)"),
-      `${path}: fork pull requests must use a run-scoped concurrency group`,
-    );
-  } else {
-    check(
-      /^  group: mobile-e2e$/mu.test(concurrency),
-      `${path}: trusted full E2E runs must share the mobile-e2e group`,
-    );
-  }
+  check(
+    /^  group: mobile-e2e$/mu.test(concurrency),
+    `${path}: trusted full E2E runs must share the mobile-e2e group`,
+  );
   for (const jobName of buildJobNames) {
     const buildJob = readJob(workflow, jobName);
     const preflightScript = readRunStep(buildJob, "Verify remote EAS API URL");
@@ -412,7 +359,6 @@ check(
 const rootPackage = JSON.parse(await read("package.json"));
 const boPackage = JSON.parse(await read("apps/dadamjang-bo/package.json"));
 const foPackage = JSON.parse(await read("apps/dadamjang-fo/package.json"));
-const maestroSmokeRunner = await read("scripts/run-fo-maestro-smoke.sh");
 const graphqlClientPackage = JSON.parse(
   await read("packages/graphql-client/package.json"),
 );
@@ -436,33 +382,6 @@ for (const path of nativeProductionFiles) {
 check(
   rootPackage.scripts?.["format:check"] !== undefined,
   "package.json: root format:check is missing",
-);
-check(
-  rootPackage.scripts?.["fo:e2e:ios"] ===
-    "bash scripts/run-fo-maestro-smoke.sh ios" &&
-    rootPackage.scripts?.["fo:e2e:android"] ===
-      "bash scripts/run-fo-maestro-smoke.sh android",
-  "package.json: local Maestro smoke scripts are missing",
-);
-check(
-  maestroSmokeRunner.includes("E2E_PRODUCT_ID") &&
-    maestroSmokeRunner.includes(".maestro/${platform}-smoke.yaml") &&
-    maestroSmokeRunner.includes("command -v maestro") &&
-    maestroSmokeRunner.includes('cd "$script_dir/../apps/dadamjang-fo"'),
-  "scripts/run-fo-maestro-smoke.sh: local smoke runner must require Maestro and E2E_PRODUCT_ID",
-);
-const invalidPlatform = await runMaestroSmoke(["web"]);
-const missingProductId = await runMaestroSmoke(["ios"]);
-const iosSmoke = await runMaestroSmoke(["ios"], {
-  E2E_PRODUCT_ID: "product-1",
-});
-check(
-  invalidPlatform.status === 64 &&
-    missingProductId.status === 1 &&
-    iosSmoke.status === 0 &&
-    iosSmoke.capture ===
-      `${join(rootPath, "apps/dadamjang-fo")}\ntest\n.maestro/ios-smoke.yaml\n`,
-  "scripts/run-fo-maestro-smoke.sh: invalid platform, missing ID, or app cwd is not enforced",
 );
 check(
   rootPackage.scripts?.["measure:fo-problems"] === undefined,

@@ -727,6 +727,21 @@ describe("public GraphQL operation classification", () => {
       undefined,
     ],
     [
+      true,
+      "mutation RequestResetCode { requestPasswordResetCode(input: {}) { ok } }",
+      undefined,
+    ],
+    [
+      true,
+      "mutation VerifyResetCode { verifyPasswordResetCode(input: {}) { emailVerificationToken } }",
+      undefined,
+    ],
+    [
+      false,
+      "mutation LegacyReset { requestPasswordReset(input: {}) { ok } }",
+      undefined,
+    ],
+    [
       false,
       "query AdminDashboard { adminDashboard { pendingPartnerCount } } # signin",
       undefined,
