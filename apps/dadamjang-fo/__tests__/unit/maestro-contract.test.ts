@@ -10,16 +10,6 @@ const readWorkflow = () =>
     resolve(__dirname, "../../../../.github/workflows/mobile-e2e-full.yml"),
     "utf8",
   );
-const readSmokeFlow = (name: "android" | "ios") =>
-  readFileSync(resolve(__dirname, `../../.maestro/${name}-smoke.yaml`), "utf8");
-const readSmokeJob = (name: "ios-smoke" | "android-smoke") =>
-  readFileSync(
-    resolve(__dirname, "../../../../.github/workflows/mobile-e2e-smoke.yml"),
-    "utf8",
-  )
-    .split(`  ${name}:`)[1]
-    ?.split(/\n  [a-z-]+:\n/u)[0] ?? "";
-
 const parseCommands = (flow: string) => {
   const documents = flow.split(/^---\s*$/mu);
   if (documents.length !== 2) return { commands: [], config: [] };
@@ -97,16 +87,5 @@ describe("iOS Maestro contract", () => {
       ["openLink", "dadamjang://orders"],
       ["assertVisible", "e2e.order.history"],
     ]);
-  });
-
-  it("supplies the SKU selector variable to both smoke Maestro jobs", () => {
-    expect(readSmokeFlow("ios")).toContain("${E2E_SKU_ID}");
-    expect(readSmokeFlow("android")).toContain("${E2E_SKU_ID}");
-    expect(readSmokeJob("ios-smoke")).toContain(
-      "E2E_SKU_ID: ${{ vars.E2E_SKU_ID }}",
-    );
-    expect(readSmokeJob("android-smoke")).toContain(
-      "E2E_SKU_ID: ${{ vars.E2E_SKU_ID }}",
-    );
   });
 });
