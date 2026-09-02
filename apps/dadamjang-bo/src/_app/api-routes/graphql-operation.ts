@@ -11,7 +11,8 @@ const PUBLIC_FIELDS = new Set([
   "signin",
   "refresh",
   "acceptAdminInvite",
-  "requestPasswordReset",
+  "requestPasswordResetCode",
+  "verifyPasswordResetCode",
   "resetPassword",
 ]);
 const PUBLIC_ROOT_FIELD = 1;
