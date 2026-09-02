@@ -1,85 +1,46 @@
-# dadamjang fo
+# 다담장 FO
 
-다담장 구매자 네이티브 앱입니다.
+상품 탐색부터 위시, 주문, 스타일 공유까지 이어지는 구매자용 Expo 네이티브 앱입니다.
 
-앱 타이틀은 `다담장 - 위시템 저장소`입니다.
+## 주요 기능
 
-## 기능
-
-- 개인화 상품 피드
-- 상품 검색
-- 상품 상세
-- 위시리스트
-- 장바구니
-- 주문 생성
-- 주문 내역
-- 이메일 회원가입/로그인
-- 카카오 로그인/가입 callback
-- MY 프로필
+- 개인화 피드, 상품 검색·필터·상세 조회
+- 상품·브랜드 위시와 최근 본 상품
+- 장바구니, mock checkout, 주문 내역
+- 스타일 게시물 작성·조회·좋아요
+- 이메일·카카오 인증과 계정 복구·비활성화
+- 알림함과 푸시 알림 설정
 
 ## 기술
 
-- Expo SDK 55
-- Expo Router
-- `@expo/ui/swift-ui`
-- `@expo/ui/jetpack-compose`
-- `@legendapp/list`
-- TanStack Query
-- SecureStore
-- NetInfo
-- Sentry React Native
-- `@dadamjang/graphql-client`
-- `@dadamjang/design-tokens`
-- `@dadamjang/domain`
+- Expo SDK 57, Expo Router, React Native 0.86
+- TanStack Query와 공통 GraphQL client
+- iOS Liquid Glass, Android Jetpack Compose UI
+- SecureStore 기반 토큰 보관과 NetInfo 기반 네트워크 상태 처리
+- Sentry 오류·성능 관측
 
 ## 실행
 
+프런트엔드 저장소 루트에서 실행합니다.
+
 ```bash
-cp .env.example .env
-cd ../..
 pnpm install
-cd apps/dadamjang-fo
-pnpm start
+cp apps/dadamjang-fo/.env.example apps/dadamjang-fo/.env
+pnpm --dir apps/dadamjang-fo start
 ```
 
-## 검증
-
-```bash
-pnpm typecheck
-pnpm lint
-npx expo config --type public
-npx expo export --platform ios --output-dir dist/ios-verify
-npx expo export --platform android --output-dir dist/android-verify
-```
-
-## 환경 변수
-
-```txt
-EXPO_PUBLIC_API_URL=http://localhost:5500/graphql
-EXPO_PUBLIC_SENTRY_DSN=
-EXPO_PUBLIC_SENTRY_ENVIRONMENT=development
-EXPO_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.1
-```
+API 주소는 실행 환경에 맞게 설정합니다.
 
 - iOS 시뮬레이터: `http://localhost:5500/graphql`
 - Android 에뮬레이터: `http://10.0.2.2:5500/graphql`
 - 실제 기기: `http://<개발 PC의 LAN IP>:5500/graphql`
 
-## 네이티브 자산
+## 검증
 
-- iOS icon: `assets/images/icon.png`
-- Android adaptive icon: `assets/images/adaptive-icon.png`
-- Splash icon: `assets/images/splash-icon.png`
-- Splash background: `#4D45DF`
-
-## EAS
-
-`eas.json`에 `development`, `preview`, `production` profile이 있습니다.
-
-Preview workflow:
-
-```txt
-.eas/workflows/preview.yml
+```bash
+pnpm fo:lint
+pnpm fo:typecheck
+pnpm fo:test
 ```
 
-Sentry sourcemap 업로드를 사용하려면 EAS secret에 `SENTRY_AUTH_TOKEN`을 등록해야 합니다.
+EAS Build는 `development`, `preview`, `e2e`, `production` 프로필을 제공합니다.
