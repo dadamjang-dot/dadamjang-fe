@@ -160,6 +160,45 @@ describe("virtualized list data flow", () => {
     navigation.path = undefined;
   });
 
+  it("does not exhaust the shop recycler pool during initial layout", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    const client = createClient();
+    const products = [
+      productSummary("product-1", "첫 상품"),
+      productSummary("product-2", "둘째 상품"),
+    ];
+    const filter = toProductFilter(defaultShopFilters);
+    client.setQueryData(authQueryKeys.viewer, viewer);
+    client.setQueryData(catalogQueryKeys.categories(), []);
+    client.setQueryData(wishQueryKeys.wishlist(), []);
+    client.setQueryData(priceEvidenceQueryKeys.productPriceSummary(filter), {
+      pages: [
+        {
+          nodes: products,
+          totalCount: products.length,
+          nextCursor: null,
+          hasNextPage: false,
+        },
+      ],
+      pageParams: [undefined],
+    });
+
+    try {
+      render(<ShopScreen />, { wrapper: createShopWrapper(client) });
+      layoutLegendList("상품 목록");
+
+      expect(
+        warn.mock.calls.some(
+          ([message]) =>
+            typeof message === "string" &&
+            message.includes("No unused container available"),
+        ),
+      ).toBe(false);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it("renders each shop product ID once across mutable cursor pages", async () => {
     const client = createClient();
     const repeated = productSummary("product-1", "첫 상품");
@@ -408,6 +447,38 @@ describe("virtualized list data flow", () => {
     await waitFor(() => expect(client.isFetching()).toBe(0));
 
     expect(getProductPriceSummaries).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not exhaust the style recycler pool during initial layout", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    const client = createClient();
+    const posts = [stylePost("style-1", "first"), stylePost("style-2", "second")];
+    client.setQueryData(authQueryKeys.viewer, viewer);
+    client.setQueryData(styleQueryKeys.posts(undefined, "RECOMMENDED"), {
+      pages: [
+        {
+          nodes: posts,
+          nextCursor: null,
+          hasNextPage: false,
+        },
+      ],
+      pageParams: [undefined],
+    });
+
+    try {
+      render(<StyleScreen />, { wrapper: createWrapper(client) });
+      layoutLegendList("스타일 게시물 목록");
+
+      expect(
+        warn.mock.calls.some(
+          ([message]) =>
+            typeof message === "string" &&
+            message.includes("No unused container available"),
+        ),
+      ).toBe(false);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("renders each main style post ID once across mutable cursor pages", async () => {
