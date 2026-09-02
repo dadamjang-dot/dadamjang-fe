@@ -25,7 +25,6 @@ type ShopProductGridProps = {
 };
 
 type ShopProductGridRow =
-  | { type: "category"; content: ReactElement }
   | { type: "filter"; content: ReactElement }
   | { type: "sort"; content: ReactElement }
   | { type: "state" }
@@ -74,7 +73,6 @@ const ShopProductGrid = ({
 }: ShopProductGridProps) => {
   const rows = useMemo<ShopProductGridRow[]>(() => {
     const controls: ShopProductGridRow[] = [
-      { type: "category", content: categoryBar },
       { type: "filter", content: filterBar },
       { type: "sort", content: sortBar },
     ];
@@ -93,72 +91,74 @@ const ShopProductGrid = ({
         }),
       ),
     ];
-  }, [categoryBar, filterBar, isError, isLoading, products, sortBar]);
+  }, [filterBar, isError, isLoading, products, sortBar]);
 
   return (
-    <LegendList
-      accessibilityLabel="상품 목록"
-      contentContainerStyle={s.listContent}
-      contentInsetAdjustmentBehavior="automatic"
-      data={rows}
-      extraData={likedProductIds}
-      getItemType={(item) => item.type}
-      keyExtractor={(item, index) =>
-        item.type === "products"
-          ? item.products.map((product) => product.productId).join("-")
-          : `${item.type}-${index}`
-      }
-      onEndReached={hasNextPage && !isFetchingNextPage ? onLoadMore : undefined}
-      onEndReachedThreshold={0.6}
-      renderItem={({ item }) => {
-        switch (item.type) {
-          case "category":
-            return item.content;
-          case "filter":
-            return item.content;
-          case "sort":
-            return item.content;
-          case "state":
-            return isLoading ? (
-              <LoadingState />
-            ) : (
-              <GridState isError={isError} onRetry={onRetry} />
-            );
-          case "products":
-            return (
-              <View style={s.productRow}>
-                {item.products.map((product) => (
-                  <View key={product.productId} style={s.productCell}>
-                    <ProductCard
-                      imageUrl={product.thumbnail}
-                      isExpressDelivery={product.isExpressDelivery}
-                      isLiked={likedProductIds.has(product.productId)}
-                      isOnSale={product.isOnSale}
-                      name={product.name}
-                      originalPrice={product.basePrice}
-                      price={product.finalPrice}
-                      productId={product.productId}
-                      onPress={() => onProductPress(product.productId)}
-                      onToggleLike={(nextLiked) =>
-                        onToggleLike(product.productId, nextLiked)
-                      }
-                    />
-                  </View>
-                ))}
-              </View>
-            );
+    <View style={s.list}>
+      {categoryBar}
+      <LegendList
+        accessibilityLabel="상품 목록"
+        contentContainerStyle={s.listContent}
+        contentInsetAdjustmentBehavior="automatic"
+        data={rows}
+        extraData={likedProductIds}
+        getItemType={(item) => item.type}
+        keyExtractor={(item, index) =>
+          item.type === "products"
+            ? item.products.map((product) => product.productId).join("-")
+            : `${item.type}-${index}`
         }
-      }}
-      ListFooterComponent={
-        isFetchingNextPage ? (
-          <ActivityIndicator color={colors.primary} style={s.footer} />
-        ) : null
-      }
-      recycleItems
-      showsVerticalScrollIndicator={false}
-      stickyHeaderIndices={[0]}
-      style={s.list}
-    />
+        onEndReached={
+          hasNextPage && !isFetchingNextPage ? onLoadMore : undefined
+        }
+        onEndReachedThreshold={0.6}
+        renderItem={({ item }) => {
+          switch (item.type) {
+            case "filter":
+              return item.content;
+            case "sort":
+              return item.content;
+            case "state":
+              return isLoading ? (
+                <LoadingState />
+              ) : (
+                <GridState isError={isError} onRetry={onRetry} />
+              );
+            case "products":
+              return (
+                <View style={s.productRow}>
+                  {item.products.map((product) => (
+                    <View key={product.productId} style={s.productCell}>
+                      <ProductCard
+                        imageUrl={product.thumbnail}
+                        isExpressDelivery={product.isExpressDelivery}
+                        isLiked={likedProductIds.has(product.productId)}
+                        isOnSale={product.isOnSale}
+                        name={product.name}
+                        originalPrice={product.basePrice}
+                        price={product.finalPrice}
+                        productId={product.productId}
+                        onPress={() => onProductPress(product.productId)}
+                        onToggleLike={(nextLiked) =>
+                          onToggleLike(product.productId, nextLiked)
+                        }
+                      />
+                    </View>
+                  ))}
+                </View>
+              );
+          }
+        }}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <ActivityIndicator color={colors.primary} style={s.footer} />
+          ) : null
+        }
+        recycleItems
+        showsVerticalScrollIndicator={false}
+        style={s.list}
+      />
+    </View>
   );
 };
 

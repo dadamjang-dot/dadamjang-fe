@@ -25,7 +25,6 @@ type StylePostGridProps = {
 };
 
 type Row =
-  | { type: "category"; content: ReactElement }
   | { type: "sort"; content: ReactElement }
   | { type: "state" }
   | { type: "posts"; posts: StylePost[]; startIndex: number };
@@ -45,7 +44,7 @@ const StylePostGrid = ({
   showRank = false,
 }: StylePostGridProps) => {
   const rows = useMemo<Row[]>(() => {
-    const controls: Row[] = [{ type: "category", content: categoryBar }];
+    const controls: Row[] = [];
     if (sortBar) controls.push({ type: "sort", content: sortBar });
     if (isLoading || isError || posts.length === 0)
       return [...controls, { type: "state" }];
@@ -57,79 +56,82 @@ const StylePostGrid = ({
         startIndex: index * 2,
       })),
     ];
-  }, [categoryBar, isError, isLoading, posts, sortBar]);
+  }, [isError, isLoading, posts, sortBar]);
 
   return (
-    <LegendList
-      accessibilityLabel="스타일 게시물 목록"
-      contentContainerStyle={s.listContent}
-      data={rows}
-      extraData={showRank}
-      getItemType={(item) => item.type}
-      keyExtractor={(item, index) =>
-        item.type === "posts"
-          ? item.posts.map((post) => post.stylePostId).join("-")
-          : `${item.type}-${index}`
-      }
-      onEndReached={hasNextPage && !isFetchingNextPage ? onLoadMore : undefined}
-      onEndReachedThreshold={0.6}
-      renderItem={({ item }) => {
-        if (item.type === "category") return item.content;
-        if (item.type === "sort") return item.content;
-        if (item.type === "state") {
+    <View style={s.list}>
+      {categoryBar}
+      <LegendList
+        accessibilityLabel="스타일 게시물 목록"
+        contentContainerStyle={s.listContent}
+        data={rows}
+        extraData={showRank}
+        getItemType={(item) => item.type}
+        keyExtractor={(item, index) =>
+          item.type === "posts"
+            ? item.posts.map((post) => post.stylePostId).join("-")
+            : `${item.type}-${index}`
+        }
+        onEndReached={
+          hasNextPage && !isFetchingNextPage ? onLoadMore : undefined
+        }
+        onEndReachedThreshold={0.6}
+        renderItem={({ item }) => {
+          if (item.type === "sort") return item.content;
+          if (item.type === "state") {
+            return (
+              <View style={s.state}>
+                <Text style={s.stateTitle}>
+                  {isError
+                    ? "스타일 게시물을 불러오지 못했어요."
+                    : "아직 스타일 게시물이 없어요."}
+                </Text>
+                <Text style={s.stateDescription}>
+                  {isError
+                    ? "잠시 후 다시 시도해 주세요."
+                    : "첫 스타일을 올려보세요."}
+                </Text>
+                {isError ? (
+                  <Button
+                    label="다시 시도"
+                    onPress={onRetry}
+                    style={s.retryButton}
+                  />
+                ) : null}
+              </View>
+            );
+          }
           return (
-            <View style={s.state}>
-              <Text style={s.stateTitle}>
-                {isError
-                  ? "스타일 게시물을 불러오지 못했어요."
-                  : "아직 스타일 게시물이 없어요."}
-              </Text>
-              <Text style={s.stateDescription}>
-                {isError
-                  ? "잠시 후 다시 시도해 주세요."
-                  : "첫 스타일을 올려보세요."}
-              </Text>
-              {isError ? (
-                <Button
-                  label="다시 시도"
-                  onPress={onRetry}
-                  style={s.retryButton}
-                />
-              ) : null}
+            <View style={s.postRow}>
+              {item.posts.map((post, index) => (
+                <View key={post.stylePostId} style={s.postCell}>
+                  <StylePostCard
+                    author={post.author.userid}
+                    content={post.content}
+                    hashtags={post.hashtags}
+                    imageUrl={post.thumbnailUrl}
+                    isLiked={post.isLiked}
+                    likeCount={post.likeCount}
+                    onPress={onPostPress}
+                    onToggleLike={onToggleLike}
+                    rank={showRank ? item.startIndex + index + 1 : undefined}
+                    stylePostId={post.stylePostId}
+                  />
+                </View>
+              ))}
             </View>
           );
+        }}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <ActivityIndicator color={colors.primary} style={s.footer} />
+          ) : null
         }
-        return (
-          <View style={s.postRow}>
-            {item.posts.map((post, index) => (
-              <View key={post.stylePostId} style={s.postCell}>
-                <StylePostCard
-                  author={post.author.userid}
-                  content={post.content}
-                  hashtags={post.hashtags}
-                  imageUrl={post.thumbnailUrl}
-                  isLiked={post.isLiked}
-                  likeCount={post.likeCount}
-                  onPress={onPostPress}
-                  onToggleLike={onToggleLike}
-                  rank={showRank ? item.startIndex + index + 1 : undefined}
-                  stylePostId={post.stylePostId}
-                />
-              </View>
-            ))}
-          </View>
-        );
-      }}
-      ListFooterComponent={
-        isFetchingNextPage ? (
-          <ActivityIndicator color={colors.primary} style={s.footer} />
-        ) : null
-      }
-      recycleItems
-      showsVerticalScrollIndicator={false}
-      stickyHeaderIndices={[0]}
-      style={s.list}
-    />
+        recycleItems
+        showsVerticalScrollIndicator={false}
+        style={s.list}
+      />
+    </View>
   );
 };
 
