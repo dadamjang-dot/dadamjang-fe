@@ -7,7 +7,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { formatBusinessRegistrationNumber } from "@dadamjang/domain";
 import {
   adminActionLabel,
@@ -104,45 +104,42 @@ export const PartnersPage = () => {
   };
   const nodes = list.data?.pages.flatMap((page) => page.nodes) ?? [];
   const totalCount = list.data?.pages[0]?.totalCount ?? 0;
-  const columns = useMemo<DataTableColumn<AdminPartner>[]>(
-    () => [
-      {
-        key: "tradeName",
-        header: "상호",
-        render: (node) => (
-          <ActionButton
-            variant="ghost"
-            size="xsmall"
-            onClick={() => setSelectedId(node.partnerId)}
-          >
-            {node.tradeName}
-          </ActionButton>
-        ),
-      },
-      {
-        key: "businessEmail",
-        header: "사업자 이메일",
-        render: (node) => node.businessEmail,
-      },
-      { key: "owner", header: "소유자", render: (node) => node.ownerUserid },
-      {
-        key: "status",
-        header: "상태",
-        render: (node) => (
-          <StatusBadge
-            status={node.status}
-            label={adminStatusLabel(node.status)}
-          />
-        ),
-      },
-      {
-        key: "createdAt",
-        header: "신청일",
-        render: (node) => formatDateTime(node.createdAt),
-      },
-    ],
-    [],
-  );
+  const columns: DataTableColumn<AdminPartner>[] = [
+    {
+      key: "tradeName",
+      header: "상호",
+      render: (node) => (
+        <ActionButton
+          variant="ghost"
+          size="xsmall"
+          onClick={() => setSelectedId(node.partnerId)}
+        >
+          {node.tradeName}
+        </ActionButton>
+      ),
+    },
+    {
+      key: "businessEmail",
+      header: "사업자 이메일",
+      render: (node) => node.businessEmail,
+    },
+    { key: "owner", header: "소유자", render: (node) => node.ownerUserid },
+    {
+      key: "status",
+      header: "상태",
+      render: (node) => (
+        <StatusBadge
+          status={node.status}
+          label={adminStatusLabel(node.status)}
+        />
+      ),
+    },
+    {
+      key: "createdAt",
+      header: "신청일",
+      render: (node) => formatDateTime(node.createdAt),
+    },
+  ];
 
   const confirm = (): boolean => {
     if (!decision) return false;

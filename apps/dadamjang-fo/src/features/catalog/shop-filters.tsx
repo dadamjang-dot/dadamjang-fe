@@ -1,11 +1,4 @@
-import {
-  createContext,
-  use,
-  useCallback,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, use, useState, type ReactNode } from "react";
 
 import type { ProductFilter, ProductSort } from "./types";
 
@@ -81,50 +74,39 @@ export const ShopFiltersProvider = ({ children }: { children: ReactNode }) => {
   const [draftFilters, setDraftFilters] =
     useState<ShopFilters>(defaultShopFilters);
 
-  const updateFilters = useCallback((updates: Partial<ShopFilters>) => {
+  const updateFilters = (updates: Partial<ShopFilters>) => {
     setFilters((current) => normalizeShopFilters({ ...current, ...updates }));
-  }, []);
+  };
 
-  const startDraft = useCallback(() => {
+  const startDraft = () => {
     setDraftFilters(filters);
-  }, [filters]);
+  };
 
-  const updateDraft = useCallback((updates: Partial<ShopFilters>) => {
+  const updateDraft = (updates: Partial<ShopFilters>) => {
     setDraftFilters((current) =>
       normalizeShopFilters({ ...current, ...updates }),
     );
-  }, []);
+  };
 
-  const applyDraft = useCallback(() => {
+  const applyDraft = () => {
     const nextFilters = normalizeShopFilters(draftFilters);
     setFilters(nextFilters);
     setDraftFilters(nextFilters);
-  }, [draftFilters]);
+  };
 
-  const cancelDraft = useCallback(() => {
+  const cancelDraft = () => {
     setDraftFilters(filters);
-  }, [filters]);
+  };
 
-  const value = useMemo(
-    () => ({
-      filters,
-      draftFilters,
-      updateFilters,
-      startDraft,
-      updateDraft,
-      applyDraft,
-      cancelDraft,
-    }),
-    [
-      applyDraft,
-      cancelDraft,
-      draftFilters,
-      filters,
-      startDraft,
-      updateDraft,
-      updateFilters,
-    ],
-  );
+  const value = {
+    filters,
+    draftFilters,
+    updateFilters,
+    startDraft,
+    updateDraft,
+    applyDraft,
+    cancelDraft,
+  };
 
   return (
     <ShopFiltersContext.Provider value={value}>

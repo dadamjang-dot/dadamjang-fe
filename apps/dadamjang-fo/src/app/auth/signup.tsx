@@ -1,5 +1,5 @@
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -55,10 +55,7 @@ const SignupScreen = () => {
   const [isIdentityPending, setIsIdentityPending] = useState(false);
   const [message, setMessage] = useState<string>();
 
-  const documents = useMemo(
-    () => consentsQuery.data ?? [],
-    [consentsQuery.data],
-  );
+  const documents = consentsQuery.data ?? [];
   const emailVerified =
     isKakao && !kakaoSignup?.emailVerificationRequired
       ? Boolean(email)
@@ -76,10 +73,7 @@ const SignupScreen = () => {
     credentialsValid && requiredConsentsAccepted && !isIdentityPending;
   const isSubmitting = signupFo.isPending || signupKakao.isPending;
 
-  const consents = useMemo(
-    () => toConsentAcceptances(documents, selectedDocumentIds),
-    [documents, selectedDocumentIds],
-  );
+  const consents = toConsentAcceptances(documents, selectedDocumentIds);
 
   const toggleConsent = (documentId: string) => {
     setSelectedDocumentIds((current) => {

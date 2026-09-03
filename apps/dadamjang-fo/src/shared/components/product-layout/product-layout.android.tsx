@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -11,10 +11,10 @@ const ProductLayout = (props: ProductLayoutProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
-  const handleCancelSearch = useCallback(() => {
+  const handleCancelSearch = () => {
     setIsSearching(false);
     setSearchValue("");
-  }, []);
+  };
 
   const actionButtonGroup =
     props.variant === "circularPair" ? (

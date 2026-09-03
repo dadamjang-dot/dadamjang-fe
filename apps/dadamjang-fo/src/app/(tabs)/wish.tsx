@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -23,11 +23,9 @@ const WishScreen = () => {
   const { authStatus, redirectToSignIn } = currentUser;
   const [selectedTab, setSelectedTab] = useState<WishTab>("PRODUCTS");
 
-  useFocusEffect(
-    useCallback(() => {
-      if (authStatus === "unauthenticated") redirectToSignIn(true);
-    }, [authStatus, redirectToSignIn]),
-  );
+  useFocusEffect(() => {
+    if (authStatus === "unauthenticated") redirectToSignIn(true);
+  });
 
   const content =
     currentUser.authStatus === "loading" ||

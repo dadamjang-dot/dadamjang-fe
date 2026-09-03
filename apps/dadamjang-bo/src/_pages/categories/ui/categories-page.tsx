@@ -2,7 +2,7 @@
 
 import { ActionButton } from "@seed-design/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import { AdminApiError, type AdminCategory } from "@/shared/api";
 import {
   AdminInput,
@@ -76,60 +76,54 @@ export const CategoriesPage = () => {
       ]);
     },
   });
-  const rows = useMemo(
-    () => flattenCategoryTree(categories.data ?? []),
-    [categories.data],
-  );
-  const columns = useMemo<DataTableColumn<CategoryTreeRow>[]>(
-    () => [
-      {
-        key: "name",
-        header: "카테고리",
-        render: (node) => (
-          <div
-            className={styles.nameCell}
-            style={{ paddingLeft: `${node.depth * 22}px` }}
+  const rows = flattenCategoryTree(categories.data ?? []);
+  const columns: DataTableColumn<CategoryTreeRow>[] = [
+    {
+      key: "name",
+      header: "카테고리",
+      render: (node) => (
+        <div
+          className={styles.nameCell}
+          style={{ paddingLeft: `${node.depth * 22}px` }}
+        >
+          {node.depth ? <span className={styles.branch}>└</span> : null}
+          <ActionButton
+            variant="ghost"
+            size="xsmall"
+            onClick={() => {
+              setSelected(node);
+              setEditValues({
+                name: node.name,
+                slug: node.slug,
+                parentId: node.parentId ?? "",
+                sortOrder: node.sortOrder,
+                isActive: node.isActive,
+              });
+            }}
           >
-            {node.depth ? <span className={styles.branch}>└</span> : null}
-            <ActionButton
-              variant="ghost"
-              size="xsmall"
-              onClick={() => {
-                setSelected(node);
-                setEditValues({
-                  name: node.name,
-                  slug: node.slug,
-                  parentId: node.parentId ?? "",
-                  sortOrder: node.sortOrder,
-                  isActive: node.isActive,
-                });
-              }}
-            >
-              {node.name}
-            </ActionButton>
-          </div>
-        ),
-      },
-      { key: "slug", header: "Slug", render: (node) => node.slug },
-      {
-        key: "sort",
-        header: "정렬",
-        numeric: true,
-        render: (node) => node.sortOrder,
-      },
-      {
-        key: "active",
-        header: "상태",
-        render: (node) => (
-          <StatusBadge
-            status={node.isActive ? "APPROVED" : "EXPIRED"}
-            label={node.isActive ? "활성" : "비활성"}
-          />
-        ),
-      },
-    ],
-    [],
-  );
+            {node.name}
+          </ActionButton>
+        </div>
+      ),
+    },
+    { key: "slug", header: "Slug", render: (node) => node.slug },
+    {
+      key: "sort",
+      header: "정렬",
+      numeric: true,
+      render: (node) => node.sortOrder,
+    },
+    {
+      key: "active",
+      header: "상태",
+      render: (node) => (
+        <StatusBadge
+          status={node.isActive ? "APPROVED" : "EXPIRED"}
+          label={node.isActive ? "활성" : "비활성"}
+        />
+      ),
+    },
+  ];
 
   const submitCreate = (event: FormEvent) => {
     event.preventDefault();

@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useCallback } from "react";
 
 import { GraphqlError, logoutAuthSession } from "@dadamjang/graphql-client";
 
@@ -88,31 +87,28 @@ export const useAuthActionGate = (returnTo: string) => {
   const router = useRouter();
   const currentUser = useCurrentUser();
   const sanitizedReturnTo = resolveAuthReturnTo(returnTo);
-  const redirectToSignIn = useCallback(
-    (replace = false, returnToOverride?: string) => {
-      const href = {
-        pathname: "/auth" as const,
-        params: {
-          returnTo: resolveAuthReturnTo(returnToOverride ?? sanitizedReturnTo),
-        },
-      };
-      if (replace) router.replace(href);
-      else router.push(href);
-    },
-    [router, sanitizedReturnTo],
-  );
-  const runProtectedAction = useCallback(
-    (action: () => void, returnToOverride?: string) => {
-      if (currentUser.authStatus === "unauthenticated") {
-        redirectToSignIn(false, returnToOverride);
-        return false;
-      }
-      if (currentUser.authStatus !== "authenticated") return false;
-      action();
-      return true;
-    },
-    [currentUser.authStatus, redirectToSignIn],
-  );
+  const redirectToSignIn = (replace = false, returnToOverride?: string) => {
+    const href = {
+      pathname: "/auth" as const,
+      params: {
+        returnTo: resolveAuthReturnTo(returnToOverride ?? sanitizedReturnTo),
+      },
+    };
+    if (replace) router.replace(href);
+    else router.push(href);
+  };
+  const runProtectedAction = (
+    action: () => void,
+    returnToOverride?: string,
+  ) => {
+    if (currentUser.authStatus === "unauthenticated") {
+      redirectToSignIn(false, returnToOverride);
+      return false;
+    }
+    if (currentUser.authStatus !== "authenticated") return false;
+    action();
+    return true;
+  };
 
   return {
     ...currentUser,

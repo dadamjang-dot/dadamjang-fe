@@ -7,7 +7,7 @@ import {
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 
 import { GraphqlError } from "@dadamjang/graphql-client";
@@ -146,144 +146,129 @@ export const useFoPushNotifications = (
   const handledResponseIds = useRef(new Set<string>());
   const resolvingNotificationId = useRef<string | undefined>(undefined);
 
-  const registerForPush = useCallback((session: PushSession) => {
-    if (registrationFlight.current) {
-      registrationQueued.current = true;
-      return;
-    }
-    if (!onlineManager.isOnline()) return;
-    const flight = { revision: session.revision };
-    const controller = new AbortController();
-    registrationFlight.current = flight;
-    const workflow = (async () => {
-      try {
-        await getCurrentUser(controller.signal);
-        if (
-          controller.signal.aborted ||
-          activeSession.current?.revision !== session.revision
-        ) {
-          return;
-        }
-        const platform = getFoPushPlatform(Platform.OS);
-        if (!platform) return;
-        if (platform === "ANDROID") {
-          await Notifications.setNotificationChannelAsync("default", {
-            name: "default",
-            importance: Notifications.AndroidImportance.HIGH,
-          });
-        }
-        if (
-          controller.signal.aborted ||
-          activeSession.current?.revision !== session.revision
-        ) {
-          return;
-        }
-        if (!(await ensureNotificationPermission(controller.signal))) return;
-        const projectId = getProjectId();
-        if (!projectId) return;
-        const registration = await getExpoPushRegistration(
-          projectId,
-          platform,
-          controller.signal,
-        );
-        if (
-          controller.signal.aborted ||
-          activeSession.current?.revision !== session.revision ||
-          registration.expoPushToken.length === 0
-        ) {
-          return;
-        }
-        const settled = settledRegistration.current;
-        if (
-          settled?.revision === session.revision &&
-          settled.token === registration.expoPushToken
-        ) {
-          return;
-        }
-        throwIfPushRegistrationAborted(controller.signal);
-        await registerFoPushDevice(registration, controller.signal);
-        if (
-          !controller.signal.aborted &&
-          activeSession.current?.revision === session.revision
-        ) {
-          settledRegistration.current = {
-            revision: session.revision,
-            token: registration.expoPushToken,
-          };
-        }
-      } catch {
+  useEffect(() => {
+    const registerForPush = (session: PushSession) => {
+      if (registrationFlight.current) {
+        registrationQueued.current = true;
         return;
       }
-    })();
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<void>((resolve) => {
-      timeoutId = setTimeout(() => {
-        controller.abort();
-        resolve();
-      }, registrationTimeoutMs);
-    });
-    void Promise.race([workflow, timeout]).finally(() => {
-      if (timeoutId !== undefined) clearTimeout(timeoutId);
-      if (registrationFlight.current !== flight) return;
-      registrationFlight.current = undefined;
-      const latestSession = activeSession.current;
-      const shouldRetry =
-        registrationQueued.current ||
-        latestSession?.revision !== flight.revision;
-      registrationQueued.current = false;
-      if (latestSession && shouldRetry) {
-        registerForPushRef.current(latestSession);
-      }
-    });
-  }, []);
+      if (!onlineManager.isOnline()) return;
+      const flight = { revision: session.revision };
+      const controller = new AbortController();
+      registrationFlight.current = flight;
+      const workflow = (async () => {
+        try {
+          await getCurrentUser(controller.signal);
+          if (
+            controller.signal.aborted ||
+            activeSession.current?.revision !== session.revision
+          ) {
+            return;
+          }
+          const platform = getFoPushPlatform(Platform.OS);
+          if (!platform) return;
+          if (platform === "ANDROID") {
+            await Notifications.setNotificationChannelAsync("default", {
+              name: "default",
+              importance: Notifications.AndroidImportance.HIGH,
+            });
+          }
+          if (
+            controller.signal.aborted ||
+            activeSession.current?.revision !== session.revision
+          ) {
+            return;
+          }
+          if (!(await ensureNotificationPermission(controller.signal))) return;
+          const projectId = getProjectId();
+          if (!projectId) return;
+          const registration = await getExpoPushRegistration(
+            projectId,
+            platform,
+            controller.signal,
+          );
+          if (
+            controller.signal.aborted ||
+            activeSession.current?.revision !== session.revision ||
+            registration.expoPushToken.length === 0
+          ) {
+            return;
+          }
+          const settled = settledRegistration.current;
+          if (
+            settled?.revision === session.revision &&
+            settled.token === registration.expoPushToken
+          ) {
+            return;
+          }
+          throwIfPushRegistrationAborted(controller.signal);
+          await registerFoPushDevice(registration, controller.signal);
+          if (
+            !controller.signal.aborted &&
+            activeSession.current?.revision === session.revision
+          ) {
+            settledRegistration.current = {
+              revision: session.revision,
+              token: registration.expoPushToken,
+            };
+          }
+        } catch {
+          return;
+        }
+      })();
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<void>((resolve) => {
+        timeoutId = setTimeout(() => {
+          controller.abort();
+          resolve();
+        }, registrationTimeoutMs);
+      });
+      void Promise.race([workflow, timeout]).finally(() => {
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+        if (registrationFlight.current !== flight) return;
+        registrationFlight.current = undefined;
+        const latestSession = activeSession.current;
+        const shouldRetry =
+          registrationQueued.current ||
+          latestSession?.revision !== flight.revision;
+        registrationQueued.current = false;
+        if (latestSession && shouldRetry) {
+          registerForPushRef.current(latestSession);
+        }
+      });
+    };
 
-  useEffect(() => {
     registerForPushRef.current = registerForPush;
-  }, [registerForPush]);
-
-  useEffect(() => {
     settledRegistration.current = undefined;
     const session = hasSession ? { revision: sessionRevision } : undefined;
     activeSession.current = session;
     if (session) registerForPush(session);
+    const removeFocusListener = focusManager.subscribe((isFocused) => {
+      const currentSession = activeSession.current;
+      if (isFocused && currentSession) registerForPush(currentSession);
+    });
+    const removeOnlineListener = onlineManager.subscribe((isOnline) => {
+      const currentSession = activeSession.current;
+      if (isOnline && currentSession) registerForPush(currentSession);
+    });
     return () => {
       if (activeSession.current?.revision === session?.revision)
         activeSession.current = undefined;
+      removeFocusListener();
+      removeOnlineListener();
     };
-  }, [hasSession, registerForPush, sessionRevision]);
+  }, [hasSession, sessionRevision]);
 
-  useEffect(
-    () =>
-      focusManager.subscribe((isFocused) => {
-        const session = activeSession.current;
-        if (isFocused && session) registerForPush(session);
-      }),
-    [registerForPush],
-  );
+  useEffect(() => {
+    if (!getFoPushPlatform(Platform.OS)) return;
 
-  useEffect(
-    () =>
-      onlineManager.subscribe((isOnline) => {
-        const session = activeSession.current;
-        if (isOnline && session) registerForPush(session);
-      }),
-    [registerForPush],
-  );
-
-  const handleResponse = useCallback(
-    (response: Notifications.NotificationResponse) => {
+    const handleResponse = (response: Notifications.NotificationResponse) => {
       const responseId = response.notification.request.identifier;
       if (handledResponseIds.current.has(responseId)) return;
       handledResponseIds.current.add(responseId);
       const data = parsePushData(response.notification.request.content.data);
       if (data) setPendingNotificationId(data.notificationId);
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (!getFoPushPlatform(Platform.OS)) return;
-
+    };
     let isMounted = true;
     const releaseNotificationHandler = acquireNotificationHandler();
     const responseSubscription =
@@ -299,7 +284,7 @@ export const useFoPushNotifications = (
       responseSubscription.remove();
       releaseNotificationHandler();
     };
-  }, [handleResponse]);
+  }, []);
 
   useEffect(() => {
     if (!pendingNotificationId || !hasSession) return;

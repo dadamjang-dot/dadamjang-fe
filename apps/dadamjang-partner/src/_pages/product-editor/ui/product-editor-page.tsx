@@ -3,7 +3,6 @@ import {
   ChangeEvent,
   DragEvent,
   FormEvent,
-  useCallback,
   useEffect,
   useRef,
   useState,
@@ -44,6 +43,7 @@ type Sku = ProductInput["skus"][number] & {
   skuId?: string;
 };
 type SkuPatch = Partial<Omit<Sku, "identity">>;
+type FlagRef = { current: boolean };
 const UNSAVED_CHANGES_MESSAGE =
   "저장하지 않은 변경사항이 있습니다. 이동할까요?";
 const HISTORY_GUARD_KEY = "__dadamjangProductEditorGuard";
@@ -72,6 +72,20 @@ const moveItem = <T, K extends keyof T>(
   next.splice(from, 1);
   next.splice(to, 0, item);
   return next;
+};
+const markDirty = (dirty: FlagRef, historyGuardArmed: FlagRef) => {
+  dirty.current = true;
+  if (historyGuardArmed.current) return;
+  historyGuardArmed.current = true;
+  const currentState =
+    typeof history.state === "object" && history.state !== null
+      ? history.state
+      : {};
+  history.pushState(
+    { ...currentState, [HISTORY_GUARD_KEY]: true },
+    "",
+    location.href,
+  );
 };
 export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const router = useRouter();
@@ -111,20 +125,6 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const dirty = useRef(false);
   const hydrated = useRef(false);
   const historyGuardArmed = useRef(false);
-  const markDirty = useCallback(() => {
-    dirty.current = true;
-    if (historyGuardArmed.current) return;
-    historyGuardArmed.current = true;
-    const currentState =
-      typeof history.state === "object" && history.state !== null
-        ? history.state
-        : {};
-    history.pushState(
-      { ...currentState, [HISTORY_GUARD_KEY]: true },
-      "",
-      location.href,
-    );
-  }, []);
   useEffect(() => {
     const p = existing.data?.myPartnerProduct;
     if (!p || existing.isFetching || hydrated.current) return;
@@ -210,11 +210,11 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
         history.back();
         return;
       }
-      markDirty();
+      markDirty(dirty, historyGuardArmed);
     };
     window.addEventListener("popstate", guard, true);
     return () => window.removeEventListener("popstate", guard, true);
-  }, [markDirty]);
+  }, []);
   useEffect(() => {
     imageRef.current = images;
   }, [images]);
@@ -358,7 +358,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
             } finally {
               uploadControllers.current.delete(u.key);
             }
-            if (mounted.current) markDirty();
+            if (mounted.current) markDirty(dirty, historyGuardArmed);
           } catch (e) {
             if (uploadKey) occupiedImageKeys.current.delete(uploadKey);
             if (mounted.current) {
@@ -394,21 +394,21 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       occupiedImageKeys.current.delete(item.key);
       uploadControllers.current.get(item.key)?.abort();
       if (item.local) URL.revokeObjectURL(item.preview);
-      markDirty();
+      markDirty(dirty, historyGuardArmed);
       return v.filter((_, currentIndex) => currentIndex !== index);
     });
   const moveImage = (key: string, direction: -1 | 1) =>
     setImages((v) => {
       const next = moveItem(v, "key", key, direction);
       if (next === v) return v;
-      markDirty();
+      markDirty(dirty, historyGuardArmed);
       return next;
     });
   const moveSku = (identity: string, direction: -1 | 1) =>
     setSkus((value) => {
       const next = moveItem(value, "identity", identity, direction);
       if (next === value) return value;
-      markDirty();
+      markDirty(dirty, historyGuardArmed);
       return next;
     });
   const removeSku = (identity: string) =>
@@ -416,7 +416,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       if (value.length <= 1) return value;
       const index = value.findIndex((sku) => sku.identity === identity);
       if (index < 0) return value;
-      markDirty();
+      markDirty(dirty, historyGuardArmed);
       return value.filter((_, currentIndex) => currentIndex !== index);
     });
   const updateSku = (identity: string, patch: SkuPatch) =>
@@ -566,7 +566,11 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
           반려 사유: {p.rejectionReason}
         </div>
       )}
-      <form className="editor-grid" onSubmit={onSubmit} onChange={markDirty}>
+      <form
+        className="editor-grid"
+        onSubmit={onSubmit}
+        onChange={() => markDirty(dirty, historyGuardArmed)}
+      >
         <div className="editor-main">
           <fieldset
             disabled={(!editable && !isPublished) || mutation.isPending}
@@ -593,7 +597,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
-                markDirty();
+                markDirty(dirty, historyGuardArmed);
               }}
               maxLength={200}
               required
@@ -794,7 +798,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
               disabled={isPublished}
               onClick={() => {
                 setSkus((v) => [...v, emptySku()]);
-                markDirty();
+                markDirty(dirty, historyGuardArmed);
               }}
             >
               SKU 추가

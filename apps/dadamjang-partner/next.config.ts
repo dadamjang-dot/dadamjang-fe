@@ -125,6 +125,7 @@ const imageRemotePatterns = (
 
 const environment = process.env.NODE_ENV as RuntimeEnvironment;
 const nextConfig: NextConfig = {
+  reactCompiler: true,
   reactStrictMode: true,
   allowedDevOrigins: ["127.0.0.1"],
   transpilePackages: ["@dadamjang/domain"],

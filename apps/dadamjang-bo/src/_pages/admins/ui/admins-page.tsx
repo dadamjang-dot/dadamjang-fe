@@ -6,7 +6,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import { adminStatusLabel } from "@/entities/operation-status";
 import { AdminApiError, type AdminInvite } from "@/shared/api";
 import { formatDateTime } from "@/shared/lib";
@@ -70,64 +70,61 @@ export const AdminsPage = () => {
   });
   const nodes = list.data?.pages.flatMap((page) => page.nodes) ?? [];
   const totalCount = list.data?.pages[0]?.totalCount ?? 0;
-  const columns = useMemo<DataTableColumn<AdminInvite>[]>(
-    () => [
-      { key: "email", header: "이메일", render: (node) => node.email },
-      {
-        key: "status",
-        header: "상태",
-        render: (node) => (
-          <StatusBadge
-            status={node.status}
-            label={adminStatusLabel(node.status)}
-          />
-        ),
-      },
-      {
-        key: "inviter",
-        header: "초대한 관리자",
-        render: (node) => node.invitedByUserid,
-      },
-      {
-        key: "created",
-        header: "발송일",
-        render: (node) => formatDateTime(node.createdAt),
-      },
-      {
-        key: "expires",
-        header: "만료일",
-        render: (node) => formatDateTime(node.expiresAt),
-      },
-      {
-        key: "actions",
-        header: "작업",
-        render: (node) => (
-          <InlineActions>
-            {node.status !== "ACCEPTED" ? (
-              <ActionButton
-                variant="ghost"
-                size="xsmall"
-                loading={create.isPending}
-                onClick={() => create.mutate(node.email)}
-              >
-                재발송
-              </ActionButton>
-            ) : null}
-            {node.status === "PENDING" ? (
-              <ActionButton
-                variant="ghost"
-                size="xsmall"
-                onClick={() => setRevokeTarget(node)}
-              >
-                취소
-              </ActionButton>
-            ) : null}
-          </InlineActions>
-        ),
-      },
-    ],
-    [create],
-  );
+  const columns: DataTableColumn<AdminInvite>[] = [
+    { key: "email", header: "이메일", render: (node) => node.email },
+    {
+      key: "status",
+      header: "상태",
+      render: (node) => (
+        <StatusBadge
+          status={node.status}
+          label={adminStatusLabel(node.status)}
+        />
+      ),
+    },
+    {
+      key: "inviter",
+      header: "초대한 관리자",
+      render: (node) => node.invitedByUserid,
+    },
+    {
+      key: "created",
+      header: "발송일",
+      render: (node) => formatDateTime(node.createdAt),
+    },
+    {
+      key: "expires",
+      header: "만료일",
+      render: (node) => formatDateTime(node.expiresAt),
+    },
+    {
+      key: "actions",
+      header: "작업",
+      render: (node) => (
+        <InlineActions>
+          {node.status !== "ACCEPTED" ? (
+            <ActionButton
+              variant="ghost"
+              size="xsmall"
+              loading={create.isPending}
+              onClick={() => create.mutate(node.email)}
+            >
+              재발송
+            </ActionButton>
+          ) : null}
+          {node.status === "PENDING" ? (
+            <ActionButton
+              variant="ghost"
+              size="xsmall"
+              onClick={() => setRevokeTarget(node)}
+            >
+              취소
+            </ActionButton>
+          ) : null}
+        </InlineActions>
+      ),
+    },
+  ];
 
   const submitInvite = (event: FormEvent) => {
     event.preventDefault();

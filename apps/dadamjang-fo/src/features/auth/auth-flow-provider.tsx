@@ -1,9 +1,7 @@
 import { useRouter } from "expo-router";
 import {
   createContext,
-  useCallback,
   useContext,
-  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -58,79 +56,56 @@ export const AuthFlowProvider = ({ children }: { children: ReactNode }) => {
   const [pendingReactivation, setPendingReactivationState] =
     useState<PendingReactivation>();
 
-  const cancelIdentityRequest = useCallback(() => {
+  const cancelIdentityRequest = () => {
     pendingIdentity.current?.reject(new IdentitySheetDismissedError());
     pendingIdentity.current = undefined;
     setIdentityRequest(undefined);
-  }, []);
+  };
 
-  const openIdentityProviderSheet = useCallback(
-    (purpose: IdentityVerificationPurpose) => {
-      cancelIdentityRequest();
-      setIdentityRequest({ purpose });
-      const result = new Promise<string>((resolve, reject) => {
-        pendingIdentity.current = { resolve, reject };
-      });
-      router.push("/auth-identity-provider-sheet");
-      return result;
-    },
-    [cancelIdentityRequest, router],
-  );
+  const openIdentityProviderSheet = (purpose: IdentityVerificationPurpose) => {
+    cancelIdentityRequest();
+    setIdentityRequest({ purpose });
+    const result = new Promise<string>((resolve, reject) => {
+      pendingIdentity.current = { resolve, reject };
+    });
+    router.push("/auth-identity-provider-sheet");
+    return result;
+  };
 
-  const completeIdentityRequest = useCallback((token: string) => {
+  const completeIdentityRequest = (token: string) => {
     pendingIdentity.current?.resolve(token);
     pendingIdentity.current = undefined;
     setIdentityRequest(undefined);
-  }, []);
+  };
 
-  const clearKakaoSignup = useCallback(
-    () => setKakaoSignupState(undefined),
-    [],
-  );
-  const setPendingReactivation = useCallback(
-    (reactivationToken: string, returnTo?: string) =>
-      setPendingReactivationState({
-        reactivationToken,
-        returnTo: resolveAuthReturnTo(returnTo),
-      }),
-    [],
-  );
-  const clearPendingReactivation = useCallback(
-    () => setPendingReactivationState(undefined),
-    [],
-  );
-  const resetAuthFlow = useCallback(() => {
+  const clearKakaoSignup = () => setKakaoSignupState(undefined);
+  const setPendingReactivation = (
+    reactivationToken: string,
+    returnTo?: string,
+  ) =>
+    setPendingReactivationState({
+      reactivationToken,
+      returnTo: resolveAuthReturnTo(returnTo),
+    });
+  const clearPendingReactivation = () => setPendingReactivationState(undefined);
+  const resetAuthFlow = () => {
     cancelIdentityRequest();
     setKakaoSignupState(undefined);
     setPendingReactivationState(undefined);
-  }, [cancelIdentityRequest]);
-  const value = useMemo<AuthFlowContextValue>(
-    () => ({
-      identityRequest,
-      openIdentityProviderSheet,
-      completeIdentityRequest,
-      cancelIdentityRequest,
-      kakaoSignup,
-      setKakaoSignup: setKakaoSignupState,
-      clearKakaoSignup,
-      pendingReactivation,
-      setPendingReactivation,
-      clearPendingReactivation,
-      resetAuthFlow,
-    }),
-    [
-      cancelIdentityRequest,
-      clearPendingReactivation,
-      clearKakaoSignup,
-      completeIdentityRequest,
-      identityRequest,
-      kakaoSignup,
-      openIdentityProviderSheet,
-      pendingReactivation,
-      resetAuthFlow,
-      setPendingReactivation,
-    ],
-  );
+  };
+  const value: AuthFlowContextValue = {
+    identityRequest,
+    openIdentityProviderSheet,
+    completeIdentityRequest,
+    cancelIdentityRequest,
+    kakaoSignup,
+    setKakaoSignup: setKakaoSignupState,
+    clearKakaoSignup,
+    pendingReactivation,
+    setPendingReactivation,
+    clearPendingReactivation,
+    resetAuthFlow,
+  };
 
   return (
     <AuthFlowContext.Provider value={value}>

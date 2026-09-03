@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -22,13 +22,9 @@ const AuthenticatedNotificationsRoute = () => {
   const query = useFoNotifications();
   const markRead = useMarkFoNotificationRead();
   const markAllRead = useMarkAllFoNotificationsRead();
-  const notifications = useMemo(
-    () =>
-      uniqueBy(
-        query.data?.pages.flatMap(({ nodes }) => nodes) ?? [],
-        ({ notificationId }) => notificationId,
-      ),
-    [query.data?.pages],
+  const notifications = uniqueBy(
+    query.data?.pages.flatMap(({ nodes }) => nodes) ?? [],
+    ({ notificationId }) => notificationId,
   );
   const unreadCount = query.data?.pages[0]?.unreadCount ?? 0;
 

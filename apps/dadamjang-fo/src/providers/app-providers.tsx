@@ -5,13 +5,7 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import NetInfo, { type NetInfoState } from "@react-native-community/netinfo";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
 import {
@@ -88,12 +82,12 @@ export const AppProviders = ({ children }: AppProvidersProps) => {
     error: null,
     hasSession: false,
   });
-  const refreshSessionHydration = useCallback(async () => {
+  const refreshSessionHydration = async () => {
     const session = await readSessionHydration();
     setSessionHydration(session);
     setSessionRevision((current) => current + 1);
     return session;
-  }, []);
+  };
 
   useEffect(() => {
     const updateFocus = (state: AppStateStatus) =>
@@ -135,15 +129,12 @@ export const AppProviders = ({ children }: AppProvidersProps) => {
     };
   }, []);
 
-  const authSessionState = useMemo(
-    () => ({
-      ...sessionHydration,
-      retry: async () => {
-        await refreshSessionHydration();
-      },
-    }),
-    [refreshSessionHydration, sessionHydration],
-  );
+  const authSessionState = {
+    ...sessionHydration,
+    retry: async () => {
+      await refreshSessionHydration();
+    },
+  };
 
   if (!isBootstrapped) return null;
 
