@@ -1,12 +1,6 @@
 import { hashKey } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import {
-  startTransition,
-  useLayoutEffect,
-  useMemo,
-  useOptimistic,
-  useRef,
-} from "react";
+import { startTransition, useLayoutEffect, useOptimistic, useRef } from "react";
 import { Alert, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -40,10 +34,7 @@ const ShopScreen = () => {
   const currentUser = useAuthActionGate("/");
   const { data: wishlist = [] } = useWishlist(currentUser.isAuthenticated);
   const { add: addWish, remove: removeWish } = useWishActions();
-  const likedProductIds = useMemo(
-    () => new Set(wishlist.map((item) => item.productId)),
-    [wishlist],
-  );
+  const likedProductIds = new Set(wishlist.map((item) => item.productId));
   const [optimisticLikedProductIds, updateOptimisticLike] = useOptimistic(
     likedProductIds,
     (current, { productId, liked }: { productId: string; liked: boolean }) => {
@@ -53,20 +44,16 @@ const ShopScreen = () => {
       return next;
     },
   );
-  const productFilter = useMemo(() => toProductFilter(filters), [filters]);
+  const productFilter = toProductFilter(filters);
   const productQueryIdentity = hashKey(
     priceEvidenceQueryKeys.productPriceSummary(productFilter),
   );
   const productsQuery = useProductPriceSummaries(productFilter);
   const currentProductQueryIdentity = useRef(productQueryIdentity);
   const loadingProductQueryIdentity = useRef<string | undefined>(undefined);
-  const products = useMemo(
-    () =>
-      uniqueBy(
-        productsQuery.data?.pages.flatMap((page) => page.nodes) ?? [],
-        (product) => product.productId,
-      ),
-    [productsQuery.data?.pages],
+  const products = uniqueBy(
+    productsQuery.data?.pages.flatMap((page) => page.nodes) ?? [],
+    (product) => product.productId,
   );
   const totalCount = productsQuery.data?.pages[0]?.totalCount ?? 0;
 

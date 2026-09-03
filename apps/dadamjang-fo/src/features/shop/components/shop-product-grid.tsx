@@ -1,4 +1,4 @@
-import { type ReactElement, useMemo } from "react";
+import { type ReactElement } from "react";
 import { LegendList } from "@legendapp/list/react-native";
 import { ActivityIndicator, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
@@ -71,27 +71,23 @@ const ShopProductGrid = ({
   likedProductIds,
   onToggleLike,
 }: ShopProductGridProps) => {
-  const rows = useMemo<ShopProductGridRow[]>(() => {
-    const controls: ShopProductGridRow[] = [
-      { type: "filter", content: filterBar },
-      { type: "sort", content: sortBar },
-    ];
-
-    if (isLoading || isError || products.length === 0) {
-      return [...controls, { type: "state" }];
-    }
-
-    return [
-      ...controls,
-      ...Array.from(
-        { length: Math.ceil(products.length / 2) },
-        (_, index): ShopProductGridRow => ({
-          type: "products",
-          products: products.slice(index * 2, index * 2 + 2),
-        }),
-      ),
-    ];
-  }, [filterBar, isError, isLoading, products, sortBar]);
+  const controls: ShopProductGridRow[] = [
+    { type: "filter", content: filterBar },
+    { type: "sort", content: sortBar },
+  ];
+  const rows: ShopProductGridRow[] =
+    isLoading || isError || products.length === 0
+      ? [...controls, { type: "state" }]
+      : [
+          ...controls,
+          ...Array.from(
+            { length: Math.ceil(products.length / 2) },
+            (_, index): ShopProductGridRow => ({
+              type: "products",
+              products: products.slice(index * 2, index * 2 + 2),
+            }),
+          ),
+        ];
 
   return (
     <View style={s.list}>

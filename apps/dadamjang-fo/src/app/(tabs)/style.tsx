@@ -1,6 +1,6 @@
 import { hashKey } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import type { IconAction } from "@dadamjang/mobile";
 
@@ -37,13 +37,9 @@ const StyleScreen = () => {
   const currentStyleQueryIdentity = useRef(styleQueryIdentity);
   const loadingStyleQueryIdentity = useRef<string | undefined>(undefined);
   const likeMutation = useToggleStylePostLike();
-  const posts = useMemo(
-    () =>
-      uniqueBy(
-        postsQuery.data?.pages.flatMap((page) => page.nodes) ?? [],
-        (post) => post.stylePostId,
-      ),
-    [postsQuery.data?.pages],
+  const posts = uniqueBy(
+    postsQuery.data?.pages.flatMap((page) => page.nodes) ?? [],
+    (post) => post.stylePostId,
   );
 
   useLayoutEffect(() => {

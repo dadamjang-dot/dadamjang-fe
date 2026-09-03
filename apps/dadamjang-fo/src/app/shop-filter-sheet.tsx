@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -275,10 +275,7 @@ const ShopFilterSheetRoute = () => {
   const filterMode = isFilterMode(mode) ? mode : "category";
   const { startDraft, updateDraft, applyDraft, draftFilters } =
     useShopFilters();
-  const draftProductFilter = useMemo(
-    () => toProductFilter(draftFilters),
-    [draftFilters],
-  );
+  const draftProductFilter = toProductFilter(draftFilters);
   const draftProductsQuery = useProductPriceSummaries(draftProductFilter);
   const totalCount = draftProductsQuery.data?.pages[0]?.totalCount ?? 0;
 

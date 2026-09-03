@@ -1,6 +1,6 @@
 import { LegendList } from "@legendapp/list/react-native";
 import * as Crypto from "expo-crypto";
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Image } from "expo-image";
 import { Modal, ScrollView, Text, TextInput, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
@@ -52,13 +52,13 @@ const StyleComposer = ({ onClose }: StyleComposerProps) => {
   const submitLock = useRef(false);
   const isLocked = isSubmitting || createMutation.isPending;
 
-  const mentionProducts = useMemo(() => {
-    const query = getStyleMentionQuery(body);
-    if (query === null) return [];
-    return selectedProducts.filter((product) =>
-      product.brandName?.toLowerCase().includes(query),
-    );
-  }, [body, selectedProducts]);
+  const mentionQuery = getStyleMentionQuery(body);
+  const mentionProducts =
+    mentionQuery === null
+      ? []
+      : selectedProducts.filter((product) =>
+          product.brandName?.toLowerCase().includes(mentionQuery),
+        );
 
   const addHashtag = () => {
     if (isLocked) return;

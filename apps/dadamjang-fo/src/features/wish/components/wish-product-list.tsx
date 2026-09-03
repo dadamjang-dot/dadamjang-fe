@@ -1,5 +1,5 @@
 import { LegendList } from "@legendapp/list/react-native";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -40,9 +40,9 @@ const WishProductList = ({
 }: WishProductListProps) => {
   const [filters, setFilters] = useState<WishProductFilters>(defaultFilters);
   const [isSortSheetVisible, setSortSheetVisible] = useState(false);
-  const visibleProducts = useMemo(
-    () => sortWishProducts(filterWishProducts(products, filters), filters),
-    [filters, products],
+  const visibleProducts = sortWishProducts(
+    filterWishProducts(products, filters),
+    filters,
   );
 
   if (isLoading) {

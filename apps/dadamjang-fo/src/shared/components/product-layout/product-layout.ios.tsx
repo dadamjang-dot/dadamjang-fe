@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { View, type LayoutChangeEvent } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import Animated, {
@@ -28,32 +28,26 @@ const ProductLayout = (props: ProductLayoutProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
-  const handleCancelSearch = useCallback(() => {
+  const handleCancelSearch = () => {
     setIsSearching(false);
     setSearchValue("");
-  }, []);
+  };
 
   const progress = useSharedValue(0);
   const childrenWidth = useSharedValue(0);
   const cancelWidth = useSharedValue(0);
 
-  const handleChildrenLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      if (childrenWidth.get() === 0 && event.nativeEvent.layout.width > 0) {
-        childrenWidth.set(event.nativeEvent.layout.width);
-      }
-    },
-    [childrenWidth],
-  );
+  const handleChildrenLayout = (event: LayoutChangeEvent) => {
+    if (childrenWidth.get() === 0 && event.nativeEvent.layout.width > 0) {
+      childrenWidth.set(event.nativeEvent.layout.width);
+    }
+  };
 
-  const handleCancelLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      if (cancelWidth.get() === 0 && event.nativeEvent.layout.width > 0) {
-        cancelWidth.set(event.nativeEvent.layout.width);
-      }
-    },
-    [cancelWidth],
-  );
+  const handleCancelLayout = (event: LayoutChangeEvent) => {
+    if (cancelWidth.get() === 0 && event.nativeEvent.layout.width > 0) {
+      cancelWidth.set(event.nativeEvent.layout.width);
+    }
+  };
 
   useEffect(() => {
     progress.set(

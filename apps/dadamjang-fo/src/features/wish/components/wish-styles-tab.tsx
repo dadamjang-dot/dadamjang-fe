@@ -1,6 +1,6 @@
 import { LegendList } from "@legendapp/list/react-native";
 import { useRouter } from "expo-router";
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -17,13 +17,9 @@ const WishStylesTab = () => {
   const likedPosts = useLikedStylePosts();
   const likeMutation = useToggleStylePostLike();
   const isLoadingMore = useRef(false);
-  const posts = useMemo(
-    () =>
-      uniqueBy(
-        likedPosts.data?.pages.flatMap((page) => page.nodes) ?? [],
-        (post) => post.stylePostId,
-      ),
-    [likedPosts.data?.pages],
+  const posts = uniqueBy(
+    likedPosts.data?.pages.flatMap((page) => page.nodes) ?? [],
+    (post) => post.stylePostId,
   );
 
   const handleLoadMore = async () => {

@@ -8,7 +8,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { formatKrw } from "@dadamjang/domain";
 import {
   adminActionLabel,
@@ -109,52 +109,49 @@ export const ProductsPage = () => {
   };
   const nodes = list.data?.pages.flatMap((page) => page.nodes) ?? [];
   const totalCount = list.data?.pages[0]?.totalCount ?? 0;
-  const columns = useMemo<DataTableColumn<AdminProduct>[]>(
-    () => [
-      {
-        key: "title",
-        header: "상품",
-        render: (node) => (
-          <div className={styles.productCell}>
-            <div className={styles.thumbnail}>
-              {node.thumbnailUrl ? (
-                <Image src={node.thumbnailUrl} alt="" width={42} height={42} />
-              ) : null}
-            </div>
-            <ActionButton
-              variant="ghost"
-              size="xsmall"
-              onClick={() => setSelectedId(node.productId)}
-            >
-              {node.title}
-            </ActionButton>
+  const columns: DataTableColumn<AdminProduct>[] = [
+    {
+      key: "title",
+      header: "상품",
+      render: (node) => (
+        <div className={styles.productCell}>
+          <div className={styles.thumbnail}>
+            {node.thumbnailUrl ? (
+              <Image src={node.thumbnailUrl} alt="" width={42} height={42} />
+            ) : null}
           </div>
-        ),
-      },
-      { key: "partner", header: "파트너", render: (node) => node.partnerName },
-      {
-        key: "category",
-        header: "카테고리",
-        render: (node) => node.categoryName,
-      },
-      {
-        key: "approval",
-        header: "승인 상태",
-        render: (node) => (
-          <StatusBadge
-            status={node.approvalStatus}
-            label={adminStatusLabel(node.approvalStatus)}
-          />
-        ),
-      },
-      {
-        key: "createdAt",
-        header: "등록일",
-        render: (node) => formatDateTime(node.createdAt),
-      },
-    ],
-    [],
-  );
+          <ActionButton
+            variant="ghost"
+            size="xsmall"
+            onClick={() => setSelectedId(node.productId)}
+          >
+            {node.title}
+          </ActionButton>
+        </div>
+      ),
+    },
+    { key: "partner", header: "파트너", render: (node) => node.partnerName },
+    {
+      key: "category",
+      header: "카테고리",
+      render: (node) => node.categoryName,
+    },
+    {
+      key: "approval",
+      header: "승인 상태",
+      render: (node) => (
+        <StatusBadge
+          status={node.approvalStatus}
+          label={adminStatusLabel(node.approvalStatus)}
+        />
+      ),
+    },
+    {
+      key: "createdAt",
+      header: "등록일",
+      render: (node) => formatDateTime(node.createdAt),
+    },
+  ];
 
   const confirm = (): boolean => {
     if (!decision) return false;

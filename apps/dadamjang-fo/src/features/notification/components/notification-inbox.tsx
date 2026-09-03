@@ -1,5 +1,5 @@
 import { LegendList } from "@legendapp/list/react-native";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ActivityIndicator, ScrollView, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -51,13 +51,10 @@ const NotificationInbox = ({
   unreadCount,
 }: NotificationInboxProps) => {
   const [filter, setFilter] = useState<NotificationFilter>("ALL");
-  const visibleNotifications = useMemo(
-    () =>
-      filter === "ALL"
-        ? notifications
-        : notifications.filter(({ type }) => type === filter),
-    [filter, notifications],
-  );
+  const visibleNotifications =
+    filter === "ALL"
+      ? notifications
+      : notifications.filter(({ type }) => type === filter);
   const needsFilteredPage =
     filter !== "ALL" && visibleNotifications.length === 0 && hasNextPage;
 

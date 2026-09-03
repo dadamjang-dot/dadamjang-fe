@@ -1,5 +1,4 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 
@@ -17,11 +16,9 @@ const MyScreen = () => {
     currentUser.authStatus === "loading" ||
     currentUser.authStatus === "offline";
 
-  useFocusEffect(
-    useCallback(() => {
-      if (authStatus === "unauthenticated") redirectToSignIn(true);
-    }, [authStatus, redirectToSignIn]),
-  );
+  useFocusEffect(() => {
+    if (authStatus === "unauthenticated") redirectToSignIn(true);
+  });
 
   return (
     <View style={s.container}>

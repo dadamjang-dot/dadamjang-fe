@@ -1,4 +1,4 @@
-import { type ReactElement, useMemo } from "react";
+import { type ReactElement } from "react";
 import { LegendList } from "@legendapp/list/react-native";
 import { ActivityIndicator, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
@@ -43,20 +43,21 @@ const StylePostGrid = ({
   onToggleLike,
   showRank = false,
 }: StylePostGridProps) => {
-  const rows = useMemo<Row[]>(() => {
-    const controls: Row[] = [];
-    if (sortBar) controls.push({ type: "sort", content: sortBar });
-    if (isLoading || isError || posts.length === 0)
-      return [...controls, { type: "state" }];
-    return [
-      ...controls,
-      ...Array.from({ length: Math.ceil(posts.length / 2) }, (_, index) => ({
-        type: "posts" as const,
-        posts: posts.slice(index * 2, index * 2 + 2),
-        startIndex: index * 2,
-      })),
-    ];
-  }, [isError, isLoading, posts, sortBar]);
+  const controls: Row[] = sortBar ? [{ type: "sort", content: sortBar }] : [];
+  const rows: Row[] =
+    isLoading || isError || posts.length === 0
+      ? [...controls, { type: "state" }]
+      : [
+          ...controls,
+          ...Array.from(
+            { length: Math.ceil(posts.length / 2) },
+            (_, index) => ({
+              type: "posts" as const,
+              posts: posts.slice(index * 2, index * 2 + 2),
+              startIndex: index * 2,
+            }),
+          ),
+        ];
 
   return (
     <View style={s.list}>

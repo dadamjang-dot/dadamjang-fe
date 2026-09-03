@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { View, type LayoutChangeEvent, type TextInput } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import Animated, {
@@ -57,36 +51,27 @@ const ProductHeader = ({
     }
   }, [isSearching]);
 
-  const handleCancel = useCallback(() => {
+  const handleCancel = () => {
     inputRef.current?.blur();
     onSearchCancel?.();
-  }, [onSearchCancel]);
+  };
 
-  const handleContainerLayout = useCallback(
-    (e: LayoutChangeEvent) => {
-      containerWidth.set(e.nativeEvent.layout.width);
-    },
-    [containerWidth],
-  );
+  const handleContainerLayout = (e: LayoutChangeEvent) => {
+    containerWidth.set(e.nativeEvent.layout.width);
+  };
 
-  const handleChildrenLayout = useCallback(
-    (e: LayoutChangeEvent) => {
-      if (childrenWidth.get() === 0 && e.nativeEvent.layout.width > 0) {
-        childrenWidth.set(e.nativeEvent.layout.width);
-        setMeasuredChildrenWidth(e.nativeEvent.layout.width);
-      }
-    },
-    [childrenWidth],
-  );
+  const handleChildrenLayout = (e: LayoutChangeEvent) => {
+    if (childrenWidth.get() === 0 && e.nativeEvent.layout.width > 0) {
+      childrenWidth.set(e.nativeEvent.layout.width);
+      setMeasuredChildrenWidth(e.nativeEvent.layout.width);
+    }
+  };
 
-  const handleCancelLayout = useCallback(
-    (e: LayoutChangeEvent) => {
-      if (cancelWidth.get() === 0 && e.nativeEvent.layout.width > 0) {
-        cancelWidth.set(e.nativeEvent.layout.width);
-      }
-    },
-    [cancelWidth],
-  );
+  const handleCancelLayout = (e: LayoutChangeEvent) => {
+    if (cancelWidth.get() === 0 && e.nativeEvent.layout.width > 0) {
+      cancelWidth.set(e.nativeEvent.layout.width);
+    }
+  };
 
   useEffect(() => {
     progress.set(

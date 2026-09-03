@@ -1,6 +1,5 @@
 import { LegendList } from "@legendapp/list/react-native";
 import { usePathname, useRouter } from "expo-router";
-import { useMemo } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { colors } from "@dadamjang/design-tokens";
@@ -19,17 +18,12 @@ const SearchContent = ({ keyword }: SearchContentProps) => {
   const query = useProductSearch(keyword ?? "");
   const wishlist = useWishlist(auth.isAuthenticated);
   const wishActions = useWishActions();
-  const products = useMemo(
-    () =>
-      uniqueBy(
-        query.data?.pages.flatMap((page) => page.nodes) ?? [],
-        (product) => product.productId,
-      ),
-    [query.data?.pages],
+  const products = uniqueBy(
+    query.data?.pages.flatMap((page) => page.nodes) ?? [],
+    (product) => product.productId,
   );
-  const likedProductIds = useMemo(
-    () => new Set(wishlist.data?.map((item) => item.productId) ?? []),
-    [wishlist.data],
+  const likedProductIds = new Set(
+    wishlist.data?.map((item) => item.productId) ?? [],
   );
 
   if (!keyword) {

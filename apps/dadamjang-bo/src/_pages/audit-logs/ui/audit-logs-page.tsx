@@ -2,7 +2,7 @@
 
 import { ActionButton } from "@seed-design/react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   adminActionLabel,
   adminEntityLabel,
@@ -45,44 +45,41 @@ export const AuditLogsPage = () => {
   const logs = useInfiniteQuery(auditLogQueries.list(filter));
   const nodes = logs.data?.pages.flatMap((page) => page.nodes) ?? [];
   const totalCount = logs.data?.pages[0]?.totalCount ?? 0;
-  const columns = useMemo<DataTableColumn<AdminAuditLog>[]>(
-    () => [
-      {
-        key: "createdAt",
-        header: "일시",
-        render: (node) => formatDateTime(node.createdAt),
-      },
-      {
-        key: "actor",
-        header: "관리자",
-        render: (node) => node.actorUserid ?? "시스템",
-      },
-      {
-        key: "action",
-        header: "액션",
-        render: (node) => adminActionLabel(node.action),
-      },
-      {
-        key: "entityType",
-        header: "엔티티",
-        render: (node) => adminEntityLabel(node.entityType),
-      },
-      {
-        key: "entityId",
-        header: "대상 ID",
-        render: (node) => (
-          <ActionButton
-            variant="ghost"
-            size="xsmall"
-            onClick={() => setSelected(node)}
-          >
-            {node.entityId}
-          </ActionButton>
-        ),
-      },
-    ],
-    [],
-  );
+  const columns: DataTableColumn<AdminAuditLog>[] = [
+    {
+      key: "createdAt",
+      header: "일시",
+      render: (node) => formatDateTime(node.createdAt),
+    },
+    {
+      key: "actor",
+      header: "관리자",
+      render: (node) => node.actorUserid ?? "시스템",
+    },
+    {
+      key: "action",
+      header: "액션",
+      render: (node) => adminActionLabel(node.action),
+    },
+    {
+      key: "entityType",
+      header: "엔티티",
+      render: (node) => adminEntityLabel(node.entityType),
+    },
+    {
+      key: "entityId",
+      header: "대상 ID",
+      render: (node) => (
+        <ActionButton
+          variant="ghost"
+          size="xsmall"
+          onClick={() => setSelected(node)}
+        >
+          {node.entityId}
+        </ActionButton>
+      ),
+    },
+  ];
 
   return (
     <Page>
