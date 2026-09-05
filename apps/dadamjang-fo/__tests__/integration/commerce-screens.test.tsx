@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -8,10 +9,22 @@ import {
 } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 
+import { getSessionGeneration } from "@dadamjang/graphql-client";
+
 import { AuthSessionStateProvider } from "@/features/auth/auth-session-state";
 import { getCurrentUser } from "@/features/auth/api";
 import { authQueryKeys } from "@/features/auth/hooks";
-import { checkoutCart, getCart, removeCartItem } from "@/features/cart/api";
+import {
+  checkoutCart,
+  getCart,
+  getCheckoutAttempt,
+  removeCartItem,
+} from "@/features/cart/api";
+import { cartQueryKeys } from "@/features/cart/query-keys";
+import type {
+  CheckoutAttempt,
+  CheckoutCartResult,
+} from "@/features/cart/types";
 import { getOrder, getOrders } from "@/features/order/api";
 import CartScreen from "@/app/cart";
 import WishScreen from "@/app/(tabs)/wish";
@@ -83,6 +96,7 @@ jest.mock("@/features/auth/api", () => ({
 jest.mock("@/features/cart/api", () => ({
   checkoutCart: jest.fn(),
   getCart: jest.fn(),
+  getCheckoutAttempt: jest.fn(),
   removeCartItem: jest.fn(),
   upsertCartItem: jest.fn(),
 }));
@@ -98,13 +112,15 @@ jest.mock("@/features/wish/api", () => ({
   removeWish: jest.fn(),
 }));
 
-const createWrapper = () => {
-  const client = new QueryClient({
+const createQueryClient = () =>
+  new QueryClient({
     defaultOptions: {
       mutations: { gcTime: Infinity, retry: false },
       queries: { gcTime: Infinity, retry: false },
     },
   });
+
+const createWrapper = (client = createQueryClient()) => {
   client.setQueryData(authQueryKeys.viewer, {
     userId: "user-1",
     userid: "buyer",
@@ -124,6 +140,21 @@ const createWrapper = () => {
   return TestWrapper;
 };
 
+const deferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+};
+
+const settleBackgroundQueries = async (client: QueryClient) => {
+  await waitFor(() => expect(client.isFetching()).toBe(0));
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+};
+
 const cart = {
   cartId: "cart-1",
   totalAmount: 8_000,
@@ -135,6 +166,35 @@ const cart = {
       product: { productId: "product-1", title: "테스트 상품", imageUrls: [] },
     },
   ],
+};
+
+const uncertainCheckoutAttempt: CheckoutAttempt = {
+  userId: "user-1",
+  generation: 0,
+  idempotencyKey: "checkout-attempt-1",
+  expectedCart: [
+    {
+      cartItemId: "cart-item-1",
+      skuId: "sku-1",
+      quantity: 1,
+      unitPrice: 8_000,
+      productId: "product-1",
+      productTitle: "테스트 상품",
+      optionName: "블랙 / M",
+    },
+  ],
+  phase: "uncertain",
+  startedAt: 1,
+};
+
+const storeCheckoutAttempt = (
+  client: QueryClient,
+  attempt: CheckoutAttempt,
+) => {
+  client.setQueryData(
+    cartQueryKeys.checkoutAttempt("user-1", getSessionGeneration()),
+    attempt,
+  );
 };
 
 const secondCartItem = {
@@ -194,6 +254,10 @@ describe("cart and wish screens", () => {
       hasPassword: true,
     });
     jest.mocked(getCart).mockResolvedValue(cart);
+    jest.mocked(getCheckoutAttempt).mockResolvedValue({
+      status: "NOT_OBSERVED",
+      orderId: null,
+    });
     jest.mocked(getWishlist).mockResolvedValue(wishlist);
   });
 
@@ -241,6 +305,23 @@ describe("cart and wish screens", () => {
     expect(checkout).toHaveProp("accessibilityState", { disabled: true });
   });
 
+  it("disables both recovery actions during the initial checkout request", async () => {
+    jest
+      .mocked(checkoutCart)
+      .mockImplementation(() => new Promise(() => undefined));
+    render(<CartScreen />, { wrapper: createWrapper() });
+
+    await fireEvent.press(await screen.findByTestId("e2e.checkout.submit"));
+
+    expect(
+      await screen.findByRole("button", { name: "주문 결과 확인" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "주문 다시 시도" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "결제하기" })).toBeDisabled();
+  });
+
   it("exposes cart and order retry controls as named buttons", async () => {
     jest.mocked(getCart).mockRejectedValueOnce(new Error("cart unavailable"));
     const cartScreen = render(<CartScreen />, { wrapper: createWrapper() });
@@ -261,6 +342,268 @@ describe("cart and wish screens", () => {
       "e2e.order.retry",
     );
   });
+
+  it("shows uncertain recovery and its snapshot before a cart read error", async () => {
+    const client = createQueryClient();
+    jest
+      .mocked(getCart)
+      .mockResolvedValueOnce(cart)
+      .mockRejectedValueOnce(new Error("cart unavailable"));
+    jest.mocked(checkoutCart).mockRejectedValueOnce(new Error("response lost"));
+    render(<CartScreen />, { wrapper: createWrapper(client) });
+
+    await fireEvent.press(await screen.findByTestId("e2e.checkout.submit"));
+
+    expect(await screen.findByTestId("e2e.checkout.recovery")).toBeVisible();
+    layoutLegendList("처음 요청한 상품 목록");
+    expect(screen.getByText("테스트 상품")).toBeVisible();
+    expect(screen.getByText("블랙 / M")).toBeVisible();
+    expect(screen.getByText("수량 1개 · 단가 8,000원")).toBeVisible();
+    expect(
+      screen.queryByText("장바구니를 불러오지 못했어요."),
+    ).not.toBeOnTheScreen();
+    expect(screen.queryByText("장바구니가 비어 있어요.")).not.toBeOnTheScreen();
+    await settleBackgroundQueries(client);
+  });
+
+  it("keeps a submitting attempt visible when the cart cannot load", async () => {
+    const client = createQueryClient();
+    storeCheckoutAttempt(client, {
+      ...uncertainCheckoutAttempt,
+      phase: "submitting",
+    });
+    jest.mocked(getCart).mockRejectedValueOnce(new Error("cart unavailable"));
+    render(<CartScreen />, { wrapper: createWrapper(client) });
+
+    expect(await screen.findByTestId("e2e.checkout.recovery")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "주문 결과 확인" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "주문 다시 시도" }),
+    ).toBeDisabled();
+    expect(
+      screen.queryByText("장바구니를 불러오지 못했어요."),
+    ).not.toBeOnTheScreen();
+    await settleBackgroundQueries(client);
+  });
+
+  it("explains recovery actions and session limits", async () => {
+    const client = createQueryClient();
+    storeCheckoutAttempt(client, uncertainCheckoutAttempt);
+    render(<CartScreen />, { wrapper: createWrapper(client) });
+
+    expect(
+      await screen.findByText(
+        "처음 보낸 주문 요청이 아직 처리 중일 수 있어요.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText("주문 결과 확인은 주문을 만들지 않고 결과만 조회해요."),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "주문 다시 시도는 기존 주문이 완료되지 않은 경우에만 표시된 상품으로 주문을 만들 수 있어요.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "앱을 종료하거나 로그아웃하면 이 주문 시도는 복원되지 않아요.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "장바구니 내용이 바뀌어도 새 주문을 자동으로 시작하지 않아요.",
+      ),
+    ).toBeVisible();
+    await settleBackgroundQueries(client);
+  });
+
+  it("checks without retrying and disables both recovery actions while busy", async () => {
+    const client = createQueryClient();
+    const lookup = deferred<{ status: "NOT_OBSERVED"; orderId: null }>();
+    storeCheckoutAttempt(client, uncertainCheckoutAttempt);
+    jest.mocked(getCheckoutAttempt).mockReturnValueOnce(lookup.promise);
+    render(<CartScreen />, { wrapper: createWrapper(client) });
+    const check = await screen.findByRole("button", {
+      name: "주문 결과 확인",
+    });
+    const retry = screen.getByRole("button", { name: "주문 다시 시도" });
+
+    expect(check).toHaveProp("testID", "e2e.checkout.check");
+    expect(retry).toHaveProp("testID", "e2e.checkout.retry");
+    await fireEvent.press(check);
+
+    await waitFor(() => expect(getCheckoutAttempt).toHaveBeenCalledTimes(1));
+    expect(checkoutCart).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "주문 결과 확인" }),
+      ).toBeDisabled(),
+    );
+    expect(
+      screen.getByRole("button", { name: "주문 다시 시도" }),
+    ).toBeDisabled();
+    await act(async () => {
+      lookup.resolve({ status: "NOT_OBSERVED", orderId: null });
+      await lookup.promise;
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "주문 결과 확인" }),
+      ).toBeEnabled(),
+    );
+    await settleBackgroundQueries(client);
+  });
+
+  it("retries the stored checkout and disables both recovery actions while busy", async () => {
+    const client = createQueryClient();
+    const retryRequest = deferred<CheckoutCartResult>();
+    storeCheckoutAttempt(client, uncertainCheckoutAttempt);
+    jest.mocked(checkoutCart).mockReturnValueOnce(retryRequest.promise);
+    render(<CartScreen />, { wrapper: createWrapper(client) });
+
+    await fireEvent.press(
+      await screen.findByRole("button", { name: "주문 다시 시도" }),
+    );
+
+    await waitFor(() =>
+      expect(checkoutCart).toHaveBeenCalledWith({
+        idempotencyKey: "checkout-attempt-1",
+        expectedCart: [
+          {
+            cartItemId: "cart-item-1",
+            skuId: "sku-1",
+            quantity: 1,
+            unitPrice: 8_000,
+          },
+        ],
+      }),
+    );
+    expect(getCheckoutAttempt).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "주문 결과 확인" }),
+      ).toBeDisabled(),
+    );
+    expect(
+      screen.getByRole("button", { name: "주문 다시 시도" }),
+    ).toBeDisabled();
+    await act(async () => {
+      retryRequest.resolve({
+        orderId: "order-1",
+        orderNumber: "20260812-1",
+        status: "PAYMENT_PENDING",
+        paymentStatus: "PENDING",
+        totalAmount: 8_000,
+      });
+      await retryRequest.promise;
+    });
+    await waitFor(() => expect(mockNavigation.path).toBe("/order/order-1"));
+    await settleBackgroundQueries(client);
+  });
+
+  it("opens the original order after a confirmed lookup despite cart refetch failure", async () => {
+    const client = createQueryClient();
+    storeCheckoutAttempt(client, uncertainCheckoutAttempt);
+    jest
+      .mocked(getCart)
+      .mockResolvedValueOnce(cart)
+      .mockRejectedValueOnce(new Error("cart unavailable"));
+    jest.mocked(getCheckoutAttempt).mockResolvedValueOnce({
+      status: "CONFIRMED",
+      orderId: "original-order",
+    });
+    render(<CartScreen />, { wrapper: createWrapper(client) });
+
+    await fireEvent.press(
+      await screen.findByRole("button", { name: "주문 결과 확인" }),
+    );
+
+    await waitFor(() =>
+      expect(mockNavigation.path).toBe("/order/original-order"),
+    );
+    expect(checkoutCart).not.toHaveBeenCalled();
+    await settleBackgroundQueries(client);
+    expect(getCart).toHaveBeenCalledTimes(2);
+  });
+
+  it("opens a confirmed cached order on re-entry before a cart error", async () => {
+    const client = createQueryClient();
+    storeCheckoutAttempt(client, {
+      ...uncertainCheckoutAttempt,
+      phase: "confirmed",
+      orderId: "cached-order",
+    });
+    jest.mocked(getCart).mockRejectedValueOnce(new Error("cart unavailable"));
+    render(<CartScreen />, { wrapper: createWrapper(client) });
+
+    await waitFor(() =>
+      expect(mockNavigation.path).toBe("/order/cached-order"),
+    );
+    await settleBackgroundQueries(client);
+  });
+
+  it("keeps lookup but omits retry for a snapshotless attempt", async () => {
+    const client = createQueryClient();
+    storeCheckoutAttempt(client, {
+      userId: "user-1",
+      generation: 0,
+      idempotencyKey: "legacy-checkout",
+      phase: "uncertain",
+      startedAt: 1,
+    });
+    jest.mocked(getCart).mockRejectedValueOnce(new Error("cart unavailable"));
+    render(<CartScreen />, { wrapper: createWrapper(client) });
+
+    expect(
+      await screen.findByRole("button", { name: "주문 결과 확인" }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByRole("button", { name: "주문 다시 시도" }),
+    ).not.toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        "처음 요청한 상품 정보가 남아 있지 않아 결과만 확인할 수 있어요.",
+      ),
+    ).toBeVisible();
+    await settleBackgroundQueries(client);
+  });
+
+  it.each([
+    [
+      "lookup",
+      () =>
+        jest
+          .mocked(getCheckoutAttempt)
+          .mockRejectedValueOnce(new Error("offline")),
+    ],
+    [
+      "retry",
+      () =>
+        jest.mocked(checkoutCart).mockRejectedValueOnce(new Error("offline")),
+    ],
+  ] as const)(
+    "describes a %s communication error without declaring the order failed",
+    async (action, failRequest) => {
+      const client = createQueryClient();
+      storeCheckoutAttempt(client, uncertainCheckoutAttempt);
+      failRequest();
+      render(<CartScreen />, { wrapper: createWrapper(client) });
+
+      await fireEvent.press(
+        await screen.findByRole("button", {
+          name: action === "lookup" ? "주문 결과 확인" : "주문 다시 시도",
+        }),
+      );
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "통신 중 주문 결과를 확인하지 못했어요. 주문이 실패한 것으로 확인된 것은 아니에요.",
+      );
+      expect(screen.queryByText(/결제에 실패했어요/)).not.toBeOnTheScreen();
+      await settleBackgroundQueries(client);
+    },
+  );
 
   it("names order-row buttons by order number", async () => {
     jest.mocked(getOrders).mockResolvedValueOnce([
@@ -398,15 +741,29 @@ describe("cart and wish screens", () => {
     );
   });
 
-  it("shows the checkout failure state when payment is rejected", async () => {
+  it("shows an explicit order-request rejection and allows a fresh checkout", async () => {
     jest
       .mocked(checkoutCart)
-      .mockRejectedValueOnce(new Error("payment failed"));
+      .mockRejectedValueOnce(
+        Object.assign(new Error("checkout rejected"), {
+          code: "BAD_USER_INPUT",
+        }),
+      )
+      .mockImplementationOnce(() => new Promise(() => undefined));
     render(<CartScreen />, { wrapper: createWrapper() });
 
     await fireEvent.press(await screen.findByTestId("e2e.checkout.submit"));
 
-    expect(await screen.findByTestId("e2e.checkout.failure")).toBeVisible();
+    expect(
+      await screen.findByTestId("e2e.checkout.rejected"),
+    ).toHaveTextContent(
+      "주문 요청이 거절됐어요. 장바구니 내용을 확인한 뒤 다시 시도해 주세요.",
+    );
+    expect(screen.queryByText(/결제에 실패했어요/)).not.toBeOnTheScreen();
+    const checkout = screen.getByRole("button", { name: "결제하기" });
+    expect(checkout).toBeEnabled();
+    await fireEvent.press(checkout);
+    await waitFor(() => expect(checkoutCart).toHaveBeenCalledTimes(2));
   });
 
   it("keeps the remaining cart cell identity after an item is removed", async () => {
