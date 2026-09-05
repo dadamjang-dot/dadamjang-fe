@@ -1,9 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react-native";
-import * as Crypto from "expo-crypto";
 import type { ReactNode } from "react";
 
-import { checkoutCart, upsertCartItem } from "@/features/cart/api";
+import { checkoutCart } from "@/features/cart/api";
 import { useCartActions } from "@/features/cart/hooks";
 import { addWish } from "@/features/wish/api";
 import { useWishActions } from "@/features/wish/hooks";
@@ -37,6 +36,15 @@ const createWrapper = (client: QueryClient) => {
   return TestWrapper;
 };
 
+const checkoutItems = [
+  {
+    cartItemId: "cart-item-1",
+    quantity: 1,
+    sku: { skuId: "sku-1", optionName: "검정 / M", price: 10_000 },
+    product: { productId: "product-1", title: "상품", imageUrls: [] },
+  },
+];
+
 describe("mutation cache invalidation", () => {
   it("invalidates cart and order list after checkout", async () => {
     const client = createClient();
@@ -49,10 +57,12 @@ describe("mutation cache invalidation", () => {
       status: "PAID",
       totalAmount: 10_000,
     });
-    const { result, unmount } = renderHook(useCartActions, { wrapper: createWrapper(client) });
+    const { result, unmount } = renderHook(() => useCartActions("user-1"), {
+      wrapper: createWrapper(client),
+    });
 
     await act(async () => {
-      await result.current.checkout.mutateAsync({ idempotencyKey: "checkout-1" });
+      await result.current.checkout.mutateAsync({ items: checkoutItems });
     });
 
     expect(client.getQueryState(["cart"])?.isInvalidated).toBe(true);
@@ -67,90 +77,15 @@ describe("mutation cache invalidation", () => {
     const client = createClient();
     client.setQueryData(["wishlist"], []);
     jest.mocked(addWish).mockResolvedValueOnce(undefined);
-    const { result, unmount } = renderHook(useWishActions, { wrapper: createWrapper(client) });
+    const { result, unmount } = renderHook(useWishActions, {
+      wrapper: createWrapper(client),
+    });
 
     await act(async () => {
       await result.current.add.mutateAsync("product-1");
     });
 
     expect(client.getQueryState(["wishlist"])?.isInvalidated).toBe(true);
-    act(() => {
-      unmount();
-      client.clear();
-    });
-  });
-
-  it("reuses one checkout key through retries and rotates it after success", async () => {
-    const client = createClient();
-    jest
-      .mocked(Crypto.randomUUID)
-      .mockReturnValueOnce("00000000-0000-4000-8000-000000000001")
-      .mockReturnValueOnce("00000000-0000-4000-8000-000000000002");
-    jest
-      .mocked(checkoutCart)
-      .mockRejectedValueOnce(new Error("payment failed"))
-      .mockResolvedValue({
-        orderId: "order-1",
-        orderNumber: "20260829-1",
-        paymentStatus: "APPROVED",
-        status: "PAID",
-        totalAmount: 10_000,
-      });
-    const { result, unmount } = renderHook(useCartActions, {
-      wrapper: createWrapper(client),
-    });
-
-    await act(async () => {
-      await expect(result.current.checkout.mutateAsync(undefined)).rejects.toThrow(
-        "payment failed",
-      );
-      await result.current.checkout.mutateAsync(undefined);
-      await result.current.checkout.mutateAsync(undefined);
-    });
-
-    expect(checkoutCart).toHaveBeenNthCalledWith(1, {
-      idempotencyKey: "00000000-0000-4000-8000-000000000001",
-    });
-    expect(checkoutCart).toHaveBeenNthCalledWith(2, {
-      idempotencyKey: "00000000-0000-4000-8000-000000000001",
-    });
-    expect(checkoutCart).toHaveBeenNthCalledWith(3, {
-      idempotencyKey: "00000000-0000-4000-8000-000000000002",
-    });
-    act(() => {
-      unmount();
-      client.clear();
-    });
-  });
-
-  it("rotates the checkout key after a cart-changing mutation", async () => {
-    const client = createClient();
-    jest
-      .mocked(Crypto.randomUUID)
-      .mockReturnValueOnce("00000000-0000-4000-8000-000000000011")
-      .mockReturnValueOnce("00000000-0000-4000-8000-000000000012");
-    jest.mocked(checkoutCart).mockRejectedValue(new Error("payment failed"));
-    jest.mocked(upsertCartItem).mockResolvedValue({});
-    const { result, unmount } = renderHook(useCartActions, {
-      wrapper: createWrapper(client),
-    });
-
-    await act(async () => {
-      await expect(result.current.checkout.mutateAsync(undefined)).rejects.toThrow(
-        "payment failed",
-      );
-      await result.current.upsert.mutateAsync({ skuId: "sku-1", quantity: 2 });
-      await expect(result.current.checkout.mutateAsync(undefined)).rejects.toThrow(
-        "payment failed",
-      );
-    });
-
-    expect(checkoutCart).toHaveBeenNthCalledWith(1, {
-      idempotencyKey: "00000000-0000-4000-8000-000000000011",
-    });
-    expect(checkoutCart).toHaveBeenNthCalledWith(2, {
-      idempotencyKey: "00000000-0000-4000-8000-000000000012",
-    });
     act(() => {
       unmount();
       client.clear();

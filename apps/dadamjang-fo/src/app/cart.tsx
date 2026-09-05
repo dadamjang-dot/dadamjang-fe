@@ -12,10 +12,15 @@ import { Button } from "@/shared/components";
 
 const CartScreen = () => {
   const router = useRouter();
-  const { authStatus, isAuthenticated, redirectToSignIn, retryAuth } =
-    useAuthActionGate("/cart");
+  const {
+    authStatus,
+    data: currentUser,
+    isAuthenticated,
+    redirectToSignIn,
+    retryAuth,
+  } = useAuthActionGate("/cart");
   const cart = useCart(isAuthenticated);
-  const actions = useCartActions();
+  const actions = useCartActions(currentUser?.userId);
 
   useEffect(() => {
     if (authStatus === "unauthenticated") redirectToSignIn(true);
@@ -65,9 +70,12 @@ const CartScreen = () => {
   }
 
   const handleCheckout = () => {
-    actions.checkout.mutate(undefined, {
-      onSuccess: (order) => router.replace(`/order/${order.orderId}`),
-    });
+    actions.checkout.mutate(
+      { items: cart.data.items },
+      {
+        onSuccess: (order) => router.replace(`/order/${order.orderId}`),
+      },
+    );
   };
 
   return (

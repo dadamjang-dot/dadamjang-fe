@@ -21,6 +21,8 @@ jest.mock("@dadamjang/graphql-client", () => ({
 }));
 beforeEach(() => jest.mocked(getSessionGeneration).mockReturnValue(0));
 
+const checkoutInput = { items: [] };
+
 const deferred = () => {
   let resolve!: () => void;
   const promise = new Promise<void>((done) => {
@@ -55,17 +57,15 @@ it.each(["mutate", "mutateAsync"] as const)(
       await refresh.promise;
       return { cartId: "cart", items: [], totalAmount: 0 };
     });
-    jest
-      .mocked(checkoutCart)
-      .mockResolvedValue({
-        orderId: "old-order",
-        orderNumber: "1",
-        status: "PAID",
-        paymentStatus: "APPROVED",
-        totalAmount: 1,
-      });
+    jest.mocked(checkoutCart).mockResolvedValue({
+      orderId: "old-order",
+      orderNumber: "1",
+      status: "PAID",
+      paymentStatus: "APPROVED",
+      totalAmount: 1,
+    });
     const { result, unmount } = renderHook(
-      () => ({ cart: useCart(), actions: useCartActions() }),
+      () => ({ cart: useCart(), actions: useCartActions("user-1") }),
       { wrapper },
     );
     let outcome: Promise<string> | undefined;
@@ -83,12 +83,12 @@ it.each(["mutate", "mutateAsync"] as const)(
       };
       if (method === "mutateAsync")
         outcome = result.current.actions.checkout
-          .mutateAsync(undefined, options)
+          .mutateAsync(checkoutInput, options)
           .then(
             () => "success",
             () => "rejected",
           );
-      else result.current.actions.checkout.mutate(undefined, options);
+      else result.current.actions.checkout.mutate(checkoutInput, options);
     });
     await waitFor(() => expect(refetchStarted).toBe(true));
     await act(async () => {
@@ -136,8 +136,8 @@ it("blocks checkout and duplicate absolute edits until the cart refresh settles"
   const { result, unmount } = renderHook(
     () => ({
       cart: useCart(),
-      first: useCartActions(),
-      second: useCartActions(),
+      first: useCartActions("user-1"),
+      second: useCartActions("user-1"),
     }),
     { wrapper },
   );
@@ -153,7 +153,7 @@ it("blocks checkout and duplicate absolute edits until the cart refresh settles"
       .mutateAsync({ skuId: "sku", quantity: 2 })
       .catch(() => undefined);
     earlyCheckout = result.current.second.checkout
-      .mutateAsync(undefined)
+      .mutateAsync(checkoutInput)
       .catch(() => undefined);
   });
   await act(async () => {
@@ -162,7 +162,7 @@ it("blocks checkout and duplicate absolute edits until the cart refresh settles"
   let refreshCheckout!: Promise<unknown>;
   await act(async () => {
     refreshCheckout = result.current.second.checkout
-      .mutateAsync(undefined)
+      .mutateAsync(checkoutInput)
       .catch(() => undefined);
   });
   const earlyOrders = [...ordered];
@@ -173,7 +173,7 @@ it("blocks checkout and duplicate absolute edits until the cart refresh settles"
   expect(acceptedWrites).toEqual([2]);
   expect(earlyOrders).toEqual([]);
   await act(async () => {
-    await result.current.second.checkout.mutateAsync(undefined);
+    await result.current.second.checkout.mutateAsync(checkoutInput);
   });
   expect(ordered).toEqual([2]);
   act(() => {
@@ -206,12 +206,15 @@ it("does not recreate or remove cart items while checkout is pending", async () 
     return { removeCartItem: { cartId: "cart" } };
   });
   const { result, unmount } = renderHook(
-    () => ({ first: useCartActions(), second: useCartActions() }),
+    () => ({
+      first: useCartActions("user-1"),
+      second: useCartActions("user-1"),
+    }),
     { wrapper },
   );
   let checkout!: Promise<unknown>;
   await act(async () => {
-    checkout = result.current.first.checkout.mutateAsync(undefined);
+    checkout = result.current.first.checkout.mutateAsync(checkoutInput);
   });
   await act(async () => {
     await result.current.second.upsert

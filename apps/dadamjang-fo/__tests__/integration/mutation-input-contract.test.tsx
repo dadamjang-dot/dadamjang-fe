@@ -10,6 +10,8 @@ import { addWish } from "@/features/wish/api";
 import { useUpdateFoNotificationPreferences } from "@/features/notification/hooks";
 import { updateFoNotificationPreferences } from "@/features/notification/api";
 
+import type { CheckoutCartOptions } from "@/features/cart/types";
+
 jest.mock("@dadamjang/graphql-client", () => ({
   getSessionGeneration: () => 0,
 }));
@@ -84,19 +86,31 @@ const assertContract = async <Input,>(
   });
 };
 
-it("keeps checkout variables undefined at both public boundaries", async () => {
-  jest
-    .mocked(checkoutCart)
-    .mockResolvedValue({
-      orderId: "order",
-      orderNumber: "1",
-      status: "PAID",
-      paymentStatus: "APPROVED",
-      totalAmount: 1,
-    });
+it("keeps checkout cart items at both public boundaries", async () => {
+  jest.mocked(checkoutCart).mockResolvedValue({
+    orderId: "order",
+    orderNumber: "1",
+    status: "PAID",
+    paymentStatus: "APPROVED",
+    totalAmount: 1,
+  });
+  const input: CheckoutCartOptions = {
+    items: [
+      {
+        cartItemId: "cart-item-1",
+        quantity: 1,
+        sku: { skuId: "sku-1", optionName: "검정 / M", price: 1 },
+        product: {
+          productId: "product-1",
+          title: "상품",
+          imageUrls: [],
+        },
+      },
+    ],
+  };
   await assertContract(
-    () => useCartActions().checkout,
-    undefined,
+    () => useCartActions("user-1").checkout,
+    input,
     () => jest.mocked(checkoutCart).mockRejectedValueOnce(new Error("failed")),
   );
 });
@@ -137,15 +151,13 @@ it("keeps wish variables as the product id", async () => {
 });
 
 it("keeps preference variables as the original partial input", async () => {
-  jest
-    .mocked(updateFoNotificationPreferences)
-    .mockResolvedValue({
-      pushEnabled: true,
-      orderPushEnabled: true,
-      wishPushEnabled: true,
-      stylePushEnabled: true,
-      updatedAt: "2026-09-01T00:00:00Z",
-    });
+  jest.mocked(updateFoNotificationPreferences).mockResolvedValue({
+    pushEnabled: true,
+    orderPushEnabled: true,
+    wishPushEnabled: true,
+    stylePushEnabled: true,
+    updatedAt: "2026-09-01T00:00:00Z",
+  });
   await assertContract(
     useUpdateFoNotificationPreferences,
     { pushEnabled: true },

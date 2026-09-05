@@ -41,7 +41,7 @@ export type PreferenceVariables = Assert<
 export type CheckoutCallback = Assert<
   Exact<
     CallbackVariables<NonNullable<Parameters<Checkout["mutate"]>[1]>>,
-    CheckoutCartOptions | undefined
+    CheckoutCartOptions
   >
 >;
 export type StyleCallback = Assert<

@@ -12,7 +12,11 @@ import {
   signInFo,
   startIdentityVerification,
 } from "@/features/auth/api";
-import { checkoutCart, upsertCartItem } from "@/features/cart/api";
+import {
+  checkoutCart,
+  getCheckoutAttempt,
+  upsertCartItem,
+} from "@/features/cart/api";
 import { getProducts } from "@/features/catalog/api";
 import { getOrder } from "@/features/order/api";
 import {
@@ -323,6 +327,57 @@ describe("feature API contracts", () => {
       { input: { idempotencyKey: "checkout-1" } },
       { orderId: "order-1" },
     ]);
+  });
+
+  it("sends the checkout snapshot and reads an attempt without a mutation", async () => {
+    const checkout = {
+      orderId: "order-1",
+      orderNumber: "DJ-1",
+      status: "PAYMENT_PENDING" as const,
+      paymentStatus: "PENDING" as const,
+      totalAmount: 8_000,
+    };
+    const attempt = { status: "NOT_OBSERVED" as const, orderId: null };
+    mockResponses.push(
+      { checkoutCart: checkout },
+      { checkoutAttempt: attempt },
+    );
+
+    await expect(
+      checkoutCart({
+        idempotencyKey: "checkout-1",
+        expectedCart: [
+          {
+            cartItemId: "cart-item-1",
+            skuId: "sku-1",
+            quantity: 2,
+            unitPrice: 4_000,
+          },
+        ],
+      }),
+    ).resolves.toEqual(checkout);
+    await expect(getCheckoutAttempt("checkout-1")).resolves.toEqual(attempt);
+
+    expect(mockRequests.at(-2)?.variables).toEqual({
+      input: {
+        idempotencyKey: "checkout-1",
+        expectedCart: [
+          {
+            cartItemId: "cart-item-1",
+            skuId: "sku-1",
+            quantity: 2,
+            unitPrice: 4_000,
+          },
+        ],
+      },
+    });
+    expect(mockRequests.at(-1)?.query).toContain(
+      "query CheckoutAttempt($idempotencyKey: String!)",
+    );
+    expect(mockRequests.at(-1)?.query).not.toContain("mutation");
+    expect(mockRequests.at(-1)?.variables).toEqual({
+      idempotencyKey: "checkout-1",
+    });
   });
 
   it("uses the authorized FO notification inbox contract", async () => {

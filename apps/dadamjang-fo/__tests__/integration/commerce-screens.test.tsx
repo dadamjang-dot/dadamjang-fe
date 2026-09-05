@@ -22,7 +22,8 @@ import type { Action } from "@dadamjang/mobile";
 import { layoutLegendList } from "../helpers/layout-legend-list";
 
 const mockNavigation: { path?: string } = {};
-const mockSearchParams: { "order-id"?: string; forcePaymentFailure?: string } = {};
+const mockSearchParams: { "order-id"?: string; forcePaymentFailure?: string } =
+  {};
 
 jest.mock("expo-router", () => ({
   useFocusEffect: (effect: () => void) => effect(),
@@ -216,7 +217,9 @@ describe("cart and wish screens", () => {
   });
 
   it("exposes cart quantity, removal, and checkout button states", async () => {
-    jest.mocked(checkoutCart).mockImplementation(() => new Promise(() => undefined));
+    jest
+      .mocked(checkoutCart)
+      .mockImplementation(() => new Promise(() => undefined));
     render(<CartScreen />, { wrapper: createWrapper() });
 
     await screen.findByLabelText("장바구니 상품 목록");
@@ -242,17 +245,21 @@ describe("cart and wish screens", () => {
     jest.mocked(getCart).mockRejectedValueOnce(new Error("cart unavailable"));
     const cartScreen = render(<CartScreen />, { wrapper: createWrapper() });
 
-    expect(
-      await screen.findByRole("button", { name: "다시 시도" }),
-    ).toHaveProp("testID", "e2e.cart.retry");
+    expect(await screen.findByRole("button", { name: "다시 시도" })).toHaveProp(
+      "testID",
+      "e2e.cart.retry",
+    );
     cartScreen.unmount();
 
-    jest.mocked(getOrders).mockRejectedValueOnce(new Error("orders unavailable"));
+    jest
+      .mocked(getOrders)
+      .mockRejectedValueOnce(new Error("orders unavailable"));
     render(<OrdersScreen />, { wrapper: createWrapper() });
 
-    expect(
-      await screen.findByRole("button", { name: "다시 시도" }),
-    ).toHaveProp("testID", "e2e.order.retry");
+    expect(await screen.findByRole("button", { name: "다시 시도" })).toHaveProp(
+      "testID",
+      "e2e.order.retry",
+    );
   });
 
   it("names order-row buttons by order number", async () => {
@@ -272,73 +279,76 @@ describe("cart and wish screens", () => {
     await screen.findByLabelText("주문 내역");
     layoutLegendList("주문 내역");
 
-    expect(
-      screen.getByRole("button", { name: "20260829-1" }),
-    ).toBeEnabled();
+    expect(screen.getByRole("button", { name: "20260829-1" })).toBeEnabled();
   });
 
-  it.each(
-    [
-      {
-        status: "PAYMENT_PENDING",
-        paymentStatus: "PENDING",
-        headline: "결제 승인을 기다리고 있어요.",
-        testID: "e2e.checkout.pending",
-        orderLabel: "결제 대기",
-        paymentLabel: "승인 대기",
-      },
-      {
-        status: "PAID",
-        paymentStatus: "APPROVED",
-        headline: "결제가 완료됐어요.",
-        testID: "e2e.checkout.success",
-        orderLabel: "결제 완료",
-        paymentLabel: "승인 완료",
-      },
-      {
-        status: "FULFILLING",
-        paymentStatus: "APPROVED",
-        headline: "결제가 완료됐어요.",
-        testID: "e2e.checkout.success",
-        orderLabel: "처리 중",
-        paymentLabel: "승인 완료",
-      },
-      {
-        status: "COMPLETED",
-        paymentStatus: "APPROVED",
-        headline: "결제가 완료됐어요.",
-        testID: "e2e.checkout.success",
-        orderLabel: "처리 완료",
-        paymentLabel: "승인 완료",
-      },
-      {
-        status: "CANCELLED",
-        paymentStatus: "APPROVED",
-        headline: "주문이 취소됐어요. 결제 취소/환불 상태를 확인해 주세요.",
-        testID: "e2e.order.cancelled",
-        orderLabel: "주문 취소",
-        paymentLabel: "승인 완료",
-      },
-      {
-        status: "CANCELLED",
-        paymentStatus: "CANCELLED",
-        headline: "결제가 취소됐어요.",
-        testID: "e2e.checkout.cancelled",
-        orderLabel: "주문 취소",
-        paymentLabel: "결제 취소",
-      },
-      {
-        status: "FAILED",
-        paymentStatus: "FAILED",
-        headline: "결제에 실패했어요.",
-        testID: "e2e.checkout.failure",
-        orderLabel: "결제 실패",
-        paymentLabel: "승인 실패",
-      },
-    ] as const,
-  )(
+  it.each([
+    {
+      status: "PAYMENT_PENDING",
+      paymentStatus: "PENDING",
+      headline: "결제 승인을 기다리고 있어요.",
+      testID: "e2e.checkout.pending",
+      orderLabel: "결제 대기",
+      paymentLabel: "승인 대기",
+    },
+    {
+      status: "PAID",
+      paymentStatus: "APPROVED",
+      headline: "결제가 완료됐어요.",
+      testID: "e2e.checkout.success",
+      orderLabel: "결제 완료",
+      paymentLabel: "승인 완료",
+    },
+    {
+      status: "FULFILLING",
+      paymentStatus: "APPROVED",
+      headline: "결제가 완료됐어요.",
+      testID: "e2e.checkout.success",
+      orderLabel: "처리 중",
+      paymentLabel: "승인 완료",
+    },
+    {
+      status: "COMPLETED",
+      paymentStatus: "APPROVED",
+      headline: "결제가 완료됐어요.",
+      testID: "e2e.checkout.success",
+      orderLabel: "처리 완료",
+      paymentLabel: "승인 완료",
+    },
+    {
+      status: "CANCELLED",
+      paymentStatus: "APPROVED",
+      headline: "주문이 취소됐어요. 결제 취소/환불 상태를 확인해 주세요.",
+      testID: "e2e.order.cancelled",
+      orderLabel: "주문 취소",
+      paymentLabel: "승인 완료",
+    },
+    {
+      status: "CANCELLED",
+      paymentStatus: "CANCELLED",
+      headline: "결제가 취소됐어요.",
+      testID: "e2e.checkout.cancelled",
+      orderLabel: "주문 취소",
+      paymentLabel: "결제 취소",
+    },
+    {
+      status: "FAILED",
+      paymentStatus: "FAILED",
+      headline: "결제에 실패했어요.",
+      testID: "e2e.checkout.failure",
+      orderLabel: "결제 실패",
+      paymentLabel: "승인 실패",
+    },
+  ] as const)(
     "renders $status + $paymentStatus as $testID",
-    async ({ status, paymentStatus, headline, testID, orderLabel, paymentLabel }) => {
+    async ({
+      status,
+      paymentStatus,
+      headline,
+      testID,
+      orderLabel,
+      paymentLabel,
+    }) => {
       mockSearchParams["order-id"] = "order-1";
       jest.mocked(getOrder).mockResolvedValue({
         orderId: "order-1",
@@ -360,7 +370,7 @@ describe("cart and wish screens", () => {
     },
   );
 
-  it("does not forward checkout test controls from deep links", async () => {
+  it("submits a fixed key and four-field snapshot without test controls", async () => {
     mockSearchParams.forcePaymentFailure = "true";
     jest.mocked(checkoutCart).mockResolvedValue({
       orderId: "order-1",
@@ -376,6 +386,14 @@ describe("cart and wish screens", () => {
     await waitFor(() =>
       expect(checkoutCart).toHaveBeenCalledWith({
         idempotencyKey: "00000000-0000-4000-8000-000000000000",
+        expectedCart: [
+          {
+            cartItemId: "cart-item-1",
+            skuId: "sku-1",
+            quantity: 1,
+            unitPrice: 8_000,
+          },
+        ],
       }),
     );
   });
