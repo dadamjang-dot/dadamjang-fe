@@ -54,6 +54,34 @@ describe("GraphQL authentication", () => {
     expect(requests).toHaveLength(1);
   });
 
+  it("preserves the first business error code without refreshing", async () => {
+    storage.set(sessionKey, storedSession("access-1", "refresh-1"));
+    const requests = installTransport([
+      jsonResponse({
+        errors: [
+          {
+            extensions: { code: "CART_SNAPSHOT_CHANGED" },
+            message: "Cart snapshot changed",
+          },
+          {
+            extensions: { code: "IGNORED_ERROR" },
+            message: "Ignored error",
+          },
+        ],
+      }),
+    ]);
+
+    await expect(
+      client.graphqlRequest("query Cart { cart { id } }"),
+    ).rejects.toMatchObject<Partial<GraphqlError>>({
+      code: "CART_SNAPSHOT_CHANGED",
+      message: "Cart snapshot changed",
+      name: "GraphqlError",
+      status: 200,
+    });
+    expect(requests).toHaveLength(1);
+  });
+
   it("refreshes once and returns the retried operation", async () => {
     storage.set(sessionKey, storedSession("expired-access", "refresh-1"));
     const requests = installTransport([
@@ -104,6 +132,41 @@ describe("GraphQL authentication", () => {
       "Bearer access-2",
     ]);
   });
+
+  it("preserves a business error code after refreshing", async () => {
+    storage.set(sessionKey, storedSession("expired-access", "refresh-1"));
+    const requests = installTransport([
+      unauthenticatedResponse(),
+      jsonResponse({
+        data: {
+          refresh: { accessToken: "access-2", refreshToken: "refresh-2" },
+        },
+      }),
+      jsonResponse({
+        errors: [
+          {
+            extensions: { code: "CART_SNAPSHOT_CHANGED" },
+            message: "Cart snapshot changed",
+          },
+        ],
+      }),
+    ]);
+
+    await expect(
+      client.graphqlRequest("query Cart { cart { id } }"),
+    ).rejects.toMatchObject<Partial<GraphqlError>>({
+      code: "CART_SNAPSHOT_CHANGED",
+      message: "Cart snapshot changed",
+      name: "GraphqlError",
+      status: 200,
+    });
+    expect(requests.map(({ authorization }) => authorization)).toEqual([
+      "Bearer expired-access",
+      "Bearer refresh-1",
+      "Bearer access-2",
+    ]);
+  });
+
   it("clears stale tokens when refresh fails", async () => {
     storage.set(sessionKey, storedSession("expired-access", "expired-refresh"));
     installTransport([

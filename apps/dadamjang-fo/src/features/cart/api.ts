@@ -1,6 +1,11 @@
 import { graphqlRequest } from "@dadamjang/graphql-client";
 
-import type { Cart, CheckoutCartInput, CheckoutCartResult } from "./types";
+import type {
+  Cart,
+  CheckoutAttemptResult,
+  CheckoutCartInput,
+  CheckoutCartResult,
+} from "./types";
 
 export const getCart = async (signal?: AbortSignal) => {
   const data = await graphqlRequest<{ cart: Cart }>(
@@ -54,4 +59,24 @@ export const checkoutCart = async (input: CheckoutCartInput) => {
   );
 
   return data.checkoutCart;
+};
+
+export const getCheckoutAttempt = async (
+  idempotencyKey: string,
+  signal?: AbortSignal,
+) => {
+  const data = await graphqlRequest<{
+    checkoutAttempt: CheckoutAttemptResult;
+  }>(
+    `query CheckoutAttempt($idempotencyKey: String!) {
+      checkoutAttempt(idempotencyKey: $idempotencyKey) {
+        status
+        orderId
+      }
+    }`,
+    { idempotencyKey },
+    { signal },
+  );
+
+  return data.checkoutAttempt;
 };

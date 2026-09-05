@@ -13,6 +13,14 @@ export type Cart = {
 
 export type CheckoutCartInput = {
   idempotencyKey: string;
+  expectedCart?: CheckoutExpectedCartItem[];
+};
+
+export type CheckoutExpectedCartItem = {
+  cartItemId: string;
+  skuId: string;
+  quantity: number;
+  unitPrice: number;
 };
 
 export type CheckoutCartResult = {
@@ -23,6 +31,33 @@ export type CheckoutCartResult = {
   totalAmount: number;
 };
 
+export type CheckoutAttemptResult =
+  | { status: "CONFIRMED"; orderId: string }
+  | { status: "NOT_OBSERVED"; orderId: null };
+
+export type CheckoutAttemptSnapshotItem = CheckoutExpectedCartItem & {
+  productId: string;
+  productTitle: string;
+  optionName: string;
+};
+
+export type CheckoutAttempt = {
+  userId: string;
+  generation: number;
+  idempotencyKey: string;
+  expectedCart?: CheckoutAttemptSnapshotItem[];
+  phase:
+    | "submitting"
+    | "uncertain"
+    | "checking"
+    | "retrying"
+    | "confirmed"
+    | "rejected";
+  orderId?: string;
+  startedAt: number;
+  lastCheckedAt?: number;
+};
+
 export type CheckoutCartOptions = {
-  idempotencyKey?: string;
+  items: Cart["items"];
 };
