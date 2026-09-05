@@ -38,8 +38,17 @@ export const useCatalogProducts = (filter: ProductFilter, enabled = true) =>
     queryFn: ({ pageParam, signal }) =>
       getProducts({ ...filter, after: pageParam, first: 20 }, signal),
     initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasNextPage ? (lastPage.nextCursor ?? undefined) : undefined,
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.hasNextPage || lastPage.nextCursor === null)
+        return undefined;
+      return allPages.some(
+        (page, index) =>
+          index < allPages.length - 1 &&
+          page.nextCursor === lastPage.nextCursor,
+      )
+        ? undefined
+        : lastPage.nextCursor;
+    },
     enabled,
   });
 

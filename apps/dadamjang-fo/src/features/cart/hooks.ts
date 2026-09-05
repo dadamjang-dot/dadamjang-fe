@@ -1,6 +1,13 @@
 import * as Crypto from "expo-crypto";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useIsMutating,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type MutateOptions,
+} from "@tanstack/react-query";
 import { useRef } from "react";
+import { getSessionGeneration } from "@dadamjang/graphql-client";
 
 import { orderQueryKeys } from "@/features/order";
 
@@ -16,8 +23,84 @@ export const useCart = (enabled = true) =>
     queryFn: ({ signal }) => getCart(signal),
   });
 
+const cartMutationKey = ["cart-action"];
+
+const useCartMutation = <Input, Result>(
+  mutationFn: (input: Input) => Promise<Result>,
+  onSuccess: () => unknown,
+  onError?: () => unknown,
+) => {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationKey: cartMutationKey,
+    mutationFn: ({
+      input,
+      generation,
+    }: {
+      input: Input;
+      generation: number;
+    }) => {
+      if (getSessionGeneration() !== generation)
+        throw new Error("Session changed");
+      return mutationFn(input);
+    },
+    onSuccess: async (_result, { generation }) => {
+      if (getSessionGeneration() !== generation)
+        throw new Error("Session changed");
+      await onSuccess();
+      if (getSessionGeneration() !== generation)
+        throw new Error("Session changed");
+    },
+    onError: (_error, { generation }) => {
+      if (getSessionGeneration() === generation) return onError?.();
+    },
+  });
+  const isBusy = () =>
+    queryClient.isMutating({ mutationKey: cartMutationKey }) > 0;
+  type Options = MutateOptions<Result, Error, Input, typeof mutation.context>;
+  const wrapOptions = (
+    options?: Options,
+  ): Parameters<typeof mutation.mutate>[1] => ({
+    onSuccess: (data, { input, generation }, result, context) => {
+      if (getSessionGeneration() === generation)
+        options?.onSuccess?.(data, input, result, context);
+    },
+    onError: (error, { input, generation }, result, context) => {
+      if (getSessionGeneration() === generation)
+        options?.onError?.(error, input, result, context);
+    },
+    onSettled: (data, error, { input, generation }, result, context) => {
+      if (getSessionGeneration() === generation)
+        options?.onSettled?.(data, error, input, result, context);
+    },
+  });
+  return {
+    ...mutation,
+    variables: mutation.variables?.input,
+    mutate: (input: Input, options?: Options) => {
+      if (!isBusy())
+        mutation.mutate(
+          { input, generation: getSessionGeneration() },
+          wrapOptions(options),
+        );
+    },
+    mutateAsync: async (input: Input, options?: Options) => {
+      if (isBusy()) throw new Error("Cart update in progress");
+      const generation = getSessionGeneration();
+      const data = await mutation.mutateAsync(
+        { input, generation },
+        wrapOptions(options),
+      );
+      if (getSessionGeneration() !== generation)
+        throw new Error("Session changed");
+      return data;
+    },
+  };
+};
+
 export const useCartActions = () => {
   const queryClient = useQueryClient();
+  const isPending = useIsMutating({ mutationKey: cartMutationKey }) > 0;
   const checkoutAttemptKey = useRef<string | undefined>(undefined);
   const resetCheckoutAttempt = () => {
     checkoutAttemptKey.current = undefined;
@@ -39,24 +122,22 @@ export const useCartActions = () => {
     queryClient.refetchQueries({ queryKey: cartQueryKeys.detail() });
 
   return {
-    upsert: useMutation({
-      mutationFn: ({ skuId, quantity }: { skuId: string; quantity: number }) =>
+    isPending,
+    upsert: useCartMutation(
+      ({ skuId, quantity }: { skuId: string; quantity: number }) =>
         upsertCartItem(skuId, quantity),
-      onSuccess: invalidateAfterCartChange,
-    }),
-    remove: useMutation({
-      mutationFn: removeCartItem,
-      onSuccess: invalidateAfterCartChange,
-    }),
-    checkout: useMutation({
-      mutationFn: (input?: CheckoutCartOptions) => {
+      invalidateAfterCartChange,
+    ),
+    remove: useCartMutation(removeCartItem, invalidateAfterCartChange),
+    checkout: useCartMutation(
+      (input?: CheckoutCartOptions) => {
         const idempotencyKey =
           input?.idempotencyKey ??
           (checkoutAttemptKey.current ??= Crypto.randomUUID());
         return checkoutCart({ idempotencyKey });
       },
-      onSuccess: invalidateCheckout,
-      onError: refetchCart,
-    }),
+      invalidateCheckout,
+      refetchCart,
+    ),
   };
 };

@@ -4,8 +4,10 @@ import {
   useQuery,
   useQueryClient,
   type InfiniteData,
+  type MutateOptions,
   type QueryClient,
 } from "@tanstack/react-query";
+import { getSessionGeneration } from "@dadamjang/graphql-client";
 
 import {
   createStylePost,
@@ -104,7 +106,11 @@ const updateStylePostLike = (
     ? {
         ...post,
         isLiked: nextLiked,
-        likeCount: Math.max(0, post.likeCount + (nextLiked ? 1 : -1)),
+        likeCount: Math.max(
+          0,
+          post.likeCount +
+            (post.isLiked === nextLiked ? 0 : nextLiked ? 1 : -1),
+        ),
       }
     : post;
 
@@ -129,6 +135,7 @@ interface StyleLikeCoordinator {
   activeCount: number;
   pending?: Promise<void>;
   revision: number;
+  confirmed?: Pick<StylePost, "isLiked" | "likeCount">;
 }
 
 const styleLikeCoordinatorsByClient = new WeakMap<
@@ -168,21 +175,52 @@ const releaseStyleLikeCoordinator = (
 
 export const useToggleStylePostLike = () => {
   const queryClient = useQueryClient();
-  return useMutation({
+  type Input = { stylePostId: string; nextLiked: boolean };
+  const applyConfirmed = (
+    stylePostId: string,
+    confirmed: Pick<StylePost, "isLiked" | "likeCount">,
+  ) => {
+    const update = (post: StylePost) =>
+      post.stylePostId === stylePostId ? { ...post, ...confirmed } : post;
+    queryClient.setQueriesData<InfiniteData<StylePostConnection>>(
+      { queryKey: styleQueryKeys.postsRoot() },
+      (data) =>
+        data
+          ? {
+              ...data,
+              pages: data.pages.map((page) => ({
+                ...page,
+                nodes: page.nodes.map(update),
+              })),
+            }
+          : data,
+    );
+    queryClient.setQueryData<StylePost>(
+      styleQueryKeys.post(stylePostId),
+      (post) => (post ? update(post) : post),
+    );
+  };
+  const mutation = useMutation({
+    mutationKey: ["style-like"],
     mutationFn: async ({
-      stylePostId,
-      nextLiked,
+      input: { stylePostId, nextLiked },
+      generation,
     }: {
-      stylePostId: string;
-      nextLiked: boolean;
+      input: Input;
+      generation: number;
     }) => {
-      const coordinator = getStyleLikeCoordinator(queryClient, stylePostId);
+      const coordinatorKey = `${generation}:${stylePostId}`;
+      const coordinator = getStyleLikeCoordinator(queryClient, coordinatorKey);
       const previous = coordinator.pending;
       const request = (previous ?? Promise.resolve())
         .catch(() => undefined)
-        .then(() =>
-          nextLiked ? likeStylePost(stylePostId) : unlikeStylePost(stylePostId),
-        );
+        .then(() => {
+          if (getSessionGeneration() !== generation)
+            throw new Error("Session changed");
+          return nextLiked
+            ? likeStylePost(stylePostId)
+            : unlikeStylePost(stylePostId);
+        });
       const settled = request.then(
         () => undefined,
         () => undefined,
@@ -193,16 +231,21 @@ export const useToggleStylePostLike = () => {
         return await request;
       } finally {
         if (coordinator.pending === settled) coordinator.pending = undefined;
-        releaseStyleLikeCoordinator(queryClient, stylePostId, coordinator);
+        releaseStyleLikeCoordinator(queryClient, coordinatorKey, coordinator);
       }
     },
-    onMutate: async ({ stylePostId, nextLiked }) => {
-      const coordinator = getStyleLikeCoordinator(queryClient, stylePostId);
+    onMutate: async ({ input: { stylePostId, nextLiked }, generation }) => {
+      const coordinator = getStyleLikeCoordinator(
+        queryClient,
+        `${generation}:${stylePostId}`,
+      );
       coordinator.activeCount += 1;
       coordinator.revision += 1;
       const { revision } = coordinator;
       await queryClient.cancelQueries({ queryKey: styleQueryKeys.postsRoot() });
       await queryClient.cancelQueries({ queryKey: ["style-post"] });
+      if (getSessionGeneration() !== generation)
+        return { coordinator, revision };
       const previousFeeds = queryClient.getQueriesData<
         InfiniteData<StylePostConnection>
       >({
@@ -211,6 +254,18 @@ export const useToggleStylePostLike = () => {
       const previousPost = queryClient.getQueryData<StylePost>(
         styleQueryKeys.post(stylePostId),
       );
+      const previous =
+        previousPost ??
+        previousFeeds
+          .flatMap(
+            ([, data]) => data?.pages.flatMap((page) => page.nodes) ?? [],
+          )
+          .find((post) => post.stylePostId === stylePostId);
+      if (!coordinator.confirmed && previous)
+        coordinator.confirmed = {
+          isLiked: previous.isLiked,
+          likeCount: previous.likeCount,
+        };
       queryClient.setQueriesData<InfiniteData<StylePostConnection>>(
         { queryKey: styleQueryKeys.postsRoot() },
         (data) => updateFeedData(data, stylePostId, nextLiked),
@@ -220,17 +275,31 @@ export const useToggleStylePostLike = () => {
         (post) =>
           post ? updateStylePostLike(post, stylePostId, nextLiked) : post,
       );
-      return { coordinator, previousFeeds, previousPost, revision };
+      return { coordinator, revision };
+    },
+    onSuccess: (post, variables, context) => {
+      if (!context || getSessionGeneration() !== variables.generation) return;
+      context.coordinator.confirmed = {
+        isLiked: post.isLiked,
+        likeCount: post.likeCount,
+      };
+      if (context.revision === context.coordinator.revision)
+        applyConfirmed(
+          variables.input.stylePostId,
+          context.coordinator.confirmed,
+        );
     },
     onError: (_error, variables, context) => {
-      if (!context || context.revision !== context.coordinator.revision) return;
-      context?.previousFeeds.forEach(([queryKey, data]) =>
-        queryClient.setQueryData(queryKey, data),
-      );
-      if (context?.previousPost)
-        queryClient.setQueryData(
-          styleQueryKeys.post(variables.stylePostId),
-          context.previousPost,
+      if (
+        !context ||
+        getSessionGeneration() !== variables.generation ||
+        context.revision !== context.coordinator.revision
+      )
+        return;
+      if (context.coordinator.confirmed)
+        applyConfirmed(
+          variables.input.stylePostId,
+          context.coordinator.confirmed,
         );
     },
     onSettled: (_data, _error, variables, context) => {
@@ -240,13 +309,59 @@ export const useToggleStylePostLike = () => {
         context.coordinator.activeCount -= 1;
         releaseStyleLikeCoordinator(
           queryClient,
-          variables.stylePostId,
+          `${variables.generation}:${variables.input.stylePostId}`,
           context.coordinator,
         );
       }
-      if (!isLatest) return;
+      if (
+        !isLatest ||
+        getSessionGeneration() !== variables.generation ||
+        queryClient.isMutating({ mutationKey: ["style-like"] }) > 1
+      )
+        return;
       queryClient.invalidateQueries({ queryKey: styleQueryKeys.postsRoot() });
       queryClient.invalidateQueries({ queryKey: ["style-post"] });
     },
   });
+  type Options = MutateOptions<
+    StylePost,
+    Error,
+    Input,
+    typeof mutation.context
+  >;
+  const wrapOptions = (
+    options?: Options,
+  ): Parameters<typeof mutation.mutate>[1] => ({
+    onSuccess: (data, { input, generation }, result, context) => {
+      if (getSessionGeneration() === generation)
+        options?.onSuccess?.(data, input, result, context);
+    },
+    onError: (error, { input, generation }, result, context) => {
+      if (getSessionGeneration() === generation)
+        options?.onError?.(error, input, result, context);
+    },
+    onSettled: (data, error, { input, generation }, result, context) => {
+      if (getSessionGeneration() === generation)
+        options?.onSettled?.(data, error, input, result, context);
+    },
+  });
+  return {
+    ...mutation,
+    variables: mutation.variables?.input,
+    mutate: (input: Input, options?: Options) =>
+      mutation.mutate(
+        { input, generation: getSessionGeneration() },
+        wrapOptions(options),
+      ),
+    mutateAsync: async (input: Input, options?: Options) => {
+      const generation = getSessionGeneration();
+      const data = await mutation.mutateAsync(
+        { input, generation },
+        wrapOptions(options),
+      );
+      if (getSessionGeneration() !== generation)
+        throw new Error("Session changed");
+      return data;
+    },
+  };
 };

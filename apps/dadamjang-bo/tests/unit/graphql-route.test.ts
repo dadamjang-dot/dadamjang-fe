@@ -38,8 +38,106 @@ describe("GraphQL BFF", () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  it("forwards distinct ingress IPs with server credentials, ignoring spoofed headers", async () => {
+    vi.stubEnv("DADAMJANG_TRUSTED_IP_HEADER", "x-real-ip");
+    vi.stubEnv("DADAMJANG_BFF_SECRET", "a".repeat(32));
+    const seen: Headers[] = [];
+    vi.stubGlobal("fetch", async (_url: unknown, options: RequestInit) => {
+      seen.push(new Headers(options.headers));
+      return graphqlResponse({ data: { signin: { role: "ADMIN" } } });
+    });
+    for (const ip of ["203.0.113.10", "2001:db8::10"])
+      await handleGraphQlPost(
+        request("mutation { signin { role } }", {
+          "x-real-ip": ip,
+          "x-forwarded-for": "198.51.100.9",
+          "x-dadamjang-client-ip": "198.51.100.9",
+          "x-dadamjang-bff-secret": "spoofed",
+        }),
+      );
+    expect(seen.map((headers) => headers.get("x-dadamjang-client-ip"))).toEqual(
+      ["203.0.113.10", "2001:db8::10"],
+    );
+    expect(
+      seen.every(
+        (headers) => headers.get("x-dadamjang-bff-secret") === "a".repeat(32),
+      ),
+    ).toBe(true);
+  });
+
+  it.each([undefined, "", "198.51.100.1, 203.0.113.10", "not-an-ip"])(
+    "fails closed when the configured ingress IP is %s",
+    async (ip) => {
+      vi.stubEnv("DADAMJANG_TRUSTED_IP_HEADER", "x-real-ip");
+      vi.stubEnv("DADAMJANG_BFF_SECRET", "a".repeat(32));
+      const upstream = vi.fn();
+      vi.stubGlobal("fetch", upstream);
+      const response = await handleGraphQlPost(
+        request("{ me { role } }", ip === undefined ? {} : { "x-real-ip": ip }),
+      );
+      expect(response.status).toBe(503);
+      expect(upstream).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects production requests without an authenticated ingress contract", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("DADAMJANG_TRUSTED_IP_HEADER", "");
+    vi.stubEnv("DADAMJANG_BFF_SECRET", "");
+    vi.stubGlobal("fetch", async () =>
+      graphqlResponse({ data: { me: { role: "ADMIN" } } }),
+    );
+    expect(
+      (
+        await handleGraphQlPost(
+          request("{ me { role } }", { "x-forwarded-for": "203.0.113.10" }),
+        )
+      ).status,
+    ).toBe(503);
+  });
+
+  it("preserves authenticated ingress headers through refresh and retry", async () => {
+    vi.stubEnv("DADAMJANG_TRUSTED_IP_HEADER", "x-real-ip");
+    vi.stubEnv("DADAMJANG_BFF_SECRET", "a".repeat(32));
+    const originalQuery = "query AdminMe { me { role } }";
+    const seen: { query: string; ip: string | null; secret: string | null }[] =
+      [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, options) => {
+      const headers = new Headers(options?.headers);
+      seen.push({
+        query: JSON.parse(String(options?.body)).query,
+        ip: headers.get("x-dadamjang-client-ip"),
+        secret: headers.get("x-dadamjang-bff-secret"),
+      });
+      if (seen.length === 1)
+        return graphqlResponse({
+          errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+        });
+      if (seen.length === 2)
+        return graphqlResponse({ data: { refresh: { role: "ADMIN" } } }, [
+          "access_token=rotated-access; Path=/; HttpOnly",
+          "refresh_token=rotated-refresh; Path=/; HttpOnly",
+        ]);
+      return graphqlResponse({ data: { me: { role: "ADMIN" } } });
+    });
+    const incoming = request(originalQuery, { "x-real-ip": "203.0.113.10" });
+    incoming.headers.set("x-real-ip", "203.0.113.10");
+    const result = await handleGraphQlPost(incoming);
+    expect(await result.json()).toEqual({ data: { me: { role: "ADMIN" } } });
+    expect(seen).toEqual([
+      { query: originalQuery, ip: "203.0.113.10", secret: "a".repeat(32) },
+      {
+        query: "mutation Refresh { refresh { role } }",
+        ip: "203.0.113.10",
+        secret: "a".repeat(32),
+      },
+      { query: originalQuery, ip: "203.0.113.10", secret: "a".repeat(32) },
+    ]);
   });
 
   it("isolates browser auth cookies from the partner portal", async () => {

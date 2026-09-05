@@ -34,6 +34,63 @@ describe("GraphQL authentication", () => {
     });
   });
 
+  it("finishes refresh failure cleanup when the session handler reads credentials", async () => {
+    storage.set(sessionKey, storedSession("expired-access", "refresh-1"));
+    await client.getAccessToken();
+    jest
+      .mocked(SecureStore.setItemAsync)
+      .mockImplementation(async (key, value) => {
+        if (value.includes("access-2"))
+          throw new Error("SecureStore unavailable");
+        storage.set(key, value);
+      });
+    let hydratedToken: string | null | undefined;
+    client.setSessionResetHandler(async () => {
+      hydratedToken = await client.getAccessToken();
+    });
+    installTransport([
+      unauthorizedResponse(),
+      jsonResponse({
+        data: {
+          refresh: { accessToken: "access-2", refreshToken: "refresh-2" },
+        },
+      }),
+    ]);
+
+    await expect(
+      client.graphqlRequest("query Me { me { userId } }"),
+    ).rejects.toMatchObject({ status: 401 });
+    expect(hydratedToken).toBeNull();
+    await client.setAuthTokens({
+      accessToken: "access-3",
+      refreshToken: "refresh-3",
+    });
+    await expect(client.getAccessToken()).resolves.toBe("access-3");
+  }, 1000);
+
+  it("changes the synchronous generation only when the session is replaced or reset", async () => {
+    const initial = client.getSessionGeneration();
+    await client.setAuthTokens({
+      accessToken: "expired-access",
+      refreshToken: "refresh-1",
+    });
+    const signedIn = client.getSessionGeneration();
+    expect(signedIn).toBeGreaterThan(initial);
+    installTransport([
+      unauthorizedResponse(),
+      jsonResponse({
+        data: {
+          refresh: { accessToken: "access-2", refreshToken: "refresh-2" },
+        },
+      }),
+      jsonResponse({ data: { me: { userId: "user-1" } } }),
+    ]);
+    await client.graphqlRequest("query Me { me { userId } }");
+    expect(client.getSessionGeneration()).toBe(signedIn);
+    await client.resetAuthSession();
+    expect(client.getSessionGeneration()).toBeGreaterThan(signedIn);
+  });
+
   it("persists access and refresh tokens as one atomic record", async () => {
     await client.setAuthTokens({
       accessToken: "access-1",

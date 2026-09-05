@@ -3,7 +3,9 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type MutateOptions,
 } from "@tanstack/react-query";
+import { getSessionGeneration } from "@dadamjang/graphql-client";
 
 import {
   getFoNotification,
@@ -16,6 +18,7 @@ import {
 import type {
   FoNotificationConnection,
   FoNotificationPreferences,
+  UpdateFoNotificationPreferencesInput,
 } from "./types";
 
 export const foNotificationQueryKeys = {
@@ -92,20 +95,78 @@ export const useFoNotificationPreferences = (enabled = true) =>
 export const useUpdateFoNotificationPreferences = () => {
   const queryClient = useQueryClient();
   const queryKey = foNotificationQueryKeys.preferences();
-  return useMutation({
-    mutationFn: updateFoNotificationPreferences,
-    onMutate: async (input) => {
+  const mutation = useMutation({
+    mutationFn: ({
+      input,
+      generation,
+    }: {
+      input: UpdateFoNotificationPreferencesInput;
+      generation: number;
+    }) => {
+      if (getSessionGeneration() !== generation)
+        throw new Error("Session changed");
+      return updateFoNotificationPreferences(input);
+    },
+    onMutate: async ({ input, generation }) => {
       await queryClient.cancelQueries({ queryKey });
+      if (getSessionGeneration() !== generation) return;
       const previous =
         queryClient.getQueryData<FoNotificationPreferences>(queryKey);
       if (previous)
         queryClient.setQueryData(queryKey, { ...previous, ...input });
       return { previous };
     },
-    onError: (_error, _input, context) => {
-      if (context?.previous)
+    onError: (_error, { generation }, context) => {
+      if (getSessionGeneration() === generation && context?.previous)
         queryClient.setQueryData(queryKey, context.previous);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey }),
+    onSettled: (_data, _error, { generation }) => {
+      if (getSessionGeneration() === generation)
+        return queryClient.invalidateQueries({ queryKey });
+    },
   });
+  type Options = MutateOptions<
+    FoNotificationPreferences,
+    Error,
+    UpdateFoNotificationPreferencesInput,
+    typeof mutation.context
+  >;
+  const wrapOptions = (
+    options?: Options,
+  ): Parameters<typeof mutation.mutate>[1] => ({
+    onSuccess: (data, { input, generation }, result, context) => {
+      if (getSessionGeneration() === generation)
+        options?.onSuccess?.(data, input, result, context);
+    },
+    onError: (error, { input, generation }, result, context) => {
+      if (getSessionGeneration() === generation)
+        options?.onError?.(error, input, result, context);
+    },
+    onSettled: (data, error, { input, generation }, result, context) => {
+      if (getSessionGeneration() === generation)
+        options?.onSettled?.(data, error, input, result, context);
+    },
+  });
+  return {
+    ...mutation,
+    variables: mutation.variables?.input,
+    mutate: (input: UpdateFoNotificationPreferencesInput, options?: Options) =>
+      mutation.mutate(
+        { input, generation: getSessionGeneration() },
+        wrapOptions(options),
+      ),
+    mutateAsync: async (
+      input: UpdateFoNotificationPreferencesInput,
+      options?: Options,
+    ) => {
+      const generation = getSessionGeneration();
+      const data = await mutation.mutateAsync(
+        { input, generation },
+        wrapOptions(options),
+      );
+      if (getSessionGeneration() !== generation)
+        throw new Error("Session changed");
+      return data;
+    },
+  };
 };

@@ -3,7 +3,7 @@
 import { ActionButton, Callout, SidePanel, Skeleton } from "@seed-design/react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import { AdminApiError } from "@/shared/api";
 import {
@@ -59,7 +59,6 @@ const Brand = () => (
 
 export const AdminShell = ({ children }: { children: ReactNode }) => {
   const pathname = usePathname();
-  const router = useRouter();
   const notify = useAdminSnackbar();
   const [navigationOpen, setNavigationOpen] = useState(false);
   const session = useQuery(adminSessionQuery());
@@ -74,14 +73,34 @@ export const AdminShell = ({ children }: { children: ReactNode }) => {
   });
 
   useEffect(() => {
-    if (session.data && session.data.role !== "ADMIN") invalidateSession();
-    else if (session.isError) router.replace("/login");
-  }, [router, session.data, session.isError]);
+    if (
+      (session.data && session.data.role !== "ADMIN") ||
+      (session.error instanceof AdminApiError &&
+        session.error.code === "UNAUTHENTICATED")
+    )
+      invalidateSession();
+  }, [session.data, session.error]);
 
   if (session.isPending)
     return (
       <div className={styles.gate} aria-label="관리자 세션 확인 중">
         <Skeleton width="280px" height="48px" />
+      </div>
+    );
+
+  if (
+    session.isError &&
+    !(
+      session.error instanceof AdminApiError &&
+      session.error.code === "UNAUTHENTICATED"
+    )
+  )
+    return (
+      <div className={styles.gate} role="alert">
+        <p>세션을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+        <ActionButton onClick={() => void session.refetch()}>
+          다시 시도
+        </ActionButton>
       </div>
     );
 

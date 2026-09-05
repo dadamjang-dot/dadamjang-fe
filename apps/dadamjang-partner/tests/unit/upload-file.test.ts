@@ -68,6 +68,48 @@ describe("uploadFile", () => {
     ).rejects.toThrow("403");
   });
 
+  it.each([995, 1000])(
+    "keeps %i of 1000 transferred bytes incomplete until a successful response",
+    async (loaded) => {
+      MockRequest.event = "pending";
+      vi.stubGlobal("XMLHttpRequest", MockRequest);
+      const progress = vi.fn();
+      const upload = uploadFile(
+        "https://upload.test",
+        new File(["x"], "x.png", { type: "image/png" }),
+        progress,
+      );
+      const request = MockRequest.instances[0]!;
+      const onProgress = request.upload.addEventListener.mock.calls[0]![1];
+
+      onProgress({ lengthComputable: true, loaded, total: 1000 });
+
+      expect(progress).toHaveBeenLastCalledWith(99);
+      request.listeners.load?.();
+      await upload;
+      expect(progress).toHaveBeenLastCalledWith(100);
+    },
+  );
+
+  it("never reports completion when fully transferred bytes receive a 503", async () => {
+    MockRequest.event = "pending";
+    MockRequest.status = 503;
+    vi.stubGlobal("XMLHttpRequest", MockRequest);
+    const progress = vi.fn();
+    const upload = uploadFile(
+      "https://upload.test",
+      new File(["x"], "x.png", { type: "image/png" }),
+      progress,
+    );
+    const request = MockRequest.instances[0]!;
+    const onProgress = request.upload.addEventListener.mock.calls[0]![1];
+    onProgress({ lengthComputable: true, loaded: 1000, total: 1000 });
+    request.listeners.load?.();
+
+    await expect(upload).rejects.toThrow("503");
+    expect(progress).not.toHaveBeenCalledWith(100);
+  });
+
   it.each(["error", "abort"])("rejects the %s event", async (event) => {
     MockRequest.event = event;
     vi.stubGlobal("XMLHttpRequest", MockRequest);

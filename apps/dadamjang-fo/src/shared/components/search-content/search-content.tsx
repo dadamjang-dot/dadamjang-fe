@@ -1,5 +1,6 @@
 import { LegendList } from "@legendapp/list/react-native";
 import { usePathname, useRouter } from "expo-router";
+import { useLayoutEffect, useRef } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { colors } from "@dadamjang/design-tokens";
@@ -8,7 +9,7 @@ import { useAuthActionGate } from "@/features/auth";
 import { useProductSearch } from "@/features/catalog";
 import { useWishActions, useWishlist } from "@/features/wish";
 import { Button, ProductCard } from "@/shared/components";
-import { uniqueBy } from "@/shared/lib";
+import { fetchUntilRowsGrow, uniqueBy } from "@/shared/lib";
 
 import type { SearchContentProps } from "./search-content.types";
 
@@ -18,6 +19,15 @@ const SearchContent = ({ keyword }: SearchContentProps) => {
   const query = useProductSearch(keyword ?? "");
   const wishlist = useWishlist(auth.isAuthenticated);
   const wishActions = useWishActions();
+  const queryIdentity = keyword ?? "";
+  const currentQuery = useRef<string | undefined>(queryIdentity);
+  const loadingQuery = useRef<string | undefined>(undefined);
+  useLayoutEffect(() => {
+    currentQuery.current = queryIdentity;
+    return () => {
+      currentQuery.current = undefined;
+    };
+  }, [queryIdentity]);
   const products = uniqueBy(
     query.data?.pages.flatMap((page) => page.nodes) ?? [],
     (product) => product.productId,
@@ -25,6 +35,27 @@ const SearchContent = ({ keyword }: SearchContentProps) => {
   const likedProductIds = new Set(
     wishlist.data?.map((item) => item.productId) ?? [],
   );
+  const loadMore = async () => {
+    if (
+      loadingQuery.current === queryIdentity ||
+      query.isFetchingNextPage ||
+      !query.hasNextPage
+    )
+      return;
+    loadingQuery.current = queryIdentity;
+    try {
+      await fetchUntilRowsGrow(
+        query.data,
+        query.fetchNextPage,
+        (product) => product.productId,
+        1,
+        () => currentQuery.current === queryIdentity,
+      );
+    } finally {
+      if (loadingQuery.current === queryIdentity)
+        loadingQuery.current = undefined;
+    }
+  };
 
   if (!keyword) {
     return (
@@ -52,6 +83,19 @@ const SearchContent = ({ keyword }: SearchContentProps) => {
           accessibilityLabel="검색 상품 목록"
           data={products}
           keyExtractor={(product) => product.productId}
+          onEndReached={
+            query.hasNextPage && !query.isFetchingNextPage
+              ? loadMore
+              : undefined
+          }
+          onEndReachedThreshold={0.6}
+          ListFooterComponent={
+            query.isFetchingNextPage ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : query.hasNextPage ? (
+              <Button label="더 보기" onPress={loadMore} />
+            ) : null
+          }
           recycleItems
           renderItem={({ item: product }) => {
             const sku = product.skus[0];
