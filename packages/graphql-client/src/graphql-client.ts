@@ -17,11 +17,13 @@ export const resolveGraphqlUrl = (value: string | undefined) => {
 };
 
 export class GraphqlError extends Error {
+  readonly code?: string;
   readonly status: number;
 
-  constructor(message: string, status = 0) {
+  constructor(message: string, status = 0, code?: string) {
     super(message);
     this.name = "GraphqlError";
+    this.code = code;
     this.status = status;
   }
 }
@@ -94,6 +96,15 @@ export type AuthenticatedGraphqlClientOptions = {
 
 const getErrorMessage = (error: ClientError) =>
   error.response.errors?.[0]?.message ?? "GraphQL 요청에 실패했어요.";
+
+const createGraphqlError = (error: ClientError) => {
+  const code = error.response.errors?.[0]?.extensions?.code;
+  return new GraphqlError(
+    getErrorMessage(error),
+    error.response.status,
+    typeof code === "string" ? code : undefined,
+  );
+};
 
 const isUnauthorizedError = (error: ClientError) =>
   error.response.status === 401 ||
@@ -434,7 +445,7 @@ const createAuthenticatedGraphqlClientInternal = (
         throw createAuthError();
       }
       if (error instanceof ClientError) {
-        throw new GraphqlError(getErrorMessage(error), error.response.status);
+        throw createGraphqlError(error);
       }
       throw error;
     }
@@ -519,7 +530,7 @@ const createAuthenticatedGraphqlClientInternal = (
         !snapshot.accessToken ||
         !isUnauthorizedError(error)
       ) {
-        throw new GraphqlError(getErrorMessage(error), error.response.status);
+        throw createGraphqlError(error);
       }
     }
 
@@ -549,7 +560,7 @@ const createAuthenticatedGraphqlClientInternal = (
         throw createAuthError();
       }
       if (error instanceof ClientError) {
-        throw new GraphqlError(getErrorMessage(error), error.response.status);
+        throw createGraphqlError(error);
       }
       throw error;
     }
