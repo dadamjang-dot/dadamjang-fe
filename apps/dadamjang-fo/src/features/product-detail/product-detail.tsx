@@ -130,7 +130,10 @@ const ProductDetail = ({ onOpenCart, productId }: ProductDetailProps) => {
   const price =
     selectedSku?.price ?? summary.data?.finalPrice ?? minimumSkuPrice;
   const canBuy = Boolean(
-    selectedSku && selectedSku.stock > 0 && !cart.upsert.isPending,
+    selectedSku &&
+    selectedSku.stock > 0 &&
+    !cart.isPending &&
+    !cart.upsert.isPending,
   );
   const isWished = Boolean(
     wishlist.data?.some(

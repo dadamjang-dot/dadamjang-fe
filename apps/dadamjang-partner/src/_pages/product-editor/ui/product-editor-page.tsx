@@ -32,11 +32,11 @@ import {
 import { effectiveProductState, isProductEditable } from "@/entities/product";
 import { myPartner } from "@/shared/auth";
 type ImageItem = {
+  identity: string;
   key: string;
   preview: string;
   local: boolean;
   progress: number;
-  order: number;
 };
 type Sku = ProductInput["skus"][number] & {
   identity: string;
@@ -105,9 +105,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   const [categoryId, setCategory] = useState("");
   const [images, setImages] = useState<ImageItem[]>([]);
   const imageRef = useRef<ImageItem[]>([]);
-  const occupiedImageKeys = useRef(new Set<string>());
-  const pendingImageSlots = useRef(0);
-  const nextImageOrder = useRef(0);
+  const occupiedImageIds = useRef(new Set<string>());
   const runWithUploadSlot = useRef(
     createUploadSlotRunner(MAX_CONCURRENT_UPLOADS),
   ).current;
@@ -132,15 +130,14 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     setTitle(p.title);
     setDescription(p.description);
     setCategory(p.categoryId);
-    occupiedImageKeys.current = new Set(p.imageKeys);
-    nextImageOrder.current = p.imageKeys.length;
+    occupiedImageIds.current = new Set(p.imageKeys);
     setImages(
       p.imageKeys.map((key, i) => ({
+        identity: key,
         key,
         preview: p.imageUrls[i] ?? "",
         local: false,
         progress: 100,
-        order: i,
       })),
     );
     setSkus(
@@ -286,7 +283,11 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
     ]);
   const addFiles = async (files: FileList | File[]) => {
     setError("");
-    const tasks: Array<{ file: File; preview: string; order: number }> = [];
+    const tasks: Array<{
+      file: File;
+      preview: string;
+      controller: AbortController;
+    }> = [];
     for (const file of Array.from(files)) {
       if (
         !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
@@ -297,75 +298,75 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
         );
         continue;
       }
-      if (occupiedImageKeys.current.size + pendingImageSlots.current >= 10) {
+      if (occupiedImageIds.current.size >= 10) {
         setError("이미지는 최대 10장까지 등록할 수 있습니다.");
         continue;
       }
       const preview = URL.createObjectURL(file);
-      pendingImageSlots.current += 1;
-      tasks.push({ file, preview, order: nextImageOrder.current++ });
+      const controller = new AbortController();
+      occupiedImageIds.current.add(preview);
+      uploadControllers.current.set(preview, controller);
+      tasks.push({ file, preview, controller });
     }
+    if (!tasks.length) return;
+    markDirty(dirty, historyGuardArmed);
+    setImages((value) => [
+      ...value,
+      ...tasks.map(({ preview }) => ({
+        identity: preview,
+        key: "",
+        preview,
+        local: true,
+        progress: 0,
+      })),
+    ]);
     let nextTask = 0;
     const uploadNext = async () => {
       while (nextTask < tasks.length) {
         const task = tasks[nextTask++];
         if (!task) return;
         await runWithUploadSlot(async () => {
-          const { file, preview, order } = task;
-          let pendingSlot = true;
-          const releasePendingSlot = () => {
-            if (!pendingSlot) return;
-            pendingImageSlots.current -= 1;
-            pendingSlot = false;
-          };
-          let controller: AbortController | undefined;
-          let uploadKey: string | undefined;
+          const { file, preview, controller } = task;
           let uploadSucceeded = false;
           try {
-            if (!mounted.current) return;
+            if (!mounted.current || controller.signal.aborted) return;
             const { createProductImageUpload: u } = await createImageUpload({
               filename: file.name,
               contentType: file.type,
               fileSize: file.size,
             });
-            releasePendingSlot();
-            if (!mounted.current) return;
-            uploadKey = u.key;
-            occupiedImageKeys.current.add(uploadKey);
-            controller = new AbortController();
-            uploadControllers.current.set(u.key, controller);
-            setImages((value) =>
-              [
-                ...value,
-                { key: u.key, preview, local: true, progress: 0, order },
-              ].sort((left, right) => left.order - right.order),
+            if (!mounted.current || controller.signal.aborted) return;
+            await uploadFile(
+              u.uploadUrl,
+              file,
+              (progress) => {
+                if (!mounted.current) return;
+                setImages((value) =>
+                  value.map((item) =>
+                    item.identity === preview
+                      ? { ...item, progress: Math.min(99, progress) }
+                      : item,
+                  ),
+                );
+              },
+              controller.signal,
             );
-            try {
-              await uploadFile(
-                u.uploadUrl,
-                file,
-                (progress) => {
-                  if (!mounted.current) return;
-                  setImages((value) =>
-                    value.map((item) =>
-                      item.key === u.key ? { ...item, progress } : item,
-                    ),
-                  );
-                },
-                controller.signal,
-              );
-              uploadSucceeded = true;
-            } finally {
-              uploadControllers.current.delete(u.key);
-            }
-            if (mounted.current) markDirty(dirty, historyGuardArmed);
+            if (!mounted.current || controller.signal.aborted) return;
+            uploadSucceeded = true;
+            setImages((value) =>
+              value.map((item) =>
+                item.identity === preview
+                  ? { ...item, key: u.key, progress: 100 }
+                  : item,
+              ),
+            );
           } catch (e) {
-            if (uploadKey) occupiedImageKeys.current.delete(uploadKey);
+            occupiedImageIds.current.delete(preview);
             if (mounted.current) {
               setImages((value) =>
-                value.filter((item) => item.preview !== preview),
+                value.filter((item) => item.identity !== preview),
               );
-              if (!controller?.signal.aborted)
+              if (!controller.signal.aborted)
                 setError(
                   e instanceof Error
                     ? e.message
@@ -373,7 +374,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                 );
             }
           } finally {
-            releasePendingSlot();
+            uploadControllers.current.delete(preview);
             if (!uploadSucceeded) URL.revokeObjectURL(preview);
           }
         });
@@ -386,20 +387,21 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
       ),
     );
   };
-  const removeImage = (key: string) =>
+  const removeImage = (identity: string) =>
     setImages((v) => {
-      const index = v.findIndex((item) => item.key === key);
+      const index = v.findIndex((item) => item.identity === identity);
       const item = v[index];
       if (!item) return v;
-      occupiedImageKeys.current.delete(item.key);
-      uploadControllers.current.get(item.key)?.abort();
+      occupiedImageIds.current.delete(item.identity);
+      uploadControllers.current.get(item.identity)?.abort();
+      uploadControllers.current.delete(item.identity);
       if (item.local) URL.revokeObjectURL(item.preview);
       markDirty(dirty, historyGuardArmed);
       return v.filter((_, currentIndex) => currentIndex !== index);
     });
-  const moveImage = (key: string, direction: -1 | 1) =>
+  const moveImage = (identity: string, direction: -1 | 1) =>
     setImages((v) => {
-      const next = moveItem(v, "key", key, direction);
+      const next = moveItem(v, "identity", identity, direction);
       if (next === v) return v;
       markDirty(dirty, historyGuardArmed);
       return next;
@@ -447,7 +449,10 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
         const saved = await savePublishedProductSkus(productId, inventory);
         return saved.updatePublishedProductSkus;
       }
-      if (images.some((image) => image.progress < 100))
+      if (
+        uploadControllers.current.size > 0 ||
+        images.some((image) => image.progress < 100)
+      )
         throw new Error("이미지 업로드가 끝난 뒤 저장해 주세요.");
       if (!title.trim() || !description.trim() || !categoryId)
         throw new Error("카테고리, 상품명, 설명은 필수입니다.");
@@ -522,6 +527,10 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
   });
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (uploadControllers.current.size > 0) {
+      setError("이미지 업로드가 끝난 뒤 저장해 주세요.");
+      return;
+    }
     const submitter =
       e.nativeEvent instanceof SubmitEvent ? e.nativeEvent.submitter : null;
     mutation.mutate({
@@ -647,7 +656,7 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
             </div>
             <div className="images">
               {images.map((x, i) => (
-                <article key={x.key}>
+                <article key={x.identity}>
                   {x.preview ? (
                     <Image
                       src={x.preview}
@@ -669,21 +678,21 @@ export const ProductEditorPage = ({ productId }: { productId?: string }) => {
                   <ActionButton
                     type="button"
                     disabled={isPublished || i === 0}
-                    onClick={() => moveImage(x.key, -1)}
+                    onClick={() => moveImage(x.identity, -1)}
                   >
                     앞으로
                   </ActionButton>
                   <ActionButton
                     type="button"
                     disabled={isPublished || i === images.length - 1}
-                    onClick={() => moveImage(x.key, 1)}
+                    onClick={() => moveImage(x.identity, 1)}
                   >
                     뒤로
                   </ActionButton>
                   <ActionButton
                     type="button"
                     disabled={isPublished}
-                    onClick={() => removeImage(x.key)}
+                    onClick={() => removeImage(x.identity)}
                   >
                     삭제
                   </ActionButton>

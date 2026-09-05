@@ -74,6 +74,7 @@ export type AuthenticatedGraphqlClient = {
   clearAccessToken: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
   getRefreshToken: () => Promise<string | null>;
+  getSessionGeneration: () => number;
   graphqlRequest: <T>(
     query: string,
     variables?: Record<string, unknown>,
@@ -397,30 +398,22 @@ const createAuthenticatedGraphqlClientInternal = (
   const commitRefreshedTokens = async (
     snapshot: SessionSnapshot,
     tokens: AuthTokens,
-  ) =>
-    enqueueTokenMutation(async () => {
-      if (generation !== snapshot.generation) return null;
-      if (credentialRevision !== snapshot.credentialRevision)
-        return captureCredentialLease();
-
-      try {
+  ) => {
+    try {
+      return await enqueueTokenMutation(async () => {
+        if (generation !== snapshot.generation) return null;
+        if (credentialRevision !== snapshot.credentialRevision)
+          return captureCredentialLease();
         await writeStoredSession(tokens);
-      } catch {
-        const resetGeneration = beginSessionReset(snapshot.generation);
-        if (resetGeneration !== undefined) {
-          const results = await Promise.allSettled([
-            invalidatePersistedSession(),
-            runSessionResetHandler(),
-          ]);
-          if (hasRejected(results)) throw createSessionCleanupError();
-        }
-        return null;
-      }
-      if (generation !== snapshot.generation) return null;
-
-      commitCredentialPair(tokens);
-      return captureCredentialLease();
-    });
+        if (generation !== snapshot.generation) return null;
+        commitCredentialPair(tokens);
+        return captureCredentialLease();
+      });
+    } catch {
+      await resetSession(snapshot.generation);
+      return null;
+    }
+  };
 
   const refreshAccessToken = async (snapshot: SessionSnapshot) => {
     if (generation !== snapshot.generation) return null;
@@ -603,6 +596,7 @@ const createAuthenticatedGraphqlClientInternal = (
     clearAccessToken: resetAuthSession,
     getAccessToken: async () => (await captureSession()).accessToken,
     getRefreshToken: async () => (await captureSession()).refreshToken,
+    getSessionGeneration: () => generation,
     graphqlRequest,
     logoutAuthSession,
     resetAuthSession,
@@ -631,6 +625,9 @@ export const getAccessToken = () =>
 
 export const getRefreshToken = () =>
   defaultAuthenticatedGraphqlClient.getRefreshToken();
+
+export const getSessionGeneration = () =>
+  defaultAuthenticatedGraphqlClient.getSessionGeneration();
 
 export const setAuthTokens = (tokens: AuthTokens) =>
   defaultAuthenticatedGraphqlClient.setAuthTokens(tokens);

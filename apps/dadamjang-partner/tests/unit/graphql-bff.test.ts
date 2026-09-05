@@ -34,6 +34,72 @@ describe("partner GraphQL BFF refresh", () => {
     vi.restoreAllMocks();
   });
 
+  it("forwards only a validated ingress IP authenticated with the BFF secret", async () => {
+    vi.stubEnv("DADAMJANG_TRUSTED_IP_HEADER", "x-real-ip");
+    vi.stubEnv("DADAMJANG_BFF_SECRET", "a".repeat(32));
+    const seen: Headers[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, options) => {
+      seen.push(new Headers(options?.headers));
+      return response({ data: { me: { role: "PARTNER" } } });
+    });
+    for (const ip of ["203.0.113.10", "2001:db8::10"]) {
+      const incoming = request();
+      incoming.headers.set("x-real-ip", ip);
+      incoming.headers.set("x-forwarded-for", "198.51.100.9");
+      incoming.headers.set("x-dadamjang-client-ip", "198.51.100.9");
+      incoming.headers.set("x-dadamjang-bff-secret", "spoofed");
+      await handleGraphQlPost(incoming);
+    }
+    expect(seen.map((headers) => headers.get("x-dadamjang-client-ip"))).toEqual(
+      ["203.0.113.10", "2001:db8::10"],
+    );
+    expect(
+      seen.every(
+        (headers) => headers.get("x-dadamjang-bff-secret") === "a".repeat(32),
+      ),
+    ).toBe(true);
+    expect((await handleGraphQlPost(request())).status).toBe(503);
+  });
+
+  it("preserves authenticated ingress headers through refresh and retry", async () => {
+    vi.stubEnv("DADAMJANG_TRUSTED_IP_HEADER", "x-real-ip");
+    vi.stubEnv("DADAMJANG_BFF_SECRET", "a".repeat(32));
+    const originalQuery = "query PartnerMe { me { role } }";
+    const seen: { query: string; ip: string | null; secret: string | null }[] =
+      [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, options) => {
+      const headers = new Headers(options?.headers);
+      seen.push({
+        query: JSON.parse(String(options?.body)).query,
+        ip: headers.get("x-dadamjang-client-ip"),
+        secret: headers.get("x-dadamjang-bff-secret"),
+      });
+      if (seen.length === 1)
+        return response({
+          errors: [{ extensions: { code: "UNAUTHENTICATED" } }],
+        });
+      if (seen.length === 2)
+        return response({ data: { refresh: { role: "PARTNER" } } }, [
+          "access_token=rotated-access; Path=/; HttpOnly",
+          "refresh_token=rotated-refresh; Path=/; HttpOnly",
+        ]);
+      return response({ data: { me: { role: "PARTNER" } } });
+    });
+    const incoming = request();
+    incoming.headers.set("x-real-ip", "203.0.113.10");
+    const result = await handleGraphQlPost(incoming);
+    expect(await result.json()).toEqual({ data: { me: { role: "PARTNER" } } });
+    expect(seen).toEqual([
+      { query: originalQuery, ip: "203.0.113.10", secret: "a".repeat(32) },
+      {
+        query: "mutation Refresh { refresh { role } }",
+        ip: "203.0.113.10",
+        secret: "a".repeat(32),
+      },
+      { query: originalQuery, ip: "203.0.113.10", secret: "a".repeat(32) },
+    ]);
+  });
+
   it("isolates browser auth cookies from the admin portal", async () => {
     let upstreamCookie = "";
     const fetchMock = vi

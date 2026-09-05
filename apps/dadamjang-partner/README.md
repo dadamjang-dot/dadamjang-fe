@@ -29,6 +29,8 @@ pnpm partner:dev
 
 앱은 `http://localhost:3002`에서 실행되며 `DADAMJANG_API_URL`로 Backend 주소를 설정합니다.
 
+운영 BFF는 `DADAMJANG_TRUSTED_IP_HEADER`와 `DADAMJANG_BFF_SECRET`이 필수입니다. ingress가 실제 사용자 IP 한 개로 덮어쓰는 헤더만 지정하고 Next 직접 접근을 차단해야 합니다. 32자 이상의 동일한 서버 secret을 BO·Partner·Backend에 주입합니다. 설정이 없거나 ingress IP가 유효하지 않으면 503으로 실패합니다. HTTPS와 secret 로그 마스킹을 포함한 [공통 BFF 배포 계약](../dadamjang-bo/README.md#bopartner-bff-운영-배포-계약)을 확인하세요. 로컬 개발에서는 두 값을 모두 비워 둘 수 있습니다.
+
 ## 검증
 
 ```bash

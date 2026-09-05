@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isIP } from "node:net";
 import { isPublicOperation } from "./graphql-operation";
 
 type GraphQlPayload = Record<string, unknown>;
@@ -179,6 +180,7 @@ const forward = async (
   cookie: string,
   deviceId: string,
   requestSignal?: AbortSignal,
+  originHeaders: Record<string, string> = {},
 ): Promise<UpstreamResult> => {
   const deadlineSignal = AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);
   const signal = requestSignal
@@ -188,6 +190,7 @@ const forward = async (
     const response = await fetch(upstreamUrl(), {
       method: "POST",
       headers: {
+        ...originHeaders,
         "content-type": "application/json",
         cookie,
         "x-device-id": deviceId,
@@ -267,12 +270,15 @@ const performRefresh = async (
   cookieHeader: string,
   initialCookies: string[],
   deviceId: string,
+  originHeaders: Record<string, string>,
 ): Promise<RefreshResult> => {
   try {
     const refresh = await forward(
       JSON.stringify({ query: "mutation Refresh { refresh { role } }" }),
       mergeCookies(cookieHeader, initialCookies),
       deviceId,
+      undefined,
+      originHeaders,
     );
     if (refresh.kind === "failure" && refresh.reason === "network")
       return transientRefresh();
@@ -309,8 +315,14 @@ const refreshSession = (
   cookieHeader: string,
   initialCookies: string[],
   deviceId: string,
+  originHeaders: Record<string, string>,
 ) => {
-  group.refresh ??= performRefresh(cookieHeader, initialCookies, deviceId);
+  group.refresh ??= performRefresh(
+    cookieHeader,
+    initialCookies,
+    deviceId,
+    originHeaders,
+  );
   return group.refresh;
 };
 
@@ -394,6 +406,23 @@ export const handleGraphQlPost = async (request: Request) => {
       { status: 400 },
     );
 
+  const originHeaders: Record<string, string> = {};
+  const ipHeader = process.env.DADAMJANG_TRUSTED_IP_HEADER?.trim();
+  const secret = process.env.DADAMJANG_BFF_SECRET;
+  if (ipHeader || secret || process.env.NODE_ENV === "production") {
+    const ip =
+      ipHeader && COOKIE_NAME_PATTERN.test(ipHeader)
+        ? request.headers.get(ipHeader)?.trim()
+        : undefined;
+    if (!ip || !isIP(ip) || !secret || secret.length < 32)
+      return NextResponse.json(
+        { error: "Trusted request origin unavailable" },
+        { status: 503 },
+      );
+    originHeaders["x-dadamjang-client-ip"] = ip;
+    originHeaders["x-dadamjang-bff-secret"] = secret;
+  }
+
   const browserCookieHeader = request.headers.get("cookie") ?? "";
   const cookieHeader = toUpstreamCookieHeader(browserCookieHeader);
   const cookieMatch = browserCookieHeader.match(
@@ -404,7 +433,13 @@ export const handleGraphQlPost = async (request: Request) => {
   const createdDeviceId = matchedDeviceId ? undefined : deviceId;
   const { key, group } = acquireRefreshGroup(cookieHeader, deviceId);
   try {
-    const initial = await forward(body, cookieHeader, deviceId, request.signal);
+    const initial = await forward(
+      body,
+      cookieHeader,
+      deviceId,
+      request.signal,
+      originHeaders,
+    );
     if (initial.kind === "failure")
       return responseWithCookies(
         initial.body,
@@ -429,6 +464,7 @@ export const handleGraphQlPost = async (request: Request) => {
       cookieHeader,
       initialCookies,
       deviceId,
+      originHeaders,
     );
     if (refresh.kind === "transient")
       return responseWithCookies(
@@ -464,6 +500,7 @@ export const handleGraphQlPost = async (request: Request) => {
       mergeCookies(cookieHeader, [...initialCookies, ...refresh.cookies]),
       deviceId,
       request.signal,
+      originHeaders,
     );
     if (retried.kind === "failure")
       return responseWithCookies(

@@ -88,7 +88,7 @@ const CartScreen = () => {
             <View style={s.quantityRow}>
               <Button
                 accessibilityLabel={`${item.product.title} 수량 줄이기`}
-                disabled={item.quantity <= 1}
+                disabled={item.quantity <= 1 || actions.isPending}
                 onPress={() =>
                   actions.upsert.mutate({
                     skuId: item.sku.skuId,
@@ -103,6 +103,7 @@ const CartScreen = () => {
               <Text>{item.quantity}</Text>
               <Button
                 accessibilityLabel={`${item.product.title} 수량 늘리기`}
+                disabled={actions.isPending}
                 onPress={() =>
                   actions.upsert.mutate({
                     skuId: item.sku.skuId,
@@ -116,6 +117,7 @@ const CartScreen = () => {
               </Button>
               <Button
                 accessibilityLabel={`${item.product.title} 삭제`}
+                disabled={actions.isPending}
                 onPress={() => actions.remove.mutate(item.sku.skuId)}
                 testID={`e2e.cart.remove.${item.sku.skuId}`}
                 variant="bare"
@@ -134,7 +136,7 @@ const CartScreen = () => {
         </Text>
       ) : null}
       <Button
-        disabled={cart.data.items.length === 0 || actions.checkout.isPending}
+        disabled={cart.data.items.length === 0 || actions.isPending}
         label="결제하기"
         onPress={handleCheckout}
         style={s.checkout}

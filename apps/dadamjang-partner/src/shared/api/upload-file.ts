@@ -43,7 +43,9 @@ export const uploadFile = (
     request.setRequestHeader("content-type", file.type);
     request.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable)
-        onProgress(Math.round((event.loaded / event.total) * 100));
+        onProgress(
+          Math.min(99, Math.round((event.loaded / event.total) * 100)),
+        );
     });
     request.addEventListener("load", () => {
       if (settled) return;
